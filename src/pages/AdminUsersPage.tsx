@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -374,8 +374,88 @@ const AdminUsersPage = () => {
       <Tabs defaultValue="usuarios" className="space-y-4">
         <TabsList>
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
+          <TabsTrigger value="acessos">Últimos Acessos</TabsTrigger>
           <TabsTrigger value="bases">Acesso às Bases</TabsTrigger>
         </TabsList>
+
+        {/* Últimos Acessos Tab */}
+        <TabsContent value="acessos" className="space-y-4">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Últimos Acessos dos Fornecedores</h2>
+              </div>
+              {loading ? (
+                <div className="flex h-32 items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-xs">Nome</TableHead>
+                        <TableHead className="text-xs">E-mail</TableHead>
+                        <TableHead className="text-xs">Fornecedores</TableHead>
+                        <TableHead className="text-xs">Último Acesso</TableHead>
+                        <TableHead className="text-xs">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...users]
+                        .filter(u => !u.roles.includes('admin'))
+                        .sort((a, b) => {
+                          if (!a.last_sign_in && !b.last_sign_in) return 0;
+                          if (!a.last_sign_in) return 1;
+                          if (!b.last_sign_in) return -1;
+                          return new Date(b.last_sign_in).getTime() - new Date(a.last_sign_in).getTime();
+                        })
+                        .map(u => (
+                          <TableRow key={u.user_id} className={`text-sm ${!u.is_active ? 'opacity-50' : ''}`}>
+                            <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1 max-w-[250px]">
+                                {u.fornecedores?.length > 0 ? (
+                                  u.fornecedores.map(f => (
+                                    <Badge key={f} variant="outline" className="text-[10px] py-0 max-w-[200px] truncate">{f}</Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-muted-foreground italic text-xs">—</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {u.last_sign_in ? (
+                                <span className="text-sm tabular-nums">
+                                  {new Date(u.last_sign_in).toLocaleDateString('pt-BR')} às {new Date(u.last_sign_in).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground italic text-xs">Nunca acessou</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={u.is_active ? 'default' : 'secondary'}>
+                                {u.is_active ? 'Ativo' : 'Inativo'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      {users.filter(u => !u.roles.includes('admin')).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                            Nenhum fornecedor cadastrado.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="usuarios" className="space-y-4">
           <div className="flex justify-end">
