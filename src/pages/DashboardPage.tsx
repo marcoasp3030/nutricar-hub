@@ -12,7 +12,7 @@ import {
   PolarAngleAxis, PolarRadiusAxis, ComposedChart, Line,
 } from "recharts";
 import { queryVendas } from "@/lib/api";
-import { Package, DollarSign, ShoppingCart, Percent, Loader2, CalendarIcon, X, CalendarDays, Calendar as CalendarIconAlt, TrendingUp } from "lucide-react";
+import { Package, DollarSign, ShoppingCart, Percent, Loader2, CalendarIcon, X, CalendarDays, Calendar as CalendarIconAlt, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const formatCurrency = (value: number) =>
@@ -138,41 +138,84 @@ const DashboardPage = ({ tableName, fornecedor }: DashboardPageProps) => {
       </div>
 
       {/* Period KPI Cards */}
-      {periodKpis && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: "Hoje", data: periodKpis.hoje, icon: CalendarIcon, color: "hsl(87, 48%, 51%)" },
-            { label: "Últimos 7 dias", data: periodKpis.ultimos7dias, icon: CalendarDays, color: "hsl(200, 60%, 50%)" },
-            { label: "Mês Atual", data: periodKpis.mesAtual, icon: TrendingUp, color: "hsl(45, 80%, 55%)" },
-            { label: "Mês Anterior", data: periodKpis.mesAnterior, icon: CalendarIconAlt, color: "hsl(340, 65%, 55%)" },
-          ].map((period) => (
-            <Card key={period.label} className="border-0 shadow-sm">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${period.color}20` }}>
-                    <period.icon className="h-4 w-4" style={{ color: period.color }} />
+      {periodKpis && (() => {
+        const mesAtualValor = Number(periodKpis.mesAtual?.valor || 0);
+        const mesAnteriorValor = Number(periodKpis.mesAnterior?.valor || 0);
+        const mesAtualQtd = Number(periodKpis.mesAtual?.quantidade || 0);
+        const mesAnteriorQtd = Number(periodKpis.mesAnterior?.quantidade || 0);
+
+        const calcVariation = (current: number, previous: number) => {
+          if (previous === 0 && current === 0) return { pct: 0, direction: 'neutral' as const };
+          if (previous === 0) return { pct: 100, direction: 'up' as const };
+          const pct = ((current - previous) / previous) * 100;
+          return { pct: Math.abs(pct), direction: pct > 0 ? 'up' as const : pct < 0 ? 'down' as const : 'neutral' as const };
+        };
+
+        const valorVar = calcVariation(mesAtualValor, mesAnteriorValor);
+        const qtdVar = calcVariation(mesAtualQtd, mesAnteriorQtd);
+
+        const VariationBadge = ({ variation }: { variation: { pct: number; direction: 'up' | 'down' | 'neutral' } }) => {
+          if (variation.direction === 'neutral') return (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+              <Minus className="h-3 w-3" /> 0%
+            </span>
+          );
+          const isUp = variation.direction === 'up';
+          return (
+            <span className={cn(
+              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium",
+              isUp ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+            )}>
+              {isUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {variation.pct.toFixed(1)}%
+            </span>
+          );
+        };
+
+        const periods = [
+          { label: "Hoje", data: periodKpis.hoje, icon: CalendarIcon, color: "hsl(87, 48%, 51%)" },
+          { label: "Últimos 7 dias", data: periodKpis.ultimos7dias, icon: CalendarDays, color: "hsl(200, 60%, 50%)" },
+          { label: "Mês Atual", data: periodKpis.mesAtual, icon: TrendingUp, color: "hsl(45, 80%, 55%)", showVariation: true },
+          { label: "Mês Anterior", data: periodKpis.mesAnterior, icon: CalendarIconAlt, color: "hsl(340, 65%, 55%)" },
+        ];
+
+        return (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {periods.map((period) => (
+              <Card key={period.label} className="border-0 shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${period.color}20` }}>
+                      <period.icon className="h-4 w-4" style={{ color: period.color }} />
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground">{period.label}</h3>
                   </div>
-                  <h3 className="text-sm font-semibold text-foreground">{period.label}</h3>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Valor</span>
-                    <span className="font-bold text-foreground">{formatCurrency(Number(period.data?.valor || 0))}</span>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Valor</span>
+                      <div className="flex items-center gap-1.5">
+                        {period.showVariation && <VariationBadge variation={valorVar} />}
+                        <span className="font-bold text-foreground">{formatCurrency(Number(period.data?.valor || 0))}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Quantidade</span>
+                      <div className="flex items-center gap-1.5">
+                        {period.showVariation && <VariationBadge variation={qtdVar} />}
+                        <span className="font-semibold text-foreground">{Number(period.data?.quantidade || 0).toLocaleString("pt-BR")}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Registros</span>
+                      <span className="text-muted-foreground">{Number(period.data?.registros || 0).toLocaleString("pt-BR")}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Quantidade</span>
-                    <span className="font-semibold text-foreground">{Number(period.data?.quantidade || 0).toLocaleString("pt-BR")}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Registros</span>
-                    <span className="text-muted-foreground">{Number(period.data?.registros || 0).toLocaleString("pt-BR")}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
 
       <div className="grid gap-4 lg:grid-cols-2">
 
