@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, ComposedChart, Line,
 } from "recharts";
 import { queryVendas } from "@/lib/api";
-import { Package, DollarSign, ShoppingCart, Percent, Loader2 } from "lucide-react";
+import { Package, DollarSign, ShoppingCart, Percent, Loader2, CalendarIcon, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -32,16 +38,23 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
   const [bairroData, setBairroData] = useState<any[]>([]);
   const [bandeiraData, setBandeiraData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+
+  const dateFilters = {
+    ...(dateFrom ? { dateFrom: format(dateFrom, "yyyy-MM-dd") } : {}),
+    ...(dateTo ? { dateTo: format(dateTo, "yyyy-MM-dd") } : {}),
+  };
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      queryVendas({ action: 'kpis', tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'periodo' }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'status' }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'tipo_de_pagamento' }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'bairro' }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'bandeira' }, tableName }),
+      queryVendas({ action: 'kpis', tableName, filters: dateFilters }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'periodo', ...dateFilters }, tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'status', ...dateFilters }, tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'tipo_de_pagamento', ...dateFilters }, tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'bairro', ...dateFilters }, tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'bandeira', ...dateFilters }, tableName }),
     ]).then(([kpiRes, periodoRes, statusRes, pagRes, bairroRes, bandeiraRes]) => {
       setKpis(kpiRes.data);
       setPeriodoData(periodoRes.data || []);
@@ -50,13 +63,13 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
       setBairroData((bairroRes.data || []).slice(0, 10));
       setBandeiraData(bandeiraRes.data || []);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [tableName]);
+  }, [tableName, dateFrom, dateTo]);
 
   useEffect(() => {
-    queryVendas({ action: 'chart', filters: { groupBy: chartGroupBy }, tableName })
+    queryVendas({ action: 'chart', filters: { groupBy: chartGroupBy, ...dateFilters }, tableName })
       .then(res => setChartData(res.data || []))
       .catch(console.error);
-  }, [chartGroupBy, tableName]);
+  }, [chartGroupBy, tableName, dateFrom, dateTo]);
 
   if (loading) {
     return (
@@ -75,11 +88,43 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Visão geral — {Number(kpis?.total_registros || 0).toLocaleString("pt-BR")} registros
-        </p>
+      <div className="flex flex-wrap items-end gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Visão geral — {Number(kpis?.total_registros || 0).toLocaleString("pt-BR")} registros
+            {(dateFrom || dateTo) && " (filtrado)"}
+          </p>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[160px] justify-start text-left text-sm font-normal", !dateFrom && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[160px] justify-start text-left text-sm font-normal", !dateTo && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+            </PopoverContent>
+          </Popover>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="icon" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} title="Limpar filtro">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

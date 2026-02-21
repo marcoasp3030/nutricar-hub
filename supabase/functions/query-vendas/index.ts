@@ -66,34 +66,32 @@ Deno.serve(async (req) => {
     });
 
     try {
+      // Helper to build date clause
+      const buildDateClause = (f: Record<string, any>) => {
+        let clause = '';
+        if (f.dateFrom) clause += ` AND periodo >= '${String(f.dateFrom).replace(/'/g, "''")}'`;
+        if (f.dateTo) clause += ` AND periodo <= '${String(f.dateTo).replace(/'/g, "''")}'`;
+        return clause;
+      };
+
       if (action === 'kpis') {
-        // KPIs query
-        let query;
+        const dateClause = buildDateClause(filters);
+        let whereClause = '';
         if (isAdmin && !filters.fornecedor) {
-          query = sql`
-            SELECT 
-              COALESCE(SUM(quantidade::numeric), 0) as total_quantidade,
-              COALESCE(SUM(valor::numeric), 0) as total_valor,
-              COALESCE(SUM(valor_compra::numeric), 0) as total_valor_compra,
-              COALESCE(SUM(desconto::numeric), 0) as total_desconto,
-              COUNT(*) as total_registros
-            FROM ${sql(tableNameClean)}
-            WHERE 1=1
-          `;
+          whereClause = `WHERE 1=1${dateClause}`;
         } else {
           const forn = filters.fornecedor || fornecedor;
-          query = sql`
-            SELECT 
-              COALESCE(SUM(quantidade::numeric), 0) as total_quantidade,
-              COALESCE(SUM(valor::numeric), 0) as total_valor,
-              COALESCE(SUM(valor_compra::numeric), 0) as total_valor_compra,
-              COALESCE(SUM(desconto::numeric), 0) as total_desconto,
-              COUNT(*) as total_registros
-            FROM ${sql(tableNameClean)}
-            WHERE fornecedor = ${forn}
-          `;
+          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
         }
-        const result = await query;
+        const result = await sql.unsafe(`
+          SELECT 
+            COALESCE(SUM(quantidade::numeric), 0) as total_quantidade,
+            COALESCE(SUM(valor::numeric), 0) as total_valor,
+            COALESCE(SUM(valor_compra::numeric), 0) as total_valor_compra,
+            COALESCE(SUM(desconto::numeric), 0) as total_desconto,
+            COUNT(*) as total_registros
+          FROM ${tableNameClean} ${whereClause}
+        `);
         return new Response(JSON.stringify({ data: result[0] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
@@ -104,30 +102,24 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: 'Agrupamento inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        let result;
+        const dateClause = buildDateClause(filters);
+        let whereClause = '';
         if (isAdmin && !filters.fornecedor) {
-          result = await sql`
-            SELECT ${sql(groupBy)} as name,
-              COALESCE(SUM(valor::numeric), 0) as valor,
-              COALESCE(SUM(quantidade::numeric), 0) as quantidade
-            FROM ${sql(tableNameClean)}
-            GROUP BY ${sql(groupBy)}
-            ORDER BY valor DESC
-            LIMIT 20
-          `;
+          whereClause = `WHERE 1=1${dateClause}`;
         } else {
           const forn = filters.fornecedor || fornecedor;
-          result = await sql`
-            SELECT ${sql(groupBy)} as name,
-              COALESCE(SUM(valor::numeric), 0) as valor,
-              COALESCE(SUM(quantidade::numeric), 0) as quantidade
-            FROM ${sql(tableNameClean)}
-            WHERE fornecedor = ${forn}
-            GROUP BY ${sql(groupBy)}
-            ORDER BY valor DESC
-            LIMIT 20
-          `;
+          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
         }
+
+        const result = await sql.unsafe(`
+          SELECT ${groupBy} as name,
+            COALESCE(SUM(valor::numeric), 0) as valor,
+            COALESCE(SUM(quantidade::numeric), 0) as quantidade
+          FROM ${tableNameClean} ${whereClause}
+          GROUP BY ${groupBy}
+          ORDER BY valor DESC
+          LIMIT 20
+        `);
         return new Response(JSON.stringify({ data: result }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
@@ -167,6 +159,8 @@ Deno.serve(async (req) => {
           const s = String(filters.search).replace(/'/g, "''");
           whereClause += ` AND (produto ILIKE '%${s}%' OR loja ILIKE '%${s}%' OR cod_produto ILIKE '%${s}%')`;
         }
+
+        whereClause += buildDateClause(filters);
 
         const validSortCols = ['id', 'periodo', 'quantidade', 'valor', 'desconto', 'valor_compra', 'produto', 'categoria', 'status', 'loja', 'regiao'];
         const sortCol = validSortCols.includes(sortBy) ? sortBy : 'id';
