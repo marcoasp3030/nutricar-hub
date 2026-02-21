@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, UserX, ShieldCheck, Clock, Building2, Loader2, Database } from "lucide-react";
+import { Users, UserCheck, UserX, ShieldCheck, Clock, Building2, Loader2, Database, AlertCircle, Check, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 interface UserData {
@@ -21,6 +23,7 @@ interface UserData {
 }
 
 const AdminDashboardPage = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,9 +63,14 @@ const AdminDashboardPage = () => {
       admins: admins.length,
       ativos: ativos.length,
       inativos: inativos.length,
+      pendentes: inativos.length,
       nuncaAcessou: nuncaAcessou.length,
       totalFornecedoresVinculados: allFornecedoresSet.size,
     };
+  }, [users]);
+
+  const pendingUsers = useMemo(() => {
+    return users.filter((u) => !u.is_active && !u.roles.includes("admin"));
   }, [users]);
 
   const recentLogins = useMemo(() => {
@@ -118,10 +126,20 @@ const AdminDashboardPage = () => {
     );
   }
 
+  const handleApprove = async (user: UserData) => {
+    try {
+      await callAdmin({ action: "toggle-active", target_user_id: user.user_id, is_active: true });
+      toast.success(`${user.full_name || user.email} aprovado com sucesso!`);
+      fetchUsers();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   const kpiCards = [
     { label: "Total Usuários", value: stats.total, icon: Users, color: "text-primary" },
+    { label: "Pendentes", value: stats.pendentes, icon: AlertCircle, color: stats.pendentes > 0 ? "text-orange-500" : "text-muted-foreground" },
     { label: "Fornecedores Ativos", value: stats.ativos, icon: UserCheck, color: "text-green-600" },
-    { label: "Fornecedores Inativos", value: stats.inativos, icon: UserX, color: "text-destructive" },
     { label: "Administradores", value: stats.admins, icon: ShieldCheck, color: "text-amber-600" },
     { label: "Nunca Acessaram", value: stats.nuncaAcessou, icon: Clock, color: "text-orange-500" },
     { label: "Fornecedores Vinculados", value: stats.totalFornecedoresVinculados, icon: Building2, color: "text-blue-600" },
@@ -146,6 +164,58 @@ const AdminDashboardPage = () => {
           </Card>
         ))}
       </div>
+
+      {/* Pending Approvals */}
+      {pendingUsers.length > 0 && (
+        <Card className="border-0 shadow-sm border-l-4 border-l-orange-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-orange-500" />
+                Cadastros Pendentes de Aprovação
+                <Badge variant="destructive" className="ml-1">{pendingUsers.length}</Badge>
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={() => navigate("/admin/usuarios")}>
+                Ver todos
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Nome</TableHead>
+                    <TableHead className="text-xs">E-mail</TableHead>
+                    <TableHead className="text-xs">CNPJ</TableHead>
+                    <TableHead className="text-xs">Cadastrado em</TableHead>
+                    <TableHead className="text-xs w-32">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingUsers.slice(0, 5).map((u) => (
+                    <TableRow key={u.user_id} className="text-sm">
+                      <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
+                        {u.cnpj ? u.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(u.created_at).toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell>
+                        <Button size="sm" className="gap-1.5 h-7" onClick={() => handleApprove(u)}>
+                          <Check className="h-3.5 w-3.5" /> Aprovar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Signup Chart */}
