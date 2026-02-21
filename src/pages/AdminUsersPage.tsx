@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock, Phone, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +25,8 @@ interface UserData {
   full_name: string;
   email: string;
   cnpj: string | null;
+  phone: string | null;
+  financial_email: string | null;
   fornecedor: string | null;
   fornecedores: string[];
   roles: string[];
@@ -52,6 +54,8 @@ const AdminUsersPage = () => {
   const [formRole, setFormRole] = useState<string>("fornecedor");
   const [formFornecedorSearch, setFormFornecedorSearch] = useState("");
   const [formCnpj, setFormCnpj] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formFinancialEmail, setFormFinancialEmail] = useState("");
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -175,7 +179,7 @@ const AdminUsersPage = () => {
   const resetForm = () => {
     setFormName(""); setFormEmail(""); setFormPassword("");
     setFormFornecedores([]); setFormRole("fornecedor"); setFormFornecedorSearch("");
-    setFormCnpj("");
+    setFormCnpj(""); setFormPhone(""); setFormFinancialEmail("");
   };
 
   const addFornecedor = (f: string) => {
@@ -204,6 +208,8 @@ const AdminUsersPage = () => {
         fornecedores: formFornecedores,
         role: formRole,
         cnpj: formCnpj.replace(/\D/g, '') || null,
+        phone: formPhone || null,
+        financial_email: formFinancialEmail || null,
       });
       toast.success("Usuário criado com sucesso!");
       setCreateOpen(false);
@@ -227,6 +233,8 @@ const AdminUsersPage = () => {
         fornecedores: formFornecedores,
         role: formRole,
         cnpj: formCnpj.replace(/\D/g, '') || null,
+        phone: formPhone || null,
+        financial_email: formFinancialEmail || null,
       });
       toast.success("Usuário atualizado!");
       setEditOpen(false);
@@ -297,6 +305,8 @@ const AdminUsersPage = () => {
     setFormRole(user.roles[0] || "fornecedor");
     setFormFornecedorSearch("");
     setFormCnpj(user.cnpj ? formatCnpj(user.cnpj) : "");
+    setFormPhone(user.phone || "");
+    setFormFinancialEmail(user.financial_email || "");
     setEditOpen(true);
   };
 
@@ -482,10 +492,12 @@ const AdminUsersPage = () => {
                   <TableRow className="bg-muted/50">
                     <TableHead className="text-xs">Ativo</TableHead>
                     <TableHead className="text-xs">Nome</TableHead>
-                    <TableHead className="text-xs">CNPJ</TableHead>
-                    <TableHead className="text-xs">E-mail</TableHead>
-                    <TableHead className="text-xs">Fornecedores</TableHead>
-                    <TableHead className="text-xs">Papel</TableHead>
+                     <TableHead className="text-xs">CNPJ</TableHead>
+                     <TableHead className="text-xs">E-mail</TableHead>
+                     <TableHead className="text-xs">Telefone</TableHead>
+                     <TableHead className="text-xs">E-mail Financeiro</TableHead>
+                     <TableHead className="text-xs">Fornecedores</TableHead>
+                     <TableHead className="text-xs">Papel</TableHead>
                     <TableHead className="text-xs">Último acesso</TableHead>
                     <TableHead className="text-xs w-32">Ações</TableHead>
                   </TableRow>
@@ -505,6 +517,8 @@ const AdminUsersPage = () => {
                         {u.cnpj ? u.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '—'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{u.phone || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{u.financial_email || '—'}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-[250px]">
                           {u.fornecedores?.length > 0 ? (
@@ -545,7 +559,7 @@ const AdminUsersPage = () => {
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                         Nenhum usuário encontrado.
                       </TableCell>
                     </TableRow>
@@ -590,6 +604,14 @@ const AdminUsersPage = () => {
             <div>
               <Label>Senha *</Label>
               <Input type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input type="tel" value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="(00) 00000-0000" />
+            </div>
+            <div>
+              <Label>E-mail financeiro <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@empresa.com" />
             </div>
             <div>
               <Label>Papel</Label>
@@ -637,6 +659,14 @@ const AdminUsersPage = () => {
             <div>
               <Label>Nome completo / Razão Social</Label>
               <Input value={formName} onChange={e => setFormName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input type="tel" value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="(00) 00000-0000" />
+            </div>
+            <div>
+              <Label>E-mail financeiro <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@empresa.com" />
             </div>
             <div>
               <Label>Papel</Label>
