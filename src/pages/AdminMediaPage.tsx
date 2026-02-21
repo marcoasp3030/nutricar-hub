@@ -23,7 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import SlideEditor, { SlidePreview, type SlideData } from "@/components/SlideEditor";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 
 /* ─── Types ─── */
 type Playlist = {
@@ -439,7 +439,30 @@ const AdminMediaPage = () => {
       { name: "Slides", value: slides, color: "hsl(45, 80%, 55%)" },
       { name: "Áudios", value: audios, color: "hsl(340, 65%, 55%)" },
     ].filter((d) => d.value > 0);
-    return { total, active, inactive, totalItems, images, videos, slides, audios, recent, pieData };
+
+    // Weekly creation data (last 8 weeks)
+    const now = new Date();
+    const weeklyMap = new Map<string, number>();
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7);
+      const key = weekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+      weeklyMap.set(key, 0);
+    }
+    playlists.forEach((pl) => {
+      const created = new Date(pl.created_at);
+      const diffDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 56) {
+        const weekIndex = Math.floor(diffDays / 7);
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - weekIndex * 7);
+        const key = weekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+        weeklyMap.set(key, (weeklyMap.get(key) || 0) + 1);
+      }
+    });
+    const weeklyData = Array.from(weeklyMap, ([semana, criadas]) => ({ semana, criadas }));
+
+    return { total, active, inactive, totalItems, images, videos, slides, audios, recent, pieData, weeklyData };
   }, [playlists, allItems]);
 
   const createPlaylist = async () => {
@@ -719,6 +742,35 @@ const AdminMediaPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Weekly creation line chart */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Evolução de playlists criadas por semana</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.weeklyData.every((d) => d.criadas === 0) ? (
+            <p className="text-xs text-muted-foreground text-center py-6">Nenhuma playlist criada nas últimas 8 semanas</p>
+          ) : (
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.weeklyData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="semana" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number) => [v, "Playlists"]}
+                    labelFormatter={(label) => `Semana de ${label}`}
+                  />
+                  <Line type="monotone" dataKey="criadas" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left: Playlist list */}
