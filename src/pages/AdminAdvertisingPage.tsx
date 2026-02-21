@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -239,6 +240,42 @@ const AdminAdvertisingPage = () => {
           <CardContent><p className="text-2xl font-bold text-yellow-600">{fmt(totalPending)}</p></CardContent>
         </Card>
       </div>
+
+      {/* Revenue Chart */}
+      {(() => {
+        const revenueByMonth: Record<string, { paid: number; pending: number }> = {};
+        payments.forEach(p => {
+          if (!revenueByMonth[p.month_ref]) revenueByMonth[p.month_ref] = { paid: 0, pending: 0 };
+          if (p.status === "paid") revenueByMonth[p.month_ref].paid += p.amount;
+          else revenueByMonth[p.month_ref].pending += p.amount;
+        });
+        const chartData = Object.entries(revenueByMonth)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([month, vals]) => ({ month, paid: vals.paid, pending: vals.pending }));
+
+        return chartData.length > 0 ? (
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2 pb-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Receita Mensal por Período</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="month" className="text-xs fill-muted-foreground" />
+                    <YAxis tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} className="text-xs fill-muted-foreground" />
+                    <Tooltip formatter={(v: number) => fmt(v)} />
+                    <Bar dataKey="paid" name="Recebido" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="pending" name="Pendente" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.5} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null;
+      })()}
 
       <Tabs defaultValue="packages" className="w-full">
         <TabsList>
