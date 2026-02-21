@@ -14,6 +14,135 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_contracts: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          fornecedor: string
+          id: string
+          notes: string | null
+          package_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          fornecedor: string
+          id?: string
+          notes?: string | null
+          package_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          fornecedor?: string
+          id?: string
+          notes?: string | null
+          package_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_contracts_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "ad_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_packages: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_frequency: string
+          duration_months: number
+          id: string
+          is_active: boolean
+          monthly_value: number
+          name: string
+          playlist_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_frequency?: string
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          monthly_value?: number
+          name: string
+          playlist_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_frequency?: string
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          monthly_value?: number
+          name?: string
+          playlist_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_packages_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_payments: {
+        Row: {
+          amount: number
+          contract_id: string
+          created_at: string
+          id: string
+          month_ref: string
+          paid_at: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          contract_id: string
+          created_at?: string
+          id?: string
+          month_ref: string
+          paid_at?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          contract_id?: string
+          created_at?: string
+          id?: string
+          month_ref?: string
+          paid_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_payments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "ad_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fornecedor_tables: {
         Row: {
           created_at: string

@@ -14,6 +14,8 @@ import ReportsPage from "./pages/ReportsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminMediaPage from "./pages/AdminMediaPage";
+import AdminAdvertisingPage from "./pages/AdminAdvertisingPage";
+import FornecedorContractsPage from "./pages/FornecedorContractsPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
 import NotFound from "./pages/NotFound";
@@ -135,6 +137,7 @@ const AppContent = () => {
             <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
             <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
             <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+            <Route path="/contratos" element={<FornecedorContractsPage fornecedor={activeFornecedor} />} />
           </>
         )}
         {role === "admin" ? (
@@ -142,6 +145,7 @@ const AppContent = () => {
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
             <Route path="/admin/midia" element={<AdminMediaPage />} />
+            <Route path="/admin/publicidade" element={<AdminAdvertisingPage />} />
           </>
         ) : (
           <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
