@@ -27,9 +27,6 @@ const navItems = {
     { to: "/relatorios", label: "Relatórios", icon: FileText },
   ],
   admin: [
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/produtos", label: "Produtos", icon: ShoppingBasket },
-    { to: "/relatorios", label: "Relatórios", icon: FileText },
     { to: "/admin/usuarios", label: "Usuários", icon: Users },
   ],
 };
@@ -41,18 +38,18 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
   const items = navItems[role];
 
   useEffect(() => {
+    if (role === 'admin') return; // Admin doesn't need table data
     queryVendas({ action: 'tables', filters: { fornecedor: fornecedor !== 'Não vinculado' ? fornecedor : undefined } })
       .then(res => {
         if (res.data?.length) {
           setTables(res.data);
-          // If current tableName is not in the allowed list, switch to first available
           if (!res.data.includes(tableName)) {
             onTableChange(res.data[0]);
           }
         }
       })
       .catch(console.error);
-  }, [fornecedor]);
+  }, [fornecedor, role]);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -68,7 +65,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
           <img src={logo} alt="Nutricar" className="h-8 object-contain" />
         </div>
 
-        {tables.length > 1 && (
+        {role !== 'admin' && tables.length > 1 && (
           <div className="border-b border-sidebar-border p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
               <Database className="h-3 w-3" /> Base de dados
@@ -100,7 +97,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          {fornecedores.length > 1 ? (
+          {role !== 'admin' && fornecedores.length > 1 ? (
             <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
               <p className="text-xs text-muted-foreground mb-1">Fornecedor</p>
               <Select value={fornecedor} onValueChange={onFornecedorChange}>
@@ -112,12 +109,12 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
                 </SelectContent>
               </Select>
             </div>
-          ) : (
+          ) : role !== 'admin' ? (
             <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
               <p className="text-xs text-muted-foreground">Fornecedor</p>
               <p className="truncate text-sm font-medium text-sidebar-foreground">{fornecedor}</p>
             </div>
-          )}
+          ) : null}
           <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive" onClick={onLogout}>
             <LogOut className="h-4 w-4" /> Sair
           </Button>
