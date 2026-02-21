@@ -319,30 +319,36 @@ export type Database = {
         Row: {
           cnpj: string | null
           created_at: string
+          financial_email: string | null
           fornecedor: string | null
           full_name: string
           id: string
           is_active: boolean
+          phone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           cnpj?: string | null
           created_at?: string
+          financial_email?: string | null
           fornecedor?: string | null
           full_name?: string
           id?: string
           is_active?: boolean
+          phone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           cnpj?: string | null
           created_at?: string
+          financial_email?: string | null
           fornecedor?: string | null
           full_name?: string
           id?: string
           is_active?: boolean
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }
