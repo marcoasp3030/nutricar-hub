@@ -46,6 +46,6 @@ export async function getUserProfile() {
     roles: roles?.map((r: any) => r.role) || [],
     isAdmin: roles?.some((r: any) => r.role === 'admin') || false,
     fornecedores: fornecedores?.map((f: any) => f.fornecedor) || [],
-    is_active: profile?.is_active ?? true,
+    is_active: profile?.is_active ?? false,
   };
 }
