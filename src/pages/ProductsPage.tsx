@@ -5,13 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line, Legend,
+  PieChart, Pie, Cell, ComposedChart, Line, Legend,
 } from "recharts";
 import { queryVendas } from "@/lib/api";
 import {
-  Loader2, CalendarIcon, X, TrendingUp, TrendingDown, Clock, ShoppingBasket,
+  Loader2, CalendarIcon, X, TrendingUp, TrendingDown, Clock, ShoppingBasket, Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ const ProductsPage = ({ tableName }: ProductsPageProps) => {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [selectedCategoria, setSelectedCategoria] = useState<string>("all");
 
   const dateFilters = {
     ...(dateFrom ? { dateFrom: format(dateFrom, "yyyy-MM-dd") } : {}),
@@ -255,11 +257,13 @@ const ProductsPage = ({ tableName }: ProductsPageProps) => {
         </Card>
       </div>
 
-      {/* Row 3: Categoria + Margem */}
+      {/* Row 3: Categoria valor + quantidade */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Produtos por Categoria</h3>
+            <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary" /> Vendas por Categoria (Quantidade)
+            </h3>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
@@ -284,24 +288,92 @@ const ProductsPage = ({ tableName }: ProductsPageProps) => {
 
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Top 15 — Margem por Produto</h3>
-            <ResponsiveContainer width="100%" height={380}>
-              <BarChart data={data.margemProduto} layout="vertical">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Receita × Margem por Categoria</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={data.porCategoria}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
-                <Tooltip
-                  formatter={(v: number, name: string) =>
-                    name === "margem_pct" ? `${v}%` : formatCurrency(v)
-                  }
-                />
+                <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" angle={-20} textAnchor="end" height={60} />
+                <YAxis tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} />
                 <Legend />
-                <Bar dataKey="margem" name="Margem (R$)" fill="hsl(160,50%,45%)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="valor" name="Receita (R$)" fill="hsl(87,48%,51%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="margem" name="Margem (R$)" fill="hsl(160,50%,45%)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+
+      {/* Row 4: Top produtos por categoria selecionada */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary" /> Top 5 Produtos por Categoria
+            </h3>
+            <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+              <SelectTrigger className="w-48 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Categorias</SelectItem>
+                {(data.porCategoria || []).map((c: any) => (
+                  <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(() => {
+            const filtered = (data.topPorCategoria || []).filter(
+              (p: any) => selectedCategoria === "all" || p.categoria === selectedCategoria
+            );
+            const grouped = filtered.reduce((acc: any, p: any) => {
+              if (!acc[p.categoria]) acc[p.categoria] = [];
+              acc[p.categoria].push(p);
+              return acc;
+            }, {} as Record<string, any[]>);
+            const categories = Object.keys(grouped).slice(0, selectedCategoria === "all" ? 4 : 1);
+
+            return (
+              <div className="grid gap-4 md:grid-cols-2">
+                {categories.map((cat, ci) => (
+                  <div key={cat}>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">{cat}</p>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={grouped[cat]} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                        <XAxis type="number" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" />
+                        <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} stroke="hsl(90,10%,45%)" width={120} />
+                        <Tooltip formatter={(v: number, name: string) => name === "valor" ? formatCurrency(v) : Number(v).toLocaleString("pt-BR")} />
+                        <Bar dataKey="quantidade" name="Quantidade" fill={COLORS[ci % COLORS.length]} radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
+      {/* Row 5: Margem por produto */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Top 15 — Margem por Produto</h3>
+          <ResponsiveContainer width="100%" height={380}>
+            <BarChart data={data.margemProduto} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
+              <Tooltip
+                formatter={(v: number, name: string) =>
+                  name === "margem_pct" ? `${v}%` : formatCurrency(v)
+                }
+              />
+              <Legend />
+              <Bar dataKey="margem" name="Margem (R$)" fill="hsl(160,50%,45%)" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 };
