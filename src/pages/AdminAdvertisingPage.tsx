@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3 } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -90,6 +90,10 @@ const AdminAdvertisingPage = () => {
   // Payment form
   const [payDialog, setPayDialog] = useState(false);
   const [payForm, setPayForm] = useState({ contract_id: "", month_ref: "", amount: "", status: "pending" });
+
+  // Period filter
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
 
   const fetchAll = async () => {
     setLoading(true);
@@ -197,17 +201,66 @@ const AdminAdvertisingPage = () => {
     fetchAll();
   };
 
-  // === Dashboard Stats ===
+  // === Filtered payments ===
+  const filteredPayments = payments.filter(p => {
+    if (filterFrom && p.month_ref < filterFrom) return false;
+    if (filterTo && p.month_ref > filterTo) return false;
+    return true;
+  });
+
   const activeContracts = contracts.filter(c => c.status === "active");
   const totalMonthlyRevenue = activeContracts.reduce((sum, c) => sum + (c.ad_packages?.monthly_value || 0), 0);
-  const totalPaid = payments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
-  const totalPending = payments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = filteredPayments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
+  const totalPending = filteredPayments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
+
+  // === Chart data ===
+  const revenueByMonth: Record<string, { paid: number; pending: number }> = {};
+  filteredPayments.forEach(p => {
+    if (!revenueByMonth[p.month_ref]) revenueByMonth[p.month_ref] = { paid: 0, pending: 0 };
+    if (p.status === "paid") revenueByMonth[p.month_ref].paid += p.amount;
+    else revenueByMonth[p.month_ref].pending += p.amount;
+  });
+  const chartData = Object.entries(revenueByMonth)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, vals]) => ({ month, paid: vals.paid, pending: vals.pending }));
+
+  // === Available months for filter ===
+  const allMonths = [...new Set(payments.map(p => p.month_ref))].sort();
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Publicidade TV</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-2xl font-bold text-foreground">Publicidade TV</h1>
+        {allMonths.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={filterFrom || "all"} onValueChange={v => setFilterFrom(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="De" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Início</SelectItem>
+                {allMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <span className="text-muted-foreground text-xs">até</span>
+            <Select value={filterTo || "all"} onValueChange={v => setFilterTo(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Até" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Fim</SelectItem>
+                {allMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {(filterFrom || filterTo) && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterFrom(""); setFilterTo(""); }}>Limpar</Button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Dashboard Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -228,54 +281,42 @@ const AdminAdvertisingPage = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Recebido</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
-          <CardContent><p className="text-2xl font-bold text-green-600">{fmt(totalPaid)}</p></CardContent>
+          <CardContent><p className="text-2xl font-bold">{fmt(totalPaid)}</p></CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Pendente</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent><p className="text-2xl font-bold text-yellow-600">{fmt(totalPending)}</p></CardContent>
+          <CardContent><p className="text-2xl font-bold">{fmt(totalPending)}</p></CardContent>
         </Card>
       </div>
 
       {/* Revenue Chart */}
-      {(() => {
-        const revenueByMonth: Record<string, { paid: number; pending: number }> = {};
-        payments.forEach(p => {
-          if (!revenueByMonth[p.month_ref]) revenueByMonth[p.month_ref] = { paid: 0, pending: 0 };
-          if (p.status === "paid") revenueByMonth[p.month_ref].paid += p.amount;
-          else revenueByMonth[p.month_ref].pending += p.amount;
-        });
-        const chartData = Object.entries(revenueByMonth)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([month, vals]) => ({ month, paid: vals.paid, pending: vals.pending }));
-
-        return chartData.length > 0 ? (
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2 pb-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Receita Mensal por Período</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="month" className="text-xs fill-muted-foreground" />
-                    <YAxis tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} className="text-xs fill-muted-foreground" />
-                    <Tooltip formatter={(v: number) => fmt(v)} />
-                    <Bar dataKey="paid" name="Recebido" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="pending" name="Pendente" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.5} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        ) : null;
-      })()}
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-2 pb-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Receita Mensal por Período</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" className="text-xs fill-muted-foreground" />
+                  <YAxis tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} className="text-xs fill-muted-foreground" />
+                  <Tooltip formatter={(v: number) => fmt(v)} />
+                  <Bar dataKey="paid" name="Recebido" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="pending" name="Pendente" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.5} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="packages" className="w-full">
         <TabsList>
@@ -394,7 +435,7 @@ const AdminAdvertisingPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map(p => {
+                {filteredPayments.map(p => {
                   const st = PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending;
                   return (
                     <TableRow key={p.id}>
@@ -407,7 +448,7 @@ const AdminAdvertisingPage = () => {
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => togglePayStatus(p)} title={p.status === "paid" ? "Marcar pendente" : "Marcar pago"}>
-                            {p.status === "paid" ? <XCircle className="h-4 w-4 text-yellow-500" /> : <CheckCircle className="h-4 w-4 text-green-500" />}
+                            {p.status === "paid" ? <XCircle className="h-4 w-4 text-muted-foreground" /> : <CheckCircle className="h-4 w-4 text-primary" />}
                           </Button>
                           <Button size="icon" variant="ghost" onClick={() => deletePayment(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
@@ -415,7 +456,7 @@ const AdminAdvertisingPage = () => {
                     </TableRow>
                   );
                 })}
-                {payments.length === 0 && (
+                {filteredPayments.length === 0 && (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
                 )}
               </TableBody>
