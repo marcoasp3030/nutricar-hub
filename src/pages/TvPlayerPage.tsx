@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SlidePreview, type SlideData } from "@/components/SlideEditor";
@@ -44,58 +44,89 @@ const TvPlayerPage = () => {
   const [logo, setLogo] = useState<PlaylistLogo>({ logo_url: "", logo_position: "top-right", logo_size: 80, logo_opacity: 100 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const loadItems = useCallback(async () => {
+    if (!playlistId) return;
+    const { data: playlistItems } = await supabase
+      .from("playlist_items")
+      .select("*")
+      .eq("playlist_id", playlistId)
+      .order("sort_order");
+
+    if (playlistItems) {
+      setItems(
+        (playlistItems as any[])
+          .filter((i) => i.media_type !== "audio")
+          .map((i) => ({
+            id: i.id,
+            media_type: i.media_type,
+            media_url: i.media_url,
+            duration_seconds: i.duration_seconds,
+            transition: i.transition,
+            sort_order: i.sort_order,
+            slide_data: i.slide_data as SlideData | null,
+            rotation: i.rotation || 0,
+          }))
+      );
+    }
+  }, [playlistId]);
+
+  const loadPlaylist = useCallback(async () => {
+    if (!playlistId) return;
+    const { data: playlist, error: plError } = await supabase
+      .from("playlists")
+      .select("*")
+      .eq("id", playlistId)
+      .eq("is_active", true)
+      .single();
+
+    if (plError || !playlist) {
+      setError("Playlist não encontrada ou inativa.");
+      setLoaded(true);
+      return;
+    }
+
+    setOrientation((playlist as any).orientation || "horizontal");
+    setLogo({
+      logo_url: (playlist as any).logo_url || "",
+      logo_position: (playlist as any).logo_position || "top-right",
+      logo_size: (playlist as any).logo_size || 80,
+      logo_opacity: (playlist as any).logo_opacity ?? 100,
+    });
+    return playlist;
+  }, [playlistId]);
+
+  // Initial load
   useEffect(() => {
     if (!playlistId) return;
 
-    const load = async () => {
-      const { data: playlist, error: plError } = await supabase
-        .from("playlists")
-        .select("*")
-        .eq("id", playlistId)
-        .eq("is_active", true)
-        .single();
-
-      if (plError || !playlist) {
-        setError("Playlist não encontrada ou inativa.");
-        setLoaded(true);
-        return;
-      }
-
-      setOrientation((playlist as any).orientation || "horizontal");
-      setLogo({
-        logo_url: (playlist as any).logo_url || "",
-        logo_position: (playlist as any).logo_position || "top-right",
-        logo_size: (playlist as any).logo_size || 80,
-        logo_opacity: (playlist as any).logo_opacity ?? 100,
-      });
-
-      const { data: playlistItems } = await supabase
-        .from("playlist_items")
-        .select("*")
-        .eq("playlist_id", playlistId)
-        .order("sort_order");
-
-      if (playlistItems) {
-        setItems(
-          (playlistItems as any[])
-            .filter((i) => i.media_type !== "audio")
-            .map((i) => ({
-              id: i.id,
-              media_type: i.media_type,
-              media_url: i.media_url,
-              duration_seconds: i.duration_seconds,
-              transition: i.transition,
-              sort_order: i.sort_order,
-              slide_data: i.slide_data as SlideData | null,
-              rotation: i.rotation || 0,
-            }))
-        );
-      }
+    const init = async () => {
+      const playlist = await loadPlaylist();
+      if (playlist) await loadItems();
       setLoaded(true);
     };
+    init();
+  }, [playlistId, loadPlaylist, loadItems]);
 
-    load();
-  }, [playlistId]);
+  // Realtime subscriptions
+  useEffect(() => {
+    if (!playlistId) return;
+
+    const channel = supabase
+      .channel(`tv-player-${playlistId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "playlist_items", filter: `playlist_id=eq.${playlistId}` },
+        () => { loadItems(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "playlists", filter: `id=eq.${playlistId}` },
+        () => { loadPlaylist(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [playlistId, loadItems, loadPlaylist]);
 
   // Auto-advance
   useEffect(() => {
