@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_contract_history: {
+        Row: {
+          changed_by: string | null
+          contract_id: string
+          created_at: string
+          id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          contract_id: string
+          created_at?: string
+          id?: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          contract_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_contract_history_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "ad_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_contracts: {
         Row: {
           created_at: string

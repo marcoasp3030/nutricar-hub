@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -95,6 +95,12 @@ const AdminAdvertisingPage = () => {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
+  // History
+  const [historyDialog, setHistoryDialog] = useState(false);
+  const [historyContractId, setHistoryContractId] = useState<string | null>(null);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const fetchAll = async () => {
     setLoading(true);
     const [pkgRes, contractRes, payRes, playlistRes, fornRes] = await Promise.all([
@@ -177,6 +183,19 @@ const AdminAdvertisingPage = () => {
     await supabase.from("ad_contracts").delete().eq("id", id);
     toast.success("Contrato excluído");
     fetchAll();
+  };
+
+  const openHistory = async (contractId: string) => {
+    setHistoryContractId(contractId);
+    setHistoryDialog(true);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("ad_contract_history")
+      .select("*")
+      .eq("contract_id", contractId)
+      .order("created_at", { ascending: false });
+    setHistoryData(data || []);
+    setHistoryLoading(false);
   };
 
   // === Payment CRUD ===
@@ -399,6 +418,7 @@ const AdminAdvertisingPage = () => {
                       <TableCell className="text-xs">{c.end_date || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => openHistory(c.id)} title="Histórico"><History className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => openContractEdit(c)}><Edit className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => deleteContract(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
@@ -572,6 +592,43 @@ const AdminAdvertisingPage = () => {
             </div>
             <Button className="w-full" onClick={savePayment}>Registrar</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={historyDialog} onOpenChange={setHistoryDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5" /> Histórico do Contrato</DialogTitle>
+          </DialogHeader>
+          {historyLoading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" /></div>
+          ) : historyData.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum registro de histórico</p>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {historyData.map(h => {
+                const oldSt = h.old_status ? (STATUS_MAP[h.old_status]?.label || h.old_status) : "—";
+                const newSt = STATUS_MAP[h.new_status]?.label || h.new_status;
+                return (
+                  <div key={h.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
+                    <div className="flex-1 text-sm">
+                      <p>
+                        {h.old_status ? (
+                          <><span className="text-muted-foreground">{oldSt}</span> → <span className="font-medium">{newSt}</span></>
+                        ) : (
+                          <>Criado como <span className="font-medium">{newSt}</span></>
+                        )}
+                      </p>
+                      {h.notes && <p className="text-xs text-muted-foreground mt-1">{h.notes}</p>}
+                      <p className="text-xs text-muted-foreground mt-1">{format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
