@@ -9,6 +9,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Lock, Mail, User, Building2, Loader2, Phone, Check, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 
 const formatCnpj = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -40,6 +43,42 @@ const passwordRules = [
 
 const isPasswordStrong = (p: string) => passwordRules.every(r => r.test(p));
 
+const renderSimpleMarkdown = (text: string) => {
+  return text.split("\n").map((line, i) => {
+    if (line.startsWith("# ")) return <h1 key={i} className="text-xl font-bold mt-4 mb-2">{line.slice(2)}</h1>;
+    if (line.startsWith("## ")) return <h2 key={i} className="text-lg font-semibold mt-3 mb-1">{line.slice(3)}</h2>;
+    if (line.startsWith("- **")) {
+      const match = line.match(/^- \*\*(.+?)\*\*(.*)$/);
+      if (match) return <li key={i} className="ml-4 text-sm"><strong>{match[1]}</strong>{match[2]}</li>;
+    }
+    if (line.startsWith("- ")) return <li key={i} className="ml-4 text-sm">{line.slice(2)}</li>;
+    if (line.trim() === "") return <br key={i} />;
+    return <p key={i} className="text-sm">{line}</p>;
+  });
+};
+
+const DocLink = ({ docs, type, label }: { docs: { type: string; title: string; content: string }[]; type: string; label: string }) => {
+  const doc = docs.find(d => d.type === type);
+  if (!doc) return <span className="text-primary underline">{label}</span>;
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button type="button" className="text-primary underline hover:text-primary/80 inline">
+          {label}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{doc.title}</DialogTitle>
+        </DialogHeader>
+        <div className="prose prose-sm dark:prose-invert text-foreground">
+          {renderSimpleMarkdown(doc.content)}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,6 +94,13 @@ const LoginPage = () => {
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [lockCountdown, setLockCountdown] = useState(0);
   const [pendingMessage, setPendingMessage] = useState(false);
+  const [lgpdDocs, setLgpdDocs] = useState<{ type: string; title: string; content: string }[]>([]);
+
+  // Load LGPD documents
+  useEffect(() => {
+    supabase.from("lgpd_documents" as any).select("type, title, content").eq("is_active", true)
+      .then(({ data }) => { if (data) setLgpdDocs(data as any); });
+  }, []);
 
   // Countdown timer for lockout
   useEffect(() => {
@@ -309,12 +355,10 @@ const LoginPage = () => {
                     />
                     <Label htmlFor="lgpd-consent" className="text-xs text-muted-foreground leading-tight cursor-pointer">
                       Li e aceito os{" "}
-                      <a href="https://nutricar.com.br/termos" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
-                        Termos de Uso
-                      </a>{" "}e a{" "}
-                      <a href="https://nutricar.com.br/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
-                        Política de Privacidade
-                      </a>{" "}(LGPD).
+                      <DocLink docs={lgpdDocs} type="terms" label="Termos de Uso" />
+                      {" "}e a{" "}
+                      <DocLink docs={lgpdDocs} type="privacy" label="Política de Privacidade" />
+                      {" "}(LGPD).
                     </Label>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading || !isPasswordStrong(password) || !lgpdConsent}>
