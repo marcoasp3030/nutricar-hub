@@ -105,6 +105,12 @@ const LoginPage = () => {
     setPendingMessage(false);
     const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      // Check if error is due to unconfirmed email
+      if (error.message?.includes('Email not confirmed')) {
+        setPendingMessage(true);
+        setLoading(false);
+        return;
+      }
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
       if (newAttempts >= MAX_ATTEMPTS) {
