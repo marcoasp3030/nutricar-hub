@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Type, AlignLeft, AlignCenter, AlignRight, Bold, Italic, LayoutTemplate, ImageIcon, Trash2 } from "lucide-react";
+import { Upload, Type, AlignLeft, AlignCenter, AlignRight, Bold, Italic, LayoutTemplate, ImageIcon, Trash2, ChevronDown, Palette, PanelTop } from "lucide-react";
 
 export type SlideData = {
   title: string;
@@ -191,6 +192,34 @@ const GRADIENT_PRESETS = [
   { label: "Oceano", value: "linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)" },
   { label: "NutriCar", value: "linear-gradient(135deg, hsl(87 48% 35%) 0%, hsl(87 48% 51%) 100%)" },
 ];
+
+/* ─── Collapsible Section ─── */
+const CollapsibleSection = ({
+  icon,
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2.5 hover:bg-muted/50 transition-colors rounded-lg">
+        <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          {icon} {title}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-3 pb-3 space-y-3">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
 
 /* ─── Logo position helper ─── */
 const logoPositionStyle = (pos: string, pad: number): React.CSSProperties => {
@@ -421,13 +450,10 @@ const SlideEditor = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left: Controls */}
-      <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-2">
+      <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-2">
         {/* Templates */}
         {!editData && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <LayoutTemplate className="h-4 w-4" /> Templates
-            </h3>
+          <CollapsibleSection icon={<LayoutTemplate className="h-4 w-4" />} title="Templates" defaultOpen>
             <div className="grid grid-cols-4 gap-1.5">
               {SLIDE_TEMPLATES.map((tpl) => (
                 <button
@@ -444,14 +470,11 @@ const SlideEditor = ({
                 </button>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* Text content */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-            <Type className="h-4 w-4" /> Conteúdo
-          </h3>
+        <CollapsibleSection icon={<Type className="h-4 w-4" />} title="Conteúdo" defaultOpen>
           <div className="space-y-2">
             <Label className="text-xs">Título</Label>
             <Input value={slide.title} onChange={(e) => update("title", e.target.value)} placeholder="Título principal" />
@@ -464,11 +487,10 @@ const SlideEditor = ({
             <Label className="text-xs">Texto</Label>
             <Textarea value={slide.body} onChange={(e) => update("body", e.target.value)} placeholder="Corpo do texto (opcional)" rows={3} />
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Typography */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Tipografia</h3>
+        <CollapsibleSection icon={<PanelTop className="h-4 w-4" />} title="Tipografia">
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
               <Label className="text-[10px]">Título {slide.titleSize}px</Label>
@@ -534,11 +556,10 @@ const SlideEditor = ({
             <Label className="text-[10px]">Padding {slide.padding}px</Label>
             <Slider value={[slide.padding]} onValueChange={([v]) => update("padding", v)} min={10} max={200} step={5} />
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Background */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Fundo</h3>
+        <CollapsibleSection icon={<Palette className="h-4 w-4" />} title="Fundo">
           <div className="flex gap-2">
             <Button variant={slide.bgType === "color" ? "default" : "outline"} size="sm" className="text-xs" onClick={() => update("bgType", "color")}>Cor</Button>
             <Button variant={slide.bgType === "gradient" ? "default" : "outline"} size="sm" className="text-xs" onClick={() => update("bgType", "gradient")}>Gradiente</Button>
@@ -583,13 +604,10 @@ const SlideEditor = ({
               </div>
             </div>
           )}
-        </div>
+        </CollapsibleSection>
 
         {/* Logo */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-            <ImageIcon className="h-4 w-4" /> Logo
-          </h3>
+        <CollapsibleSection icon={<ImageIcon className="h-4 w-4" />} title="Logo">
           <div className="space-y-2">
             <input ref={logoFileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             <div className="flex items-center gap-2">
@@ -630,7 +648,7 @@ const SlideEditor = ({
               </>
             )}
           </div>
-        </div>
+        </CollapsibleSection>
 
         <Button onClick={save} disabled={saving} className="w-full">
           {saving ? "Salvando..." : editItemId ? "Atualizar Slide" : "Adicionar Slide"}
