@@ -128,24 +128,29 @@ const TvPlayerPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [playlistId, loadItems, loadPlaylist]);
 
-  // Auto-advance
+  const advanceToNext = useCallback(() => {
+    if (items.length <= 1) return;
+    setTransitioning(true);
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % items.length);
+      setTransitioning(false);
+    }, 700);
+  }, [items.length]);
+
+  // Auto-advance (non-video items only)
   useEffect(() => {
     if (items.length <= 1) return;
     const current = items[currentIndex];
-    if (!current) return;
+    if (!current || current.media_type === "video") return;
 
     timerRef.current = setTimeout(() => {
-      setTransitioning(true);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % items.length);
-        setTransitioning(false);
-      }, 700);
+      advanceToNext();
     }, current.duration_seconds * 1000);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [currentIndex, items]);
+  }, [currentIndex, items, advanceToNext]);
 
   if (!loaded) {
     return (
@@ -220,9 +225,11 @@ const TvPlayerPage = () => {
       return (
         <div className="w-full h-full flex items-center justify-center">
           <video
+            key={current.id + currentIndex}
             src={current.media_url}
             autoPlay
             muted
+            onEnded={advanceToNext}
             className="max-w-full max-h-full object-contain"
             style={{ transform: `rotate(${rot}deg)` }}
           />
