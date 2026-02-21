@@ -33,6 +33,7 @@ type Playlist = {
   schedule_end: string | null;
   created_at: string;
   tags: string[];
+  orientation: "horizontal" | "vertical";
 };
 
 type PlaylistItem = {
@@ -136,14 +137,17 @@ const TvMockup = ({
   items,
   playing,
   onTogglePlay,
+  orientation,
+  onOrientationChange,
 }: {
   items: PlaylistItem[];
   playing: boolean;
   onTogglePlay: () => void;
+  orientation: "horizontal" | "vertical";
+  onOrientationChange: (o: "horizontal" | "vertical") => void;
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
-  const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visualItems = items.filter((i) => i.media_type !== "audio");
   const audioItem = items.find((i) => i.media_type === "audio");
@@ -202,7 +206,7 @@ const TvMockup = ({
       {/* Orientation toggle */}
       <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
         <button
-          onClick={() => setOrientation("horizontal")}
+          onClick={() => onOrientationChange("horizontal")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
             isHorizontal ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
@@ -210,7 +214,7 @@ const TvMockup = ({
           <Monitor className="h-3.5 w-3.5" /> Horizontal
         </button>
         <button
-          onClick={() => setOrientation("vertical")}
+          onClick={() => onOrientationChange("vertical")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
             !isHorizontal ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
@@ -679,7 +683,17 @@ const AdminMediaPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <TvMockup items={items} playing={playing} onTogglePlay={() => setPlaying(!playing)} />
+                  <TvMockup
+                    items={items}
+                    playing={playing}
+                    onTogglePlay={() => setPlaying(!playing)}
+                    orientation={selectedPlaylist.orientation || "horizontal"}
+                    onOrientationChange={async (o) => {
+                      await supabase.from("playlists").update({ orientation: o } as any).eq("id", selectedPlaylist.id);
+                      setSelectedPlaylist({ ...selectedPlaylist, orientation: o });
+                      setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, orientation: o } : p)));
+                    }}
+                  />
                 </CardContent>
               </Card>
 
