@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area,
+  PieChart, Pie, Cell, AreaChart, Area, Legend, RadarChart, Radar, PolarGrid,
+  PolarAngleAxis, PolarRadiusAxis, ComposedChart, Line,
 } from "recharts";
 import { queryVendas } from "@/lib/api";
 import { Package, DollarSign, ShoppingCart, Percent, Loader2 } from "lucide-react";
@@ -28,6 +29,8 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
   const [periodoData, setPeriodoData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [pagamentoData, setPagamentoData] = useState<any[]>([]);
+  const [bairroData, setBairroData] = useState<any[]>([]);
+  const [bandeiraData, setBandeiraData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,11 +40,15 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
       queryVendas({ action: 'chart', filters: { groupBy: 'periodo' }, tableName }),
       queryVendas({ action: 'chart', filters: { groupBy: 'status' }, tableName }),
       queryVendas({ action: 'chart', filters: { groupBy: 'tipo_de_pagamento' }, tableName }),
-    ]).then(([kpiRes, periodoRes, statusRes, pagRes]) => {
+      queryVendas({ action: 'chart', filters: { groupBy: 'bairro' }, tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'bandeira' }, tableName }),
+    ]).then(([kpiRes, periodoRes, statusRes, pagRes, bairroRes, bandeiraRes]) => {
       setKpis(kpiRes.data);
       setPeriodoData(periodoRes.data || []);
       setStatusData(statusRes.data || []);
       setPagamentoData(pagRes.data || []);
+      setBairroData((bairroRes.data || []).slice(0, 10));
+      setBandeiraData(bandeiraRes.data || []);
     }).catch(console.error).finally(() => setLoading(false));
   }, [tableName]);
 
@@ -165,6 +172,59 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Row 3: Bairro + Bandeira */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Top 10 Bairros por Valor</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={bairroData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" angle={-30} textAnchor="end" height={70} />
+                <YAxis tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Bar dataKey="valor" radius={[4,4,0,0]}>
+                  {bairroData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Por Bandeira</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie data={bandeiraData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="valor" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} paddingAngle={2}>
+                  {bandeiraData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 4: Comparativo Período (valor + quantidade) */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Comparativo por Período — Valor × Quantidade</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={periodoData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
+              <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="hsl(87,48%,51%)" />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="hsl(200,60%,50%)" />
+              <Tooltip formatter={(v: number, name: string) => name === 'valor' ? formatCurrency(v) : Number(v).toLocaleString('pt-BR')} />
+              <Legend />
+              <Bar yAxisId="left" dataKey="valor" name="Valor (R$)" fill="hsl(87,48%,51%)" radius={[4,4,0,0]} fillOpacity={0.7} />
+              <Line yAxisId="right" type="monotone" dataKey="quantidade" name="Quantidade" stroke="hsl(200,60%,50%)" strokeWidth={2} dot={{ r: 4 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 };
