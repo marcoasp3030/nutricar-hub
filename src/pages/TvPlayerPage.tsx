@@ -155,11 +155,26 @@ const TvPlayerPage = () => {
     };
   }, [currentIndex, items, advanceToNext]);
 
-  // Apply volume to video element
+  // Apply volume and unmute after autoplay starts
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.volume = volume / 100;
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlaying = () => {
+      video.muted = false;
+      video.volume = volume / 100;
+    };
+
+    video.addEventListener("playing", handlePlaying);
+    // If already playing
+    if (!video.paused) {
+      video.muted = false;
+      video.volume = volume / 100;
     }
+
+    return () => {
+      video.removeEventListener("playing", handlePlaying);
+    };
   }, [volume, currentIndex]);
 
   if (!loaded) {
@@ -240,6 +255,7 @@ const TvPlayerPage = () => {
             key={current.id + currentIndex}
             src={current.media_url}
             autoPlay
+            muted
             playsInline
             onEnded={advanceToNext}
             className="max-w-full max-h-full object-contain"
