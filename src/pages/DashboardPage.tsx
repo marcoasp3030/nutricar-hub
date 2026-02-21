@@ -179,36 +179,20 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Tipo de Pagamento</h3>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={pagamentoData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
-                <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" width={80} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="valor" fill="hsl(87,48%,65%)" radius={[0,4,4,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Por Bandeira</h3>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={bandeiraData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="valor" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} paddingAngle={2}>
-                  {bandeiraData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Tipo de Pagamento</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={pagamentoData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+              <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" width={80} />
+              <Tooltip formatter={(v: number) => formatCurrency(v)} />
+              <Bar dataKey="valor" fill="hsl(87,48%,65%)" radius={[0,4,4,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* Row 3: Bairro */}
       <Card className="border-0 shadow-sm">
