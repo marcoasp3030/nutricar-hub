@@ -141,6 +141,13 @@ export type Database = {
             referencedRelation: "playlists"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ad_packages_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "public_playlists"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ad_payments: {
@@ -248,6 +255,13 @@ export type Database = {
             columns: ["playlist_id"]
             isOneToOne: false
             referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playlist_items_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "public_playlists"
             referencedColumns: ["id"]
           },
         ]
@@ -395,7 +409,60 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_playlists: {
+        Row: {
+          bg_color: string | null
+          description: string | null
+          id: string | null
+          is_active: boolean | null
+          logo_opacity: number | null
+          logo_position: string | null
+          logo_size: number | null
+          logo_url: string | null
+          media_fit: string | null
+          name: string | null
+          orientation: string | null
+          schedule_end: string | null
+          schedule_start: string | null
+          tags: string[] | null
+          volume: number | null
+        }
+        Insert: {
+          bg_color?: string | null
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          logo_opacity?: number | null
+          logo_position?: string | null
+          logo_size?: number | null
+          logo_url?: string | null
+          media_fit?: string | null
+          name?: string | null
+          orientation?: string | null
+          schedule_end?: string | null
+          schedule_start?: string | null
+          tags?: string[] | null
+          volume?: number | null
+        }
+        Update: {
+          bg_color?: string | null
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          logo_opacity?: number | null
+          logo_position?: string | null
+          logo_size?: number | null
+          logo_url?: string | null
+          media_fit?: string | null
+          name?: string | null
+          orientation?: string | null
+          schedule_end?: string | null
+          schedule_start?: string | null
+          tags?: string[] | null
+          volume?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_fornecedor: { Args: { _user_id: string }; Returns: string }
