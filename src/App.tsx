@@ -15,6 +15,7 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminMediaPage from "./pages/AdminMediaPage";
 import AppLayout from "./components/AppLayout";
+import TvPlayerPage from "./pages/TvPlayerPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -118,38 +119,36 @@ const AppContent = () => {
   const activeFornecedor = selectedFornecedor || fornecedores[0] || "Não vinculado";
 
   return (
-    <BrowserRouter>
-      <AppLayout
-        role={role as "admin" | "fornecedor"}
-        fornecedor={activeFornecedor}
-        fornecedores={fornecedores}
-        onFornecedorChange={setSelectedFornecedor}
-        onLogout={() => supabase.auth.signOut()}
-        tableName={tableName}
-        onTableChange={setTableName}
-      >
-        <Routes>
-          <Route path="/" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
-          {role !== 'admin' && (
-            <>
-              <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
-              <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
-              <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
-            </>
-          )}
-          {role === "admin" ? (
-            <>
-              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-              <Route path="/admin/usuarios" element={<AdminUsersPage />} />
-              <Route path="/admin/midia" element={<AdminMediaPage />} />
-            </>
-          ) : (
-            <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
-          )}
-          <Route path="*" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
-        </Routes>
-      </AppLayout>
-    </BrowserRouter>
+    <AppLayout
+      role={role as "admin" | "fornecedor"}
+      fornecedor={activeFornecedor}
+      fornecedores={fornecedores}
+      onFornecedorChange={setSelectedFornecedor}
+      onLogout={() => supabase.auth.signOut()}
+      tableName={tableName}
+      onTableChange={setTableName}
+    >
+      <Routes>
+        <Route path="/" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
+        {role !== 'admin' && (
+          <>
+            <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
+            <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+            <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+          </>
+        )}
+        {role === "admin" ? (
+          <>
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+            <Route path="/admin/midia" element={<AdminMediaPage />} />
+          </>
+        ) : (
+          <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
+        )}
+        <Route path="*" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
+      </Routes>
+    </AppLayout>
   );
 };
 
@@ -158,7 +157,12 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AppContent />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/tv/:playlistId" element={<TvPlayerPage />} />
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
