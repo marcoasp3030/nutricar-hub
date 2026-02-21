@@ -1,0 +1,1 @@
+ALTER TABLE public.playlist_items ADD COLUMN rotation integer NOT NULL DEFAULT 0;

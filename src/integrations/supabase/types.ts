@@ -44,6 +44,7 @@ export type Database = {
           media_type: string
           media_url: string
           playlist_id: string
+          rotation: number
           slide_data: Json | null
           sort_order: number
           transition: string
@@ -56,6 +57,7 @@ export type Database = {
           media_type: string
           media_url: string
           playlist_id: string
+          rotation?: number
           slide_data?: Json | null
           sort_order?: number
           transition?: string
@@ -68,6 +70,7 @@ export type Database = {
           media_type?: string
           media_url?: string
           playlist_id?: string
+          rotation?: number
           slide_data?: Json | null
           sort_order?: number
           transition?: string
