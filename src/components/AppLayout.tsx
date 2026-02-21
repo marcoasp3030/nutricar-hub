@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-nutricar.webp";
 import {
-  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket,
+  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +29,7 @@ const navItems = {
   admin: [
     { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/admin/usuarios", label: "Usuários", icon: Users },
+    { to: "/admin/midia", label: "Mídia TV", icon: MonitorPlay },
   ],
 };
 

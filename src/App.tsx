@@ -13,6 +13,7 @@ import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminMediaPage from "./pages/AdminMediaPage";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -140,6 +141,7 @@ const AppContent = () => {
             <>
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+              <Route path="/admin/midia" element={<AdminMediaPage />} />
             </>
           ) : (
             <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
