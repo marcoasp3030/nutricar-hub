@@ -61,8 +61,13 @@ type PlaylistItem = {
 
 const TRANSITIONS = [
   { value: "fade", label: "Fade" },
-  { value: "slide", label: "Slide" },
+  { value: "slide", label: "Deslizar" },
+  { value: "slide-up", label: "Deslizar p/ Cima" },
+  { value: "slide-down", label: "Deslizar p/ Baixo" },
   { value: "zoom", label: "Zoom" },
+  { value: "zoom-rotate", label: "Zoom + Rotação" },
+  { value: "flip", label: "Virar" },
+  { value: "blur", label: "Desfoque" },
   { value: "none", label: "Nenhuma" },
 ];
 
@@ -225,13 +230,19 @@ const TvMockup = ({
   const currentItem = visualItems[currentIndex];
   const transition = currentItem?.transition || "fade";
 
-  const getTransitionClass = () => {
-    if (!transitioning) return "opacity-100 scale-100 translate-x-0";
+  const getTransitionStyle = (): React.CSSProperties => {
+    if (!transitioning) return { opacity: 1, transform: "scale(1) translateX(0) translateY(0) rotateY(0)", filter: "blur(0)" };
     switch (transition) {
-      case "fade": return "opacity-0";
-      case "slide": return "opacity-0 -translate-x-full";
-      case "zoom": return "opacity-0 scale-150";
-      default: return "opacity-0";
+      case "fade": return { opacity: 0 };
+      case "slide": return { opacity: 0, transform: "translateX(-100%)" };
+      case "slide-up": return { opacity: 0, transform: "translateY(-100%)" };
+      case "slide-down": return { opacity: 0, transform: "translateY(100%)" };
+      case "zoom": return { opacity: 0, transform: "scale(1.5)" };
+      case "zoom-rotate": return { opacity: 0, transform: "scale(1.5) rotate(15deg)" };
+      case "flip": return { opacity: 0, transform: "rotateY(90deg)" };
+      case "blur": return { opacity: 0, filter: "blur(20px)" };
+      case "none": return {};
+      default: return { opacity: 0 };
     }
   };
 
@@ -319,7 +330,7 @@ const TvMockup = ({
                 </div>
               </div>
             ) : currentItem ? (
-              <div className={`h-full w-full transition-all duration-500 ease-in-out ${getTransitionClass()}`}>
+              <div className="h-full w-full transition-all duration-500 ease-in-out" style={getTransitionStyle()}>
                 {renderCurrentItem()}
               </div>
             ) : null}
