@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, DollarSign, CheckCircle, Clock, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { FileText, DollarSign, CheckCircle, Clock, Package, Send } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -31,8 +36,12 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetch = async () => {
+  const [requestDialog, setRequestDialog] = useState(false);
+  const [requestPkg, setRequestPkg] = useState<any>(null);
+  const [requestNotes, setRequestNotes] = useState("");
+  const [requesting, setRequesting] = useState(false);
+
+  const fetchData = async () => {
       setLoading(true);
       const [cRes, pRes, pkgRes] = await Promise.all([
         supabase.from("ad_contracts").select("*, ad_packages(*)").eq("fornecedor", fornecedor).order("created_at", { ascending: false }),
@@ -45,9 +54,29 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
       setPayments((pRes.data || []).filter((p: any) => contractIds.includes(p.contract_id)));
       setPackages(pkgRes.data || []);
       setLoading(false);
-    };
-    if (fornecedor) fetch();
+  };
+
+  useEffect(() => {
+    if (fornecedor) fetchData();
   }, [fornecedor]);
+
+  const handleRequest = async () => {
+    if (!requestPkg) return;
+    setRequesting(true);
+    const { error } = await supabase.from("ad_contracts").insert({
+      fornecedor,
+      package_id: requestPkg.id,
+      status: "pending",
+      notes: requestNotes.trim() || null,
+    });
+    setRequesting(false);
+    if (error) { toast.error("Erro ao solicitar contrato"); return; }
+    toast.success("Solicitação enviada! Aguarde aprovação do administrador.");
+    setRequestDialog(false);
+    setRequestNotes("");
+    setRequestPkg(null);
+    fetchData();
+  };
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -162,30 +191,66 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
 
         <TabsContent value="packages" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {packages.map(pkg => (
-              <Card key={pkg.id} className="relative">
-                <CardHeader>
-                  <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                  {pkg.description && <p className="text-sm text-muted-foreground">{pkg.description}</p>}
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-3xl font-bold text-primary">{fmt(pkg.monthly_value)}<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p>📅 Duração: {pkg.duration_months} {pkg.duration_months === 1 ? "mês" : "meses"}</p>
-                    <p>📺 Frequência: {pkg.display_frequency}</p>
-                  </div>
-                  {contracts.some(c => c.package_id === pkg.id && c.status === "active") && (
-                    <Badge variant="default" className="mt-2">Contratado ✓</Badge>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+            {packages.map(pkg => {
+              const hasActive = contracts.some(c => c.package_id === pkg.id && c.status === "active");
+              const hasPending = contracts.some(c => c.package_id === pkg.id && c.status === "pending");
+              return (
+                <Card key={pkg.id} className="relative flex flex-col">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                    {pkg.description && <p className="text-sm text-muted-foreground">{pkg.description}</p>}
+                  </CardHeader>
+                  <CardContent className="space-y-3 flex-1 flex flex-col">
+                    <p className="text-3xl font-bold text-primary">{fmt(pkg.monthly_value)}<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>📅 Duração: {pkg.duration_months} {pkg.duration_months === 1 ? "mês" : "meses"}</p>
+                      <p>📺 Frequência: {pkg.display_frequency}</p>
+                    </div>
+                    <div className="mt-auto pt-3">
+                      {hasActive ? (
+                        <Badge variant="default">Contratado ✓</Badge>
+                      ) : hasPending ? (
+                        <Badge variant="outline">Solicitação Pendente</Badge>
+                      ) : (
+                        <Button className="w-full" onClick={() => { setRequestPkg(pkg); setRequestNotes(""); setRequestDialog(true); }}>
+                          <Send className="h-4 w-4 mr-1" /> Solicitar Contratação
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
             {packages.length === 0 && (
               <p className="text-muted-foreground col-span-full text-center py-8">Nenhum pacote disponível</p>
             )}
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Request Dialog */}
+      <Dialog open={requestDialog} onOpenChange={setRequestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Solicitar Contratação</DialogTitle>
+          </DialogHeader>
+          {requestPkg && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted">
+                <p className="font-semibold">{requestPkg.name}</p>
+                <p className="text-sm text-muted-foreground">{fmt(requestPkg.monthly_value)}/mês · {requestPkg.duration_months} {requestPkg.duration_months === 1 ? "mês" : "meses"}</p>
+              </div>
+              <div>
+                <Label>Observações (opcional)</Label>
+                <Textarea value={requestNotes} onChange={e => setRequestNotes(e.target.value)} placeholder="Informações adicionais para o administrador..." maxLength={500} />
+              </div>
+              <Button className="w-full" onClick={handleRequest} disabled={requesting}>
+                {requesting ? "Enviando..." : "Confirmar Solicitação"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
