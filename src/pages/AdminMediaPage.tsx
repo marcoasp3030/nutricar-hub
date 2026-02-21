@@ -7,12 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Upload, Trash2, Play, Pause, Monitor, Clock, Image as ImageIcon,
   Video, Music, GripVertical, Settings2, Eye, ChevronLeft, ChevronRight,
+  Presentation, Pencil,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -21,6 +21,7 @@ import {
   arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import SlideEditor, { SlidePreview, type SlideData } from "@/components/SlideEditor";
 
 /* ─── Types ─── */
 type Playlist = {
@@ -42,6 +43,7 @@ type PlaylistItem = {
   duration_seconds: number;
   transition: string;
   sort_order: number;
+  slide_data?: SlideData | null;
 };
 
 const TRANSITIONS = [
@@ -56,13 +58,17 @@ const SortableItem = ({
   item,
   onDelete,
   onUpdate,
+  onEditSlide,
 }: {
   item: PlaylistItem;
   onDelete: (id: string) => void;
   onUpdate: (id: string, field: string, value: any) => void;
+  onEditSlide?: (item: PlaylistItem) => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
+
+  const typeLabel = item.media_type === "image" ? "Imagem" : item.media_type === "video" ? "Vídeo" : item.media_type === "slide" ? "Slide" : "Áudio";
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
@@ -73,6 +79,8 @@ const SortableItem = ({
       <div className="h-12 w-16 flex-shrink-0 overflow-hidden rounded bg-muted flex items-center justify-center">
         {item.media_type === "image" ? (
           <img src={item.media_url} alt="" className="h-full w-full object-cover" />
+        ) : item.media_type === "slide" && item.slide_data ? (
+          <SlidePreview data={item.slide_data} width={64} height={36} />
         ) : item.media_type === "video" ? (
           <Video className="h-5 w-5 text-muted-foreground" />
         ) : (
@@ -82,11 +90,7 @@ const SortableItem = ({
 
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-medium">{item.file_name || "Sem nome"}</p>
-        <div className="flex items-center gap-2 mt-1">
-          <Badge variant="secondary" className="text-[10px]">
-            {item.media_type === "image" ? "Imagem" : item.media_type === "video" ? "Vídeo" : "Áudio"}
-          </Badge>
-        </div>
+        <Badge variant="secondary" className="text-[10px] mt-1">{typeLabel}</Badge>
       </div>
 
       <div className="flex items-center gap-2">
@@ -104,15 +108,19 @@ const SortableItem = ({
         </div>
 
         <Select value={item.transition} onValueChange={(v) => onUpdate(item.id, "transition", v)}>
-          <SelectTrigger className="h-8 w-24 text-xs">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             {TRANSITIONS.map((t) => (
               <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+        {item.media_type === "slide" && onEditSlide && (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEditSlide(item)}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        )}
 
         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(item.id)}>
           <Trash2 className="h-3.5 w-3.5" />
@@ -136,12 +144,9 @@ const TvMockup = ({
   const [transitioning, setTransitioning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visualItems = items.filter((i) => i.media_type !== "audio");
-
   const audioItem = items.find((i) => i.media_type === "audio");
 
-  useEffect(() => {
-    setCurrentIndex(0);
-  }, [items.length]);
+  useEffect(() => { setCurrentIndex(0); }, [items.length]);
 
   useEffect(() => {
     if (!playing || visualItems.length <= 1) return;
@@ -156,9 +161,7 @@ const TvMockup = ({
       }, 600);
     }, current.duration_seconds * 1000);
 
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [playing, currentIndex, visualItems]);
 
   const currentItem = visualItems[currentIndex];
@@ -174,9 +177,22 @@ const TvMockup = ({
     }
   };
 
+  const renderCurrentItem = () => {
+    if (!currentItem) return null;
+    if (currentItem.media_type === "slide" && currentItem.slide_data) {
+      return <SlidePreview data={currentItem.slide_data} width={480} height={270} />;
+    }
+    if (currentItem.media_type === "image") {
+      return <img src={currentItem.media_url} alt="" className="h-full w-full object-contain bg-black" />;
+    }
+    if (currentItem.media_type === "video") {
+      return <video src={currentItem.media_url} autoPlay={playing} muted className="h-full w-full object-contain bg-black" />;
+    }
+    return null;
+  };
+
   return (
     <div className="flex flex-col items-center gap-3">
-      {/* TV Frame */}
       <div className="relative">
         <div className="rounded-2xl border-[6px] border-foreground/80 bg-black overflow-hidden shadow-2xl" style={{ width: 480, height: 270 }}>
           {visualItems.length === 0 ? (
@@ -188,41 +204,24 @@ const TvMockup = ({
             </div>
           ) : currentItem ? (
             <div className={`h-full w-full transition-all duration-500 ease-in-out ${getTransitionClass()}`}>
-              {currentItem.media_type === "image" ? (
-                <img src={currentItem.media_url} alt="" className="h-full w-full object-contain bg-black" />
-              ) : currentItem.media_type === "video" ? (
-                <video
-                  src={currentItem.media_url}
-                  autoPlay={playing}
-                  muted
-                  className="h-full w-full object-contain bg-black"
-                />
-              ) : null}
+              {renderCurrentItem()}
             </div>
           ) : null}
 
-          {/* Progress bar */}
           {playing && visualItems.length > 1 && (
             <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 p-1">
               {visualItems.map((_, i) => (
                 <div key={i} className="h-0.5 flex-1 rounded-full overflow-hidden bg-white/20">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      i < currentIndex ? "w-full bg-white/60" : i === currentIndex ? "bg-white/80 animate-pulse w-full" : "w-0"
-                    }`}
-                  />
+                  <div className={`h-full rounded-full transition-all ${i < currentIndex ? "w-full bg-white/60" : i === currentIndex ? "bg-white/80 animate-pulse w-full" : "w-0"}`} />
                 </div>
               ))}
             </div>
           )}
         </div>
-
-        {/* TV Stand */}
         <div className="mx-auto h-4 w-32 rounded-b-lg bg-foreground/70" />
         <div className="mx-auto h-2 w-48 rounded-b-md bg-foreground/50" />
       </div>
 
-      {/* Controls */}
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))} disabled={visualItems.length === 0}>
           <ChevronLeft className="h-4 w-4" />
@@ -259,6 +258,8 @@ const AdminMediaPage = () => {
   const [playing, setPlaying] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newName, setNewName] = useState("");
+  const [showSlideEditor, setShowSlideEditor] = useState(false);
+  const [editingSlide, setEditingSlide] = useState<PlaylistItem | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -266,25 +267,17 @@ const AdminMediaPage = () => {
   );
 
   const fetchPlaylists = useCallback(async () => {
-    const { data } = await supabase
-      .from("playlists")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data } = await supabase.from("playlists").select("*").order("created_at", { ascending: false });
     if (data) setPlaylists(data as Playlist[]);
     setLoading(false);
   }, []);
 
   const fetchItems = useCallback(async (playlistId: string) => {
-    const { data } = await supabase
-      .from("playlist_items")
-      .select("*")
-      .eq("playlist_id", playlistId)
-      .order("sort_order");
-    if (data) setItems(data as PlaylistItem[]);
+    const { data } = await supabase.from("playlist_items").select("*").eq("playlist_id", playlistId).order("sort_order");
+    if (data) setItems(data as unknown as PlaylistItem[]);
   }, []);
 
   useEffect(() => { fetchPlaylists(); }, [fetchPlaylists]);
-
   useEffect(() => {
     if (selectedPlaylist) fetchItems(selectedPlaylist.id);
     else setItems([]);
@@ -294,17 +287,8 @@ const AdminMediaPage = () => {
     if (!newName.trim()) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const { data, error } = await supabase
-      .from("playlists")
-      .insert({ name: newName.trim(), created_by: user.id })
-      .select()
-      .single();
-
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
+    const { data, error } = await supabase.from("playlists").insert({ name: newName.trim(), created_by: user.id }).select().single();
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     if (data) {
       setPlaylists((prev) => [data as Playlist, ...prev]);
       setSelectedPlaylist(data as Playlist);
@@ -317,32 +301,21 @@ const AdminMediaPage = () => {
   const deletePlaylist = async (id: string) => {
     await supabase.from("playlists").delete().eq("id", id);
     setPlaylists((prev) => prev.filter((p) => p.id !== id));
-    if (selectedPlaylist?.id === id) {
-      setSelectedPlaylist(null);
-      setItems([]);
-    }
+    if (selectedPlaylist?.id === id) { setSelectedPlaylist(null); setItems([]); }
     toast({ title: "Playlist removida" });
   };
 
   const toggleActive = async (playlist: Playlist) => {
-    const { error } = await supabase
-      .from("playlists")
-      .update({ is_active: !playlist.is_active })
-      .eq("id", playlist.id);
+    const { error } = await supabase.from("playlists").update({ is_active: !playlist.is_active }).eq("id", playlist.id);
     if (!error) {
-      setPlaylists((prev) =>
-        prev.map((p) => (p.id === playlist.id ? { ...p, is_active: !p.is_active } : p))
-      );
-      if (selectedPlaylist?.id === playlist.id) {
-        setSelectedPlaylist({ ...playlist, is_active: !playlist.is_active });
-      }
+      setPlaylists((prev) => prev.map((p) => (p.id === playlist.id ? { ...p, is_active: !p.is_active } : p)));
+      if (selectedPlaylist?.id === playlist.id) setSelectedPlaylist({ ...playlist, is_active: !playlist.is_active });
     }
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedPlaylist || !e.target.files?.length) return;
     setUploading(true);
-
     try {
       for (const file of Array.from(e.target.files)) {
         const ext = file.name.split(".").pop()?.toLowerCase() || "";
@@ -353,31 +326,19 @@ const AdminMediaPage = () => {
         const filePath = `${selectedPlaylist.id}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage.from("media").upload(filePath, file);
         if (uploadError) throw uploadError;
-
         const { data: urlData } = supabase.storage.from("media").getPublicUrl(filePath);
 
         const { data: item, error: insertError } = await supabase
           .from("playlist_items")
-          .insert({
-            playlist_id: selectedPlaylist.id,
-            media_type: mediaType,
-            media_url: urlData.publicUrl,
-            file_name: file.name,
-            sort_order: items.length,
-          })
-          .select()
-          .single();
-
+          .insert({ playlist_id: selectedPlaylist.id, media_type: mediaType, media_url: urlData.publicUrl, file_name: file.name, sort_order: items.length })
+          .select().single();
         if (insertError) throw insertError;
-        if (item) setItems((prev) => [...prev, item as PlaylistItem]);
+        if (item) setItems((prev) => [...prev, item as unknown as PlaylistItem]);
       }
       toast({ title: "Mídia(s) adicionada(s)!" });
     } catch (err: any) {
       toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
+    } finally { setUploading(false); e.target.value = ""; }
   };
 
   const deleteItem = async (id: string) => {
@@ -393,14 +354,10 @@ const AdminMediaPage = () => {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
     const oldIndex = items.findIndex((i) => i.id === active.id);
     const newIndex = items.findIndex((i) => i.id === over.id);
     const reordered = arrayMove(items, oldIndex, newIndex);
-
     setItems(reordered);
-
-    // Persist sort order
     for (let i = 0; i < reordered.length; i++) {
       await supabase.from("playlist_items").update({ sort_order: i }).eq("id", reordered[i].id);
     }
@@ -410,9 +367,7 @@ const AdminMediaPage = () => {
     if (!selectedPlaylist) return;
     await supabase.from("playlists").update({ [field]: value || null }).eq("id", selectedPlaylist.id);
     setSelectedPlaylist({ ...selectedPlaylist, [field]: value || null });
-    setPlaylists((prev) =>
-      prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, [field]: value || null } : p))
-    );
+    setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, [field]: value || null } : p)));
   };
 
   return (
@@ -432,23 +387,14 @@ const AdminMediaPage = () => {
               <CardTitle className="text-base">Playlists</CardTitle>
               <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="gap-1.5">
-                    <Plus className="h-3.5 w-3.5" /> Nova
-                  </Button>
+                  <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Nova</Button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Nova Playlist</DialogTitle>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle>Nova Playlist</DialogTitle></DialogHeader>
                   <div className="space-y-3 pt-2">
                     <div>
                       <Label>Nome</Label>
-                      <Input
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        placeholder="Ex: Promoções Janeiro"
-                        onKeyDown={(e) => e.key === "Enter" && createPlaylist()}
-                      />
+                      <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Promoções Janeiro" onKeyDown={(e) => e.key === "Enter" && createPlaylist()} />
                     </div>
                     <Button onClick={createPlaylist} className="w-full">Criar Playlist</Button>
                   </div>
@@ -465,30 +411,19 @@ const AdminMediaPage = () => {
               playlists.map((pl) => (
                 <div
                   key={pl.id}
-                  onClick={() => setSelectedPlaylist(pl)}
+                  onClick={() => { setSelectedPlaylist(pl); setShowSlideEditor(false); setEditingSlide(null); }}
                   className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                    selectedPlaylist?.id === pl.id
-                      ? "border-primary bg-accent"
-                      : "border-border hover:bg-muted/50"
+                    selectedPlaylist?.id === pl.id ? "border-primary bg-accent" : "border-border hover:bg-muted/50"
                   }`}
                 >
                   <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{pl.name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(pl.created_at).toLocaleDateString("pt-BR")}
-                    </p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(pl.created_at).toLocaleDateString("pt-BR")}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Badge variant={pl.is_active ? "default" : "secondary"} className="text-[10px]">
-                      {pl.is_active ? "Ativa" : "Inativa"}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={(e) => { e.stopPropagation(); deletePlaylist(pl.id); }}
-                    >
+                    <Badge variant={pl.is_active ? "default" : "secondary"} className="text-[10px]">{pl.is_active ? "Ativa" : "Inativa"}</Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); deletePlaylist(pl.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -516,11 +451,9 @@ const AdminMediaPage = () => {
                     <CardTitle className="text-base flex items-center gap-2">
                       <Eye className="h-4 w-4" /> Preview — {selectedPlaylist.name}
                     </CardTitle>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs">Ativa</Label>
-                        <Switch checked={selectedPlaylist.is_active} onCheckedChange={() => toggleActive(selectedPlaylist)} />
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs">Ativa</Label>
+                      <Switch checked={selectedPlaylist.is_active} onCheckedChange={() => toggleActive(selectedPlaylist)} />
                     </div>
                   </div>
                 </CardHeader>
@@ -529,32 +462,53 @@ const AdminMediaPage = () => {
                 </CardContent>
               </Card>
 
+              {/* Slide Editor (conditionally shown) */}
+              {showSlideEditor && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Presentation className="h-4 w-4" /> {editingSlide ? "Editar Slide" : "Novo Slide"}
+                      </CardTitle>
+                      <Button variant="ghost" size="sm" onClick={() => { setShowSlideEditor(false); setEditingSlide(null); }}>
+                        Fechar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <SlideEditor
+                      playlistId={selectedPlaylist.id}
+                      sortOrder={items.length}
+                      editData={editingSlide?.slide_data || undefined}
+                      editItemId={editingSlide?.id}
+                      onCreated={(item) => {
+                        setItems((prev) => [...prev, item as PlaylistItem]);
+                        setShowSlideEditor(false);
+                      }}
+                      onUpdated={(item) => {
+                        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...item } : i)));
+                        setShowSlideEditor(false);
+                        setEditingSlide(null);
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Schedule */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Settings2 className="h-4 w-4" /> Agendamento
-                  </CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2"><Settings2 className="h-4 w-4" /> Agendamento</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-4">
                     <div className="space-y-1">
                       <Label className="text-xs">Início</Label>
-                      <Input
-                        type="time"
-                        value={selectedPlaylist.schedule_start || ""}
-                        onChange={(e) => updateSchedule("schedule_start", e.target.value)}
-                        className="h-9 w-36"
-                      />
+                      <Input type="time" value={selectedPlaylist.schedule_start || ""} onChange={(e) => updateSchedule("schedule_start", e.target.value)} className="h-9 w-36" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Fim</Label>
-                      <Input
-                        type="time"
-                        value={selectedPlaylist.schedule_end || ""}
-                        onChange={(e) => updateSchedule("schedule_end", e.target.value)}
-                        className="h-9 w-36"
-                      />
+                      <Input type="time" value={selectedPlaylist.schedule_end || ""} onChange={(e) => updateSchedule("schedule_end", e.target.value)} className="h-9 w-36" />
                     </div>
                   </div>
                 </CardContent>
@@ -565,21 +519,23 @@ const AdminMediaPage = () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Mídias ({items.length})</CardTitle>
-                    <div>
-                      <input
-                        type="file"
-                        id="media-upload"
-                        multiple
-                        accept="image/*,video/*,audio/*"
-                        className="hidden"
-                        onChange={handleUpload}
-                      />
-                      <Button size="sm" className="gap-1.5" asChild disabled={uploading}>
-                        <label htmlFor="media-upload" className="cursor-pointer">
-                          <Upload className="h-3.5 w-3.5" />
-                          {uploading ? "Enviando..." : "Upload"}
-                        </label>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => { setEditingSlide(null); setShowSlideEditor(true); }}
+                      >
+                        <Presentation className="h-3.5 w-3.5" /> Criar Slide
                       </Button>
+                      <div>
+                        <input type="file" id="media-upload" multiple accept="image/*,video/*,audio/*" className="hidden" onChange={handleUpload} />
+                        <Button size="sm" className="gap-1.5" asChild disabled={uploading}>
+                          <label htmlFor="media-upload" className="cursor-pointer">
+                            <Upload className="h-3.5 w-3.5" /> {uploading ? "Enviando..." : "Upload"}
+                          </label>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
@@ -588,14 +544,20 @@ const AdminMediaPage = () => {
                     <div className="rounded-lg border-2 border-dashed border-border py-10 text-center">
                       <Upload className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
                       <p className="text-sm text-muted-foreground">Arraste ou clique em Upload para adicionar mídias</p>
-                      <p className="text-xs text-muted-foreground mt-1">Imagens, vídeos e áudios</p>
+                      <p className="text-xs text-muted-foreground mt-1">Imagens, vídeos, áudios ou crie slides</p>
                     </div>
                   ) : (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-2">
                           {items.map((item) => (
-                            <SortableItem key={item.id} item={item} onDelete={deleteItem} onUpdate={updateItem} />
+                            <SortableItem
+                              key={item.id}
+                              item={item}
+                              onDelete={deleteItem}
+                              onUpdate={updateItem}
+                              onEditSlide={(it) => { setEditingSlide(it); setShowSlideEditor(true); }}
+                            />
                           ))}
                         </div>
                       </SortableContext>
