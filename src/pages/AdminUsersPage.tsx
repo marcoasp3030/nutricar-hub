@@ -153,6 +153,14 @@ const AdminUsersPage = () => {
       .replace(/(\d{4})(\d)/, '$1-$2');
   };
 
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits.replace(/^(\d{0,2})/, '($1');
+    if (digits.length <= 6) return digits.replace(/^(\d{2})(\d{0,4})/, '($1) $2');
+    if (digits.length <= 10) return digits.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+    return digits.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+  };
+
   const lookupCnpj = async (cnpj: string) => {
     const digits = cnpj.replace(/\D/g, '');
     if (digits.length !== 14) return;
@@ -607,7 +615,7 @@ const AdminUsersPage = () => {
             </div>
             <div>
               <Label>Telefone</Label>
-              <Input type="tel" value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="(00) 00000-0000" />
+              <Input type="tel" value={formPhone} onChange={e => setFormPhone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" maxLength={15} />
             </div>
             <div>
               <Label>E-mail financeiro <span className="text-muted-foreground font-normal">(opcional)</span></Label>
@@ -662,7 +670,7 @@ const AdminUsersPage = () => {
             </div>
             <div>
               <Label>Telefone</Label>
-              <Input type="tel" value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="(00) 00000-0000" />
+              <Input type="tel" value={formPhone} onChange={e => setFormPhone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" maxLength={15} />
             </div>
             <div>
               <Label>E-mail financeiro <span className="text-muted-foreground font-normal">(opcional)</span></Label>

@@ -18,6 +18,14 @@ const formatCnpj = (value: string) => {
     .replace(/(\d{4})(\d)/, '$1-$2');
 };
 
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.replace(/^(\d{0,2})/, '($1');
+  if (digits.length <= 6) return digits.replace(/^(\d{2})(\d{0,4})/, '($1) $2');
+  if (digits.length <= 10) return digits.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+  return digits.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+};
+
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -152,7 +160,7 @@ const LoginPage = () => {
                     <Label htmlFor="signup-phone">Telefone para contato</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input id="signup-phone" type="tel" placeholder="(00) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10" required />
+                      <Input id="signup-phone" type="tel" placeholder="(00) 00000-0000" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} className="pl-10" required maxLength={15} />
                     </div>
                     <p className="text-xs text-muted-foreground">Celular ou fixo</p>
                   </div>
