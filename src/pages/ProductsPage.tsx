@@ -11,8 +11,9 @@ import {
   PieChart, Pie, Cell, ComposedChart, Line, Legend,
 } from "recharts";
 import { queryVendas } from "@/lib/api";
+import { exportToXLSX, exportToPDF, PRODUCT_COLUMNS } from "@/lib/exportUtils";
 import {
-  Loader2, CalendarIcon, X, TrendingUp, TrendingDown, Clock, ShoppingBasket, Layers,
+  Loader2, CalendarIcon, X, TrendingUp, TrendingDown, Clock, ShoppingBasket, Layers, FileSpreadsheet, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -120,6 +121,28 @@ const ProductsPage = ({ tableName }: ProductsPageProps) => {
           </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              if (!data?.topVenda?.length) return;
+              exportToXLSX(data.topVenda, PRODUCT_COLUMNS, `produtos_${tableName}`);
+            }}
+          >
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              if (!data?.topVenda?.length) return;
+              exportToPDF(data.topVenda, PRODUCT_COLUMNS, `produtos_${tableName}`, "Análise de Produtos");
+            }}
+          >
+            <FileText className="h-4 w-4" /> PDF
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("w-[160px] justify-start text-left text-sm font-normal", !dateFrom && "text-muted-foreground")}>
