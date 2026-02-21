@@ -18,6 +18,14 @@ import { cn } from "@/lib/utils";
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
+const formatPeriodoDate = (dateStr: string) => {
+  try {
+    return format(new Date(dateStr), "dd/MM/yy", { locale: ptBR });
+  } catch {
+    return dateStr;
+  }
+};
+
 const COLORS = [
   "hsl(87, 48%, 51%)", "hsl(87, 48%, 65%)", "hsl(200, 60%, 50%)",
   "hsl(45, 80%, 55%)", "hsl(340, 65%, 55%)", "hsl(160, 50%, 45%)",
@@ -225,9 +233,9 @@ const DashboardPage = ({ tableName, fornecedor }: DashboardPageProps) => {
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={periodoData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
-                <YAxis tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <XAxis dataKey="name" tickFormatter={formatPeriodoDate} tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" angle={-35} textAnchor="end" height={50} />
+                <YAxis tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={formatPeriodoDate} />
                 <Area type="monotone" dataKey="valor" stroke="hsl(87,48%,51%)" fill="hsl(87,48%,51%)" fillOpacity={0.15} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -299,16 +307,26 @@ const DashboardPage = ({ tableName, fornecedor }: DashboardPageProps) => {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-5">
           <h3 className="mb-4 text-sm font-semibold text-foreground">Comparativo por Período — Valor × Quantidade</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={periodoData}>
+          <ResponsiveContainer width="100%" height={320}>
+            <ComposedChart data={periodoData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+              <defs>
+                <linearGradient id="valorGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(87,48%,51%)" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="hsl(87,48%,51%)" stopOpacity={0.3} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
-              <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="hsl(87,48%,51%)" />
+              <XAxis dataKey="name" tickFormatter={formatPeriodoDate} tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" angle={-40} textAnchor="end" height={60} />
+              <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="hsl(87,48%,51%)" tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="hsl(200,60%,50%)" />
-              <Tooltip formatter={(v: number, name: string) => name === 'valor' ? formatCurrency(v) : Number(v).toLocaleString('pt-BR')} />
-              <Legend />
-              <Bar yAxisId="left" dataKey="valor" name="Valor (R$)" fill="hsl(87,48%,51%)" radius={[4,4,0,0]} fillOpacity={0.7} />
-              <Line yAxisId="right" type="monotone" dataKey="quantidade" name="Quantidade" stroke="hsl(200,60%,50%)" strokeWidth={2} dot={{ r: 4 }} />
+              <Tooltip
+                formatter={(v: number, name: string) => name === 'Valor (R$)' ? formatCurrency(v) : Number(v).toLocaleString('pt-BR')}
+                labelFormatter={formatPeriodoDate}
+                contentStyle={{ borderRadius: '8px', border: '1px solid hsl(90,15%,88%)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: 8 }} />
+              <Bar yAxisId="left" dataKey="valor" name="Valor (R$)" fill="url(#valorGradient)" radius={[4,4,0,0]} />
+              <Line yAxisId="right" type="monotone" dataKey="quantidade" name="Quantidade" stroke="hsl(200,60%,50%)" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(200,60%,50%)", strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff" }} />
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
