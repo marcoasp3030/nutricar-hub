@@ -24,6 +24,7 @@ interface UserData {
   user_id: string;
   full_name: string;
   email: string;
+  cnpj: string | null;
   fornecedor: string | null;
   fornecedores: string[];
   roles: string[];
@@ -50,6 +51,8 @@ const AdminUsersPage = () => {
   const [formFornecedores, setFormFornecedores] = useState<string[]>([]);
   const [formRole, setFormRole] = useState<string>("fornecedor");
   const [formFornecedorSearch, setFormFornecedorSearch] = useState("");
+  const [formCnpj, setFormCnpj] = useState("");
+  const [cnpjLoading, setCnpjLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Table access management state
@@ -137,9 +140,42 @@ const AdminUsersPage = () => {
     .filter(f => f.toLowerCase().includes(formFornecedorSearch.toLowerCase()) && !formFornecedores.includes(f))
     .slice(0, 30);
 
+  const formatCnpj = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 14);
+    return digits
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  };
+
+  const lookupCnpj = async (cnpj: string) => {
+    const digits = cnpj.replace(/\D/g, '');
+    if (digits.length !== 14) return;
+    setCnpjLoading(true);
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+      if (res.ok) {
+        const data = await res.json();
+        const razao = data.razao_social || data.nome_fantasia || '';
+        if (razao && !formName) {
+          setFormName(razao);
+          toast.success(`Razão social encontrada: ${razao}`);
+        }
+      } else {
+        toast.error("CNPJ não encontrado");
+      }
+    } catch {
+      toast.error("Erro ao consultar CNPJ");
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setFormName(""); setFormEmail(""); setFormPassword("");
     setFormFornecedores([]); setFormRole("fornecedor"); setFormFornecedorSearch("");
+    setFormCnpj("");
   };
 
   const addFornecedor = (f: string) => {
@@ -167,6 +203,7 @@ const AdminUsersPage = () => {
         full_name: formName,
         fornecedores: formFornecedores,
         role: formRole,
+        cnpj: formCnpj.replace(/\D/g, '') || null,
       });
       toast.success("Usuário criado com sucesso!");
       setCreateOpen(false);
@@ -189,6 +226,7 @@ const AdminUsersPage = () => {
         full_name: formName,
         fornecedores: formFornecedores,
         role: formRole,
+        cnpj: formCnpj.replace(/\D/g, '') || null,
       });
       toast.success("Usuário atualizado!");
       setEditOpen(false);
@@ -258,6 +296,7 @@ const AdminUsersPage = () => {
     setFormFornecedores(user.fornecedores || []);
     setFormRole(user.roles[0] || "fornecedor");
     setFormFornecedorSearch("");
+    setFormCnpj(user.cnpj ? formatCnpj(user.cnpj) : "");
     setEditOpen(true);
   };
 
@@ -443,7 +482,21 @@ const AdminUsersPage = () => {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Nome completo *</Label>
+              <Label>CNPJ</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={formCnpj}
+                  onChange={e => setFormCnpj(formatCnpj(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  maxLength={18}
+                  onBlur={() => lookupCnpj(formCnpj)}
+                />
+                {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Ao preencher o CNPJ, a razão social é buscada automaticamente.</p>
+            </div>
+            <div>
+              <Label>Nome completo / Razão Social *</Label>
               <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Nome do usuário" />
             </div>
             <div>
@@ -485,7 +538,20 @@ const AdminUsersPage = () => {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Nome completo</Label>
+              <Label>CNPJ</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={formCnpj}
+                  onChange={e => setFormCnpj(formatCnpj(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  maxLength={18}
+                  onBlur={() => lookupCnpj(formCnpj)}
+                />
+                {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
+              </div>
+            </div>
+            <div>
+              <Label>Nome completo / Razão Social</Label>
               <Input value={formName} onChange={e => setFormName(e.target.value)} />
             </div>
             <div>

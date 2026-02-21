@@ -37,6 +37,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          cnpj: string | null
           created_at: string
           fornecedor: string | null
           full_name: string
@@ -46,6 +47,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cnpj?: string | null
           created_at?: string
           fornecedor?: string | null
           full_name?: string
@@ -55,6 +57,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cnpj?: string | null
           created_at?: string
           fornecedor?: string | null
           full_name?: string
