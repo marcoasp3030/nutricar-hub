@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Upload, Trash2, Play, Pause, Monitor, Clock, Image as ImageIcon,
   Video, Music, GripVertical, Settings2, Eye, ChevronLeft, ChevronRight,
-  Presentation, Pencil,
+  Presentation, Pencil, Copy, Tag, X,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -32,6 +32,7 @@ type Playlist = {
   schedule_start: string | null;
   schedule_end: string | null;
   created_at: string;
+  tags: string[];
 };
 
 type PlaylistItem = {
@@ -258,8 +259,11 @@ const AdminMediaPage = () => {
   const [playing, setPlaying] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newTags, setNewTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState("");
   const [showSlideEditor, setShowSlideEditor] = useState(false);
   const [editingSlide, setEditingSlide] = useState<PlaylistItem | null>(null);
+  const [filterTag, setFilterTag] = useState<string>("");
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -287,15 +291,60 @@ const AdminMediaPage = () => {
     if (!newName.trim()) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data, error } = await supabase.from("playlists").insert({ name: newName.trim(), created_by: user.id }).select().single();
+    const { data, error } = await supabase.from("playlists").insert({ name: newName.trim(), created_by: user.id, tags: newTags } as any).select().single();
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     if (data) {
       setPlaylists((prev) => [data as Playlist, ...prev]);
       setSelectedPlaylist(data as Playlist);
       setShowNewDialog(false);
       setNewName("");
+      setNewTags([]);
       toast({ title: "Playlist criada!" });
     }
+  };
+
+  const duplicatePlaylist = async (playlist: Playlist) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Create new playlist
+    const { data: newPl, error } = await supabase
+      .from("playlists")
+      .insert({
+        name: `${playlist.name} (cópia)`,
+        created_by: user.id,
+        tags: playlist.tags,
+        schedule_start: playlist.schedule_start,
+        schedule_end: playlist.schedule_end,
+      } as any)
+      .select()
+      .single();
+    if (error || !newPl) { toast({ title: "Erro ao duplicar", variant: "destructive" }); return; }
+
+    // Copy items
+    const { data: sourceItems } = await supabase
+      .from("playlist_items")
+      .select("*")
+      .eq("playlist_id", playlist.id)
+      .order("sort_order");
+
+    if (sourceItems?.length) {
+      const copies = sourceItems.map((item: any) => ({
+        playlist_id: newPl.id,
+        media_type: item.media_type,
+        media_url: item.media_url,
+        file_name: item.file_name,
+        duration_seconds: item.duration_seconds,
+        transition: item.transition,
+        sort_order: item.sort_order,
+        slide_data: item.slide_data,
+      }));
+      await supabase.from("playlist_items").insert(copies as any);
+    }
+
+    setPlaylists((prev) => [newPl as Playlist, ...prev]);
+    setSelectedPlaylist(newPl as Playlist);
+    toast({ title: "Playlist duplicada!" });
   };
 
   const deletePlaylist = async (id: string) => {
@@ -304,6 +353,17 @@ const AdminMediaPage = () => {
     if (selectedPlaylist?.id === id) { setSelectedPlaylist(null); setItems([]); }
     toast({ title: "Playlist removida" });
   };
+
+  const updatePlaylistTags = async (playlist: Playlist, tags: string[]) => {
+    await supabase.from("playlists").update({ tags } as any).eq("id", playlist.id);
+    setPlaylists((prev) => prev.map((p) => (p.id === playlist.id ? { ...p, tags } : p)));
+    if (selectedPlaylist?.id === playlist.id) setSelectedPlaylist({ ...playlist, tags });
+  };
+
+  const allTags = Array.from(new Set(playlists.flatMap((p) => p.tags || [])));
+  const filteredPlaylists = filterTag
+    ? playlists.filter((p) => p.tags?.includes(filterTag))
+    : playlists;
 
   const toggleActive = async (playlist: Playlist) => {
     const { error } = await supabase.from("playlists").update({ is_active: !playlist.is_active }).eq("id", playlist.id);
@@ -396,6 +456,30 @@ const AdminMediaPage = () => {
                       <Label>Nome</Label>
                       <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Promoções Janeiro" onKeyDown={(e) => e.key === "Enter" && createPlaylist()} />
                     </div>
+                    <div>
+                      <Label className="text-xs">Tags</Label>
+                      <div className="flex flex-wrap gap-1 mb-1.5">
+                        {newTags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-[10px] gap-1">
+                            {tag}
+                            <button onClick={() => setNewTags((prev) => prev.filter((t) => t !== tag))}><X className="h-2.5 w-2.5" /></button>
+                          </Badge>
+                        ))}
+                      </div>
+                      <Input
+                        value={newTagInput}
+                        onChange={(e) => setNewTagInput(e.target.value)}
+                        placeholder="Adicionar tag e pressione Enter"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newTagInput.trim()) {
+                            e.preventDefault();
+                            if (!newTags.includes(newTagInput.trim())) setNewTags((prev) => [...prev, newTagInput.trim()]);
+                            setNewTagInput("");
+                          }
+                        }}
+                        className="h-8 text-xs"
+                      />
+                    </div>
                     <Button onClick={createPlaylist} className="w-full">Criar Playlist</Button>
                   </div>
                 </DialogContent>
@@ -403,30 +487,65 @@ const AdminMediaPage = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
+            {/* Tag filter */}
+            {allTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 pb-2 border-b border-border mb-2">
+                <button
+                  onClick={() => setFilterTag("")}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${!filterTag ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                >
+                  Todas
+                </button>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setFilterTag(filterTag === tag ? "" : tag)}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${filterTag === tag ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {loading ? (
               <p className="text-sm text-muted-foreground py-4 text-center">Carregando...</p>
-            ) : playlists.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma playlist criada</p>
+            ) : filteredPlaylists.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma playlist encontrada</p>
             ) : (
-              playlists.map((pl) => (
+              filteredPlaylists.map((pl) => (
                 <div
                   key={pl.id}
                   onClick={() => { setSelectedPlaylist(pl); setShowSlideEditor(false); setEditingSlide(null); }}
-                  className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  className={`rounded-lg border p-3 cursor-pointer transition-colors ${
                     selectedPlaylist?.id === pl.id ? "border-primary bg-accent" : "border-border hover:bg-muted/50"
                   }`}
                 >
-                  <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{pl.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(pl.created_at).toLocaleDateString("pt-BR")}</p>
+                  <div className="flex items-center gap-3">
+                    <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{pl.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{new Date(pl.created_at).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Badge variant={pl.is_active ? "default" : "secondary"} className="text-[10px]">{pl.is_active ? "Ativa" : "Inativa"}</Badge>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar" onClick={(e) => { e.stopPropagation(); duplicatePlaylist(pl); }}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); deletePlaylist(pl.id); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant={pl.is_active ? "default" : "secondary"} className="text-[10px]">{pl.is_active ? "Ativa" : "Inativa"}</Badge>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); deletePlaylist(pl.id); }}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {pl.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5 ml-7">
+                      {pl.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0">
+                          <Tag className="h-2 w-2 mr-0.5" />{tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -495,12 +614,12 @@ const AdminMediaPage = () => {
                 </Card>
               )}
 
-              {/* Schedule */}
+              {/* Schedule & Tags */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2"><Settings2 className="h-4 w-4" /> Agendamento</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2"><Settings2 className="h-4 w-4" /> Configurações</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="flex flex-wrap gap-4">
                     <div className="space-y-1">
                       <Label className="text-xs">Início</Label>
@@ -510,6 +629,33 @@ const AdminMediaPage = () => {
                       <Label className="text-xs">Fim</Label>
                       <Input type="time" value={selectedPlaylist.schedule_end || ""} onChange={(e) => updateSchedule("schedule_end", e.target.value)} className="h-9 w-36" />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-1"><Tag className="h-3 w-3" /> Tags</Label>
+                    <div className="flex flex-wrap gap-1">
+                      {(selectedPlaylist.tags || []).map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-[10px] gap-1">
+                          {tag}
+                          <button onClick={() => updatePlaylistTags(selectedPlaylist, selectedPlaylist.tags.filter((t) => t !== tag))}>
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <Input
+                      placeholder="Nova tag + Enter"
+                      className="h-8 text-xs w-48"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.target as HTMLInputElement).value.trim()) {
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (!selectedPlaylist.tags?.includes(val)) {
+                            updatePlaylistTags(selectedPlaylist, [...(selectedPlaylist.tags || []), val]);
+                          }
+                          (e.target as HTMLInputElement).value = "";
+                        }
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
