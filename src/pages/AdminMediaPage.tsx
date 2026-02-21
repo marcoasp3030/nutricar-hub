@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
   Plus, Upload, Trash2, Play, Pause, Monitor, Clock, Image as ImageIcon,
   Video, Music, GripVertical, Settings2, Eye, ChevronLeft, ChevronRight,
   Presentation, Pencil, Copy, Tag, X, RotateCw, Link2,
+  BarChart3, CheckCircle2, XCircle, Layers,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -22,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import SlideEditor, { SlidePreview, type SlideData } from "@/components/SlideEditor";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 /* ─── Types ─── */
 type Playlist = {
@@ -392,6 +394,7 @@ const AdminMediaPage = () => {
   const [showSlideEditor, setShowSlideEditor] = useState(false);
   const [editingSlide, setEditingSlide] = useState<PlaylistItem | null>(null);
   const [filterTag, setFilterTag] = useState<string>("");
+  const [allItems, setAllItems] = useState<{ media_type: string; playlist_id: string }[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -409,11 +412,35 @@ const AdminMediaPage = () => {
     if (data) setItems(data as unknown as PlaylistItem[]);
   }, []);
 
-  useEffect(() => { fetchPlaylists(); }, [fetchPlaylists]);
+  const fetchAllItems = useCallback(async () => {
+    const { data } = await supabase.from("playlist_items").select("media_type, playlist_id");
+    if (data) setAllItems(data);
+  }, []);
+
+  useEffect(() => { fetchPlaylists(); fetchAllItems(); }, [fetchPlaylists, fetchAllItems]);
   useEffect(() => {
     if (selectedPlaylist) fetchItems(selectedPlaylist.id);
     else setItems([]);
   }, [selectedPlaylist, fetchItems]);
+
+  const stats = useMemo(() => {
+    const total = playlists.length;
+    const active = playlists.filter((p) => p.is_active).length;
+    const inactive = total - active;
+    const totalItems = allItems.length;
+    const images = allItems.filter((i) => i.media_type === "image").length;
+    const videos = allItems.filter((i) => i.media_type === "video").length;
+    const slides = allItems.filter((i) => i.media_type === "slide").length;
+    const audios = allItems.filter((i) => i.media_type === "audio").length;
+    const recent = [...playlists].slice(0, 5);
+    const pieData = [
+      { name: "Imagens", value: images, color: "hsl(87, 48%, 51%)" },
+      { name: "Vídeos", value: videos, color: "hsl(200, 60%, 50%)" },
+      { name: "Slides", value: slides, color: "hsl(45, 80%, 55%)" },
+      { name: "Áudios", value: audios, color: "hsl(340, 65%, 55%)" },
+    ].filter((d) => d.value > 0);
+    return { total, active, inactive, totalItems, images, videos, slides, audios, recent, pieData };
+  }, [playlists, allItems]);
 
   const createPlaylist = async () => {
     if (!newName.trim()) return;
@@ -565,6 +592,132 @@ const AdminMediaPage = () => {
           <h1 className="text-2xl font-bold text-foreground">Mídia TV</h1>
           <p className="text-sm text-muted-foreground">Gerencie playlists de mídia para exibição em TVs</p>
         </div>
+      </div>
+
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Layers className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                <p className="text-[11px] text-muted-foreground">Playlists</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.totalItems}</p>
+                <p className="text-[11px] text-muted-foreground">Total de mídias</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.active}</p>
+                <p className="text-[11px] text-muted-foreground">Ativas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <XCircle className="h-4 w-4 text-destructive" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.inactive}</p>
+                <p className="text-[11px] text-muted-foreground">Inativas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Media distribution + Recent playlists */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Pie chart */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Uso por tipo de mídia</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.pieData.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Nenhuma mídia cadastrada</p>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="w-[120px] h-[120px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={stats.pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={55} strokeWidth={2}>
+                        {stats.pieData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} stroke="hsl(var(--card))" />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => [v, "itens"]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-1.5">
+                  {stats.pieData.map((d) => (
+                    <div key={d.name} className="flex items-center gap-2 text-xs">
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                      <span className="text-muted-foreground">{d.name}</span>
+                      <span className="font-semibold text-foreground">{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent playlists */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Últimas playlists criadas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.recent.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Nenhuma playlist</p>
+            ) : (
+              <div className="space-y-2">
+                {stats.recent.map((pl) => (
+                  <div
+                    key={pl.id}
+                    className="flex items-center justify-between rounded-md border border-border px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => { setSelectedPlaylist(pl); setShowSlideEditor(false); setEditingSlide(null); }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Monitor className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="text-xs font-medium truncate">{pl.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge variant={pl.is_active ? "default" : "secondary"} className="text-[9px]">{pl.is_active ? "Ativa" : "Inativa"}</Badge>
+                      <span className="text-[10px] text-muted-foreground">{new Date(pl.created_at).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
