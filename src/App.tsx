@@ -127,16 +127,20 @@ const AppContent = () => {
         onTableChange={setTableName}
       >
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
-          <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
-          <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+          <Route path="/" element={<Navigate to={role === 'admin' ? '/admin/usuarios' : '/dashboard'} replace />} />
+          {role !== 'admin' && (
+            <>
+              <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
+              <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+              <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+            </>
+          )}
           {role === "admin" ? (
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
           ) : (
             <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
           )}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to={role === 'admin' ? '/admin/usuarios' : '/dashboard'} replace />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
