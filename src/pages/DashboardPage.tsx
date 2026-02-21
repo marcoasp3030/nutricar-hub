@@ -1,44 +1,86 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, Legend,
+  PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
-import { mockKPIs, chartByPeriodo, chartByCategoria, chartByRegiao, chartByPagamento, chartByStatus } from "@/data/mockData";
-import { Package, DollarSign, ShoppingCart, Percent } from "lucide-react";
+import { queryVendas } from "@/lib/api";
+import { Package, DollarSign, ShoppingCart, Percent, Loader2 } from "lucide-react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 const COLORS = [
-  "hsl(87, 48%, 51%)",
-  "hsl(87, 48%, 65%)",
-  "hsl(200, 60%, 50%)",
-  "hsl(45, 80%, 55%)",
-  "hsl(340, 65%, 55%)",
+  "hsl(87, 48%, 51%)", "hsl(87, 48%, 65%)", "hsl(200, 60%, 50%)",
+  "hsl(45, 80%, 55%)", "hsl(340, 65%, 55%)", "hsl(160, 50%, 45%)",
+  "hsl(270, 50%, 55%)", "hsl(30, 70%, 50%)",
 ];
 
-const kpis = [
-  { label: "Quantidade Total", value: mockKPIs.totalQuantidade.toLocaleString("pt-BR"), icon: Package, color: "text-primary" },
-  { label: "Valor Total", value: formatCurrency(mockKPIs.totalValor), icon: DollarSign, color: "text-primary" },
-  { label: "Valor de Compra", value: formatCurrency(mockKPIs.totalValorCompra), icon: ShoppingCart, color: "text-primary" },
-  { label: "Desconto Total", value: formatCurrency(mockKPIs.totalDesconto), icon: Percent, color: "text-primary" },
-];
+interface DashboardPageProps {
+  tableName: string;
+}
 
-const DashboardPage = () => {
+const DashboardPage = ({ tableName }: DashboardPageProps) => {
+  const [kpis, setKpis] = useState<any>(null);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartGroupBy, setChartGroupBy] = useState("categoria");
+  const [periodoData, setPeriodoData] = useState<any[]>([]);
+  const [statusData, setStatusData] = useState<any[]>([]);
+  const [pagamentoData, setPagamentoData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      queryVendas({ action: 'kpis', tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'periodo' }, tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'status' }, tableName }),
+      queryVendas({ action: 'chart', filters: { groupBy: 'tipo_de_pagamento' }, tableName }),
+    ]).then(([kpiRes, periodoRes, statusRes, pagRes]) => {
+      setKpis(kpiRes.data);
+      setPeriodoData(periodoRes.data || []);
+      setStatusData(statusRes.data || []);
+      setPagamentoData(pagRes.data || []);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [tableName]);
+
+  useEffect(() => {
+    queryVendas({ action: 'chart', filters: { groupBy: chartGroupBy }, tableName })
+      .then(res => setChartData(res.data || []))
+      .catch(console.error);
+  }, [chartGroupBy, tableName]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const kpiCards = [
+    { label: "Quantidade Total", value: Number(kpis?.total_quantidade || 0).toLocaleString("pt-BR"), icon: Package },
+    { label: "Valor Total", value: formatCurrency(Number(kpis?.total_valor || 0)), icon: DollarSign },
+    { label: "Valor de Compra", value: formatCurrency(Number(kpis?.total_valor_compra || 0)), icon: ShoppingCart },
+    { label: "Desconto Total", value: formatCurrency(Number(kpis?.total_desconto || 0)), icon: Percent },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Visão geral das suas movimentações</p>
+        <p className="text-sm text-muted-foreground">
+          Visão geral — {Number(kpis?.total_registros || 0).toLocaleString("pt-BR")} registros
+        </p>
       </div>
 
-      {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi) => (
+        {kpiCards.map((kpi) => (
           <Card key={kpi.label} className="border-0 shadow-sm">
             <CardContent className="flex items-center gap-4 p-5">
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent">
-                <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                <kpi.icon className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{kpi.label}</p>
@@ -49,18 +91,17 @@ const DashboardPage = () => {
         ))}
       </div>
 
-      {/* Charts Row 1 */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <h3 className="mb-4 text-sm font-semibold text-foreground">Valor por Período</h3>
             <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={chartByPeriodo}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90, 15%, 88%)" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(90, 10%, 45%)" />
-                <YAxis tick={{ fontSize: 12 }} stroke="hsl(90, 10%, 45%)" />
+              <AreaChart data={periodoData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
+                <YAxis tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
                 <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Area type="monotone" dataKey="valor" stroke="hsl(87, 48%, 51%)" fill="hsl(87, 48%, 51%)" fillOpacity={0.15} strokeWidth={2} />
+                <Area type="monotone" dataKey="valor" stroke="hsl(87,48%,51%)" fill="hsl(87,48%,51%)" fillOpacity={0.15} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -68,31 +109,40 @@ const DashboardPage = () => {
 
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Valor por Categoria</h3>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Valor por</h3>
+              <Select value={chartGroupBy} onValueChange={setChartGroupBy}>
+                <SelectTrigger className="w-44 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['categoria', 'produto', 'regiao', 'bairro', 'loja', 'bandeira'].map(g => (
+                    <SelectItem key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={chartByCategoria}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90, 15%, 88%)" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(90, 10%, 45%)" />
-                <YAxis tick={{ fontSize: 12 }} stroke="hsl(90, 10%, 45%)" />
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" angle={-20} textAnchor="end" height={60} />
+                <YAxis tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
                 <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="valor" fill="hsl(87, 48%, 51%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="valor" radius={[4,4,0,0]}>
+                  {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Por Região</h3>
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Por Status</h3>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={chartByRegiao} cx="50%" cy="50%" outerRadius={80} dataKey="valor" label={({ name }) => name}>
-                  {chartByRegiao.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
+                <Pie data={statusData} cx="50%" cy="50%" outerRadius={80} dataKey="valor" label={({ name }) => name}>
+                  {statusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v: number) => formatCurrency(v)} />
               </PieChart>
@@ -104,29 +154,13 @@ const DashboardPage = () => {
           <CardContent className="p-5">
             <h3 className="mb-4 text-sm font-semibold text-foreground">Tipo de Pagamento</h3>
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartByPagamento} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90, 15%, 88%)" />
-                <XAxis type="number" tick={{ fontSize: 12 }} stroke="hsl(90, 10%, 45%)" />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} stroke="hsl(90, 10%, 45%)" width={70} />
+              <BarChart data={pagamentoData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" width={80} />
                 <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="valor" fill="hsl(87, 48%, 65%)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="valor" fill="hsl(87,48%,65%)" radius={[0,4,4,0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Por Status</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={chartByStatus} cx="50%" cy="50%" outerRadius={80} dataKey="valor" label={({ name }) => name}>
-                  {chartByStatus.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-              </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
