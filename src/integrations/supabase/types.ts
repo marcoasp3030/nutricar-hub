@@ -35,6 +35,86 @@ export type Database = {
         }
         Relationships: []
       }
+      playlist_items: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          file_name: string | null
+          id: string
+          media_type: string
+          media_url: string
+          playlist_id: string
+          sort_order: number
+          transition: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          file_name?: string | null
+          id?: string
+          media_type: string
+          media_url: string
+          playlist_id: string
+          sort_order?: number
+          transition?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          file_name?: string | null
+          id?: string
+          media_type?: string
+          media_url?: string
+          playlist_id?: string
+          sort_order?: number
+          transition?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_items_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          schedule_end: string | null
+          schedule_start: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          schedule_end?: string | null
+          schedule_start?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          schedule_end?: string | null
+          schedule_start?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           cnpj: string | null
