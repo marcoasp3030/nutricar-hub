@@ -401,10 +401,10 @@ const AdminAdvertisingPage = () => {
             <div><Label>Frequência de Exibição</Label><Input value={pkgForm.display_frequency} onChange={e => setPkgForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
             <div>
               <Label>Playlist Vinculada</Label>
-              <Select value={pkgForm.playlist_id} onValueChange={v => setPkgForm(f => ({ ...f, playlist_id: v }))}>
+              <Select value={pkgForm.playlist_id || "none"} onValueChange={v => setPkgForm(f => ({ ...f, playlist_id: v === "none" ? "" : v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecionar playlist" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
