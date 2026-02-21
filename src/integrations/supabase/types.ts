@@ -87,6 +87,7 @@ export type Database = {
       }
       playlists: {
         Row: {
+          bg_color: string
           created_at: string
           created_by: string
           description: string | null
@@ -96,6 +97,7 @@ export type Database = {
           logo_position: string | null
           logo_size: number | null
           logo_url: string | null
+          media_fit: string
           name: string
           orientation: string
           schedule_end: string | null
@@ -105,6 +107,7 @@ export type Database = {
           volume: number
         }
         Insert: {
+          bg_color?: string
           created_at?: string
           created_by: string
           description?: string | null
@@ -114,6 +117,7 @@ export type Database = {
           logo_position?: string | null
           logo_size?: number | null
           logo_url?: string | null
+          media_fit?: string
           name: string
           orientation?: string
           schedule_end?: string | null
@@ -123,6 +127,7 @@ export type Database = {
           volume?: number
         }
         Update: {
+          bg_color?: string
           created_at?: string
           created_by?: string
           description?: string | null
@@ -132,6 +137,7 @@ export type Database = {
           logo_position?: string | null
           logo_size?: number | null
           logo_url?: string | null
+          media_fit?: string
           name?: string
           orientation?: string
           schedule_end?: string | null
