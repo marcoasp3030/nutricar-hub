@@ -102,6 +102,7 @@ export type Database = {
           schedule_start: string | null
           tags: string[] | null
           updated_at: string
+          volume: number
         }
         Insert: {
           created_at?: string
@@ -119,6 +120,7 @@ export type Database = {
           schedule_start?: string | null
           tags?: string[] | null
           updated_at?: string
+          volume?: number
         }
         Update: {
           created_at?: string
@@ -136,6 +138,7 @@ export type Database = {
           schedule_start?: string | null
           tags?: string[] | null
           updated_at?: string
+          volume?: number
         }
         Relationships: []
       }

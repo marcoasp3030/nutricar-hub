@@ -43,7 +43,8 @@ const TvPlayerPage = () => {
   const [error, setError] = useState("");
   const [logo, setLogo] = useState<PlaylistLogo>({ logo_url: "", logo_position: "top-right", logo_size: 80, logo_opacity: 100 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(80);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const loadItems = useCallback(async () => {
     if (!playlistId) return;
@@ -87,6 +88,7 @@ const TvPlayerPage = () => {
     }
 
     setOrientation((playlist as any).orientation || "horizontal");
+    setVolume((playlist as any).volume ?? 80);
     setLogo({
       logo_url: (playlist as any).logo_url || "",
       logo_position: (playlist as any).logo_position || "top-right",
@@ -152,6 +154,13 @@ const TvPlayerPage = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [currentIndex, items, advanceToNext]);
+
+  // Apply volume to video element
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = volume / 100;
+    }
+  }, [volume, currentIndex]);
 
   if (!loaded) {
     return (
@@ -227,10 +236,10 @@ const TvPlayerPage = () => {
       return (
         <div className="w-full h-full flex items-center justify-center">
           <video
+            ref={videoRef}
             key={current.id + currentIndex}
             src={current.media_url}
             autoPlay
-            muted={isMuted}
             playsInline
             onEnded={advanceToNext}
             className="max-w-full max-h-full object-contain"
@@ -277,20 +286,6 @@ const TvPlayerPage = () => {
         />
       )}
 
-      {/* Unmute button */}
-      {isMuted && current?.media_type === "video" && (
-        <button
-          onClick={() => setIsMuted(false)}
-          className="fixed top-4 right-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-full p-3 transition-all cursor-pointer"
-          title="Ativar som"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
-            <line x1="22" y1="9" x2="16" y2="15"/>
-            <line x1="16" y1="9" x2="22" y2="15"/>
-          </svg>
-        </button>
-      )}
 
       {/* Progress bar */}
       {items.length > 1 && (

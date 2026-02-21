@@ -41,6 +41,7 @@ type Playlist = {
   logo_position: string;
   logo_size: number;
   logo_opacity: number;
+  volume: number;
 };
 
 type PlaylistItem = {
@@ -1151,6 +1152,18 @@ const AdminMediaPage = () => {
                               setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, logo_opacity: v } : p)));
                             }}
                             min={10} max={100} step={5}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px]">🔊 Volume {selectedPlaylist.volume ?? 80}%</Label>
+                          <Slider
+                            value={[selectedPlaylist.volume ?? 80]}
+                            onValueChange={async ([v]) => {
+                              await supabase.from("playlists").update({ volume: v } as any).eq("id", selectedPlaylist.id);
+                              setSelectedPlaylist({ ...selectedPlaylist, volume: v });
+                              setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, volume: v } : p)));
+                            }}
+                            min={0} max={100} step={5}
                           />
                         </div>
                       </div>

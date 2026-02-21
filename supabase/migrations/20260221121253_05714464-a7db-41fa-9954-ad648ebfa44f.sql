@@ -1,0 +1,1 @@
+ALTER TABLE public.playlists ADD COLUMN volume integer NOT NULL DEFAULT 80;
