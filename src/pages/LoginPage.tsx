@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Lock, Mail, User, Building2, Loader2 } from "lucide-react";
+import { Lock, Mail, User, Building2, Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -23,6 +23,8 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [cnpj, setCnpj] = useState("");
+  const [phone, setPhone] = useState("");
+  const [financialEmail, setFinancialEmail] = useState("");
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState("login");
@@ -64,7 +66,7 @@ const LoginPage = () => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, cnpj: cnpj.replace(/\D/g, '') || null } },
+      options: { data: { full_name: fullName, cnpj: cnpj.replace(/\D/g, '') || null, phone: phone || null, financial_email: financialEmail || null } },
     });
     if (error) {
       toast.error(error.message);
@@ -144,6 +146,21 @@ const LoginPage = () => {
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input id="signup-email" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone">Telefone para contato</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input id="signup-phone" type="tel" placeholder="(00) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10" required />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Celular ou fixo</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-financial-email">E-mail financeiro <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input id="signup-financial-email" type="email" placeholder="financeiro@empresa.com" value={financialEmail} onChange={(e) => setFinancialEmail(e.target.value)} className="pl-10" />
                     </div>
                   </div>
                   <div className="space-y-2">
