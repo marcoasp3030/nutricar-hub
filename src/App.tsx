@@ -23,27 +23,53 @@ const AppContent = () => {
   const [tableName, setTableName] = useState("vendas_2026");
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        const p = await getUserProfile();
-        setProfile(p);
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
+    let isMounted = true;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
+    const loadProfile = async (userId: string) => {
+      try {
         const p = await getUserProfile();
-        setProfile(p);
+        if (isMounted) setProfile(p);
+      } catch (e) {
+        console.error('Error loading profile:', e);
+        if (isMounted) setProfile(null);
       }
-      setLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    // Listener for ongoing auth changes — avoid awaiting inside callback
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!isMounted) return;
+        setSession(session);
+        if (session?.user) {
+          setTimeout(() => loadProfile(session.user.id), 0);
+        } else {
+          setProfile(null);
+        }
+      }
+    );
+
+    // Initial load — controls loading state
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setSession(session);
+        if (session?.user) {
+          await loadProfile(session.user.id);
+        }
+      } catch (e) {
+        console.error('Auth init error:', e);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
