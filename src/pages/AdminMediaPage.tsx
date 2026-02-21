@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -36,6 +37,10 @@ type Playlist = {
   created_at: string;
   tags: string[];
   orientation: "horizontal" | "vertical";
+  logo_url: string;
+  logo_position: string;
+  logo_size: number;
+  logo_opacity: number;
 };
 
 type PlaylistItem = {
@@ -147,6 +152,19 @@ const SortableItem = ({
   );
 };
 
+/* ─── Logo position helper ─── */
+const logoPositionStyle = (pos: string, pad: number): React.CSSProperties => {
+  switch (pos) {
+    case "top-left": return { top: pad, left: pad };
+    case "top-right": return { top: pad, right: pad };
+    case "top-center": return { top: pad, left: "50%", transform: "translateX(-50%)" };
+    case "bottom-left": return { bottom: pad, left: pad };
+    case "bottom-right": return { bottom: pad, right: pad };
+    case "bottom-center": return { bottom: pad, left: "50%", transform: "translateX(-50%)" };
+    default: return { top: pad, right: pad };
+  }
+};
+
 /* ─── TV Mockup Preview ─── */
 const TvMockup = ({
   items,
@@ -154,12 +172,20 @@ const TvMockup = ({
   onTogglePlay,
   orientation,
   onOrientationChange,
+  logoUrl,
+  logoPosition,
+  logoSize,
+  logoOpacity,
 }: {
   items: PlaylistItem[];
   playing: boolean;
   onTogglePlay: () => void;
   orientation: "horizontal" | "vertical";
   onOrientationChange: (o: "horizontal" | "vertical") => void;
+  logoUrl?: string;
+  logoPosition?: string;
+  logoSize?: number;
+  logoOpacity?: number;
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
@@ -290,7 +316,21 @@ const TvMockup = ({
               </div>
             ) : null}
 
-            {/* Progress dots */}
+            {/* Playlist logo overlay */}
+            {logoUrl && currentItem && currentItem.media_type !== "slide" && (
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className="absolute z-10 pointer-events-none"
+                style={{
+                  width: ((logoSize || 80) * screenW) / 1920,
+                  height: "auto",
+                  opacity: (logoOpacity ?? 100) / 100,
+                  ...logoPositionStyle(logoPosition || "top-right", (10 * screenW) / 1920),
+                }}
+              />
+            )}
+
             {playing && visualItems.length > 1 && (
               <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 p-1.5 z-10">
                 {visualItems.map((_, i) => (
@@ -927,6 +967,10 @@ const AdminMediaPage = () => {
                     playing={playing}
                     onTogglePlay={() => setPlaying(!playing)}
                     orientation={selectedPlaylist.orientation || "horizontal"}
+                    logoUrl={selectedPlaylist.logo_url}
+                    logoPosition={selectedPlaylist.logo_position}
+                    logoSize={selectedPlaylist.logo_size}
+                    logoOpacity={selectedPlaylist.logo_opacity}
                     onOrientationChange={async (o) => {
                       await supabase.from("playlists").update({ orientation: o } as any).eq("id", selectedPlaylist.id);
                       setSelectedPlaylist({ ...selectedPlaylist, orientation: o });
@@ -1011,6 +1055,106 @@ const AdminMediaPage = () => {
                         }
                       }}
                     />
+                  </div>
+
+                  {/* Logo overlay for images/videos */}
+                  <div className="space-y-3 border-t border-border pt-4">
+                    <Label className="text-xs flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Logo (overlay em imagens/vídeos)</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        id="playlist-logo-upload"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !selectedPlaylist) return;
+                          try {
+                            const filePath = `logos/playlist/${selectedPlaylist.id}/${Date.now()}-${file.name}`;
+                            const { error } = await supabase.storage.from("media").upload(filePath, file);
+                            if (error) throw error;
+                            const { data } = supabase.storage.from("media").getPublicUrl(filePath);
+                            const url = data.publicUrl;
+                            await supabase.from("playlists").update({ logo_url: url } as any).eq("id", selectedPlaylist.id);
+                            setSelectedPlaylist({ ...selectedPlaylist, logo_url: url });
+                            setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, logo_url: url } : p)));
+                            toast({ title: "Logo adicionada!" });
+                          } catch (err: any) {
+                            toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button variant="outline" size="sm" className="text-xs gap-1.5" asChild>
+                        <label htmlFor="playlist-logo-upload" className="cursor-pointer">
+                          <Upload className="h-3.5 w-3.5" /> Upload Logo
+                        </label>
+                      </Button>
+                      {selectedPlaylist.logo_url && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs gap-1 text-destructive"
+                          onClick={async () => {
+                            await supabase.from("playlists").update({ logo_url: "" } as any).eq("id", selectedPlaylist.id);
+                            setSelectedPlaylist({ ...selectedPlaylist, logo_url: "" });
+                            setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, logo_url: "" } : p)));
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" /> Remover
+                        </Button>
+                      )}
+                    </div>
+                    {selectedPlaylist.logo_url && (
+                      <div className="space-y-3">
+                        <img src={selectedPlaylist.logo_url} alt="Logo" className="h-12 rounded border border-border object-contain bg-muted p-1" />
+                        <div className="space-y-1">
+                          <Label className="text-[10px]">Posição</Label>
+                          <Select
+                            value={selectedPlaylist.logo_position || "top-right"}
+                            onValueChange={async (v) => {
+                              await supabase.from("playlists").update({ logo_position: v } as any).eq("id", selectedPlaylist.id);
+                              setSelectedPlaylist({ ...selectedPlaylist, logo_position: v });
+                              setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, logo_position: v } : p)));
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="top-left" className="text-xs">Topo Esquerda</SelectItem>
+                              <SelectItem value="top-center" className="text-xs">Topo Centro</SelectItem>
+                              <SelectItem value="top-right" className="text-xs">Topo Direita</SelectItem>
+                              <SelectItem value="bottom-left" className="text-xs">Base Esquerda</SelectItem>
+                              <SelectItem value="bottom-center" className="text-xs">Base Centro</SelectItem>
+                              <SelectItem value="bottom-right" className="text-xs">Base Direita</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px]">Tamanho {selectedPlaylist.logo_size || 80}px</Label>
+                          <Slider
+                            value={[selectedPlaylist.logo_size || 80]}
+                            onValueChange={async ([v]) => {
+                              await supabase.from("playlists").update({ logo_size: v } as any).eq("id", selectedPlaylist.id);
+                              setSelectedPlaylist({ ...selectedPlaylist, logo_size: v });
+                              setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, logo_size: v } : p)));
+                            }}
+                            min={30} max={300} step={5}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px]">Opacidade {selectedPlaylist.logo_opacity ?? 100}%</Label>
+                          <Slider
+                            value={[selectedPlaylist.logo_opacity ?? 100]}
+                            onValueChange={async ([v]) => {
+                              await supabase.from("playlists").update({ logo_opacity: v } as any).eq("id", selectedPlaylist.id);
+                              setSelectedPlaylist({ ...selectedPlaylist, logo_opacity: v });
+                              setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, logo_opacity: v } : p)));
+                            }}
+                            min={10} max={100} step={5}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
