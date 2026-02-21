@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Type, AlignLeft, AlignCenter, AlignRight, Bold, Italic } from "lucide-react";
+import { Upload, Type, AlignLeft, AlignCenter, AlignRight, Bold, Italic, LayoutTemplate } from "lucide-react";
 
 export type SlideData = {
   title: string;
@@ -52,6 +52,119 @@ const DEFAULT_SLIDE: SlideData = {
   verticalAlign: "center",
   padding: 60,
 };
+
+const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
+  {
+    label: "Promoção",
+    emoji: "🔥",
+    data: {
+      title: "MEGA PROMOÇÃO",
+      subtitle: "Até 50% de desconto",
+      body: "Aproveite as ofertas especiais!\nVálido por tempo limitado.",
+      titleSize: 64, subtitleSize: 36, bodySize: 22,
+      titleColor: "#FFEB3B", subtitleColor: "#FFFFFF", bodyColor: "#E0E0E0",
+      titleBold: true, titleItalic: false, textAlign: "center",
+      bgType: "gradient", bgColor: "#b71c1c",
+      bgGradient: "linear-gradient(135deg, #b71c1c 0%, #e53935 50%, #ff7043 100%)",
+      bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+    },
+  },
+  {
+    label: "Aviso",
+    emoji: "⚠️",
+    data: {
+      title: "AVISO IMPORTANTE",
+      subtitle: "",
+      body: "Informamos que estaremos em manutenção\nneste sábado das 8h às 12h.\n\nAgradecemos a compreensão.",
+      titleSize: 56, subtitleSize: 28, bodySize: 24,
+      titleColor: "#FFFFFF", subtitleColor: "#E0E0E0", bodyColor: "#CFD8DC",
+      titleBold: true, titleItalic: false, textAlign: "center",
+      bgType: "gradient", bgColor: "#1a237e",
+      bgGradient: "linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)",
+      bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 80,
+    },
+  },
+  {
+    label: "Cardápio",
+    emoji: "🍽️",
+    data: {
+      title: "Cardápio do Dia",
+      subtitle: "Almoço Executivo — R$ 29,90",
+      body: "🥗 Salada Caesar\n🍖 Filé Grelhado ao Molho Mostarda\n🍚 Arroz e Feijão\n🍮 Pudim de Leite",
+      titleSize: 52, subtitleSize: 30, bodySize: 26,
+      titleColor: "#FFFFFF", subtitleColor: "#A5D6A7", bodyColor: "#E8F5E9",
+      titleBold: true, titleItalic: false, textAlign: "left",
+      bgType: "gradient", bgColor: "#1b5e20",
+      bgGradient: "linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #388e3c 100%)",
+      bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 80,
+    },
+  },
+  {
+    label: "Boas-vindas",
+    emoji: "👋",
+    data: {
+      title: "Bem-vindo!",
+      subtitle: "Estamos felizes em tê-lo conosco",
+      body: "",
+      titleSize: 72, subtitleSize: 32, bodySize: 20,
+      titleColor: "#FFFFFF", subtitleColor: "#B3E5FC", bodyColor: "#E0E0E0",
+      titleBold: true, titleItalic: false, textAlign: "center",
+      bgType: "gradient", bgColor: "#0d47a1",
+      bgGradient: "linear-gradient(135deg, #0d47a1 0%, #1565c0 40%, #42a5f5 100%)",
+      bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+    },
+  },
+  {
+    label: "Evento",
+    emoji: "🎉",
+    data: {
+      title: "EVENTO ESPECIAL",
+      subtitle: "Sexta-feira, 20h",
+      body: "Venha celebrar conosco!\nMúsica ao vivo • Comes e bebes\n\nLocal: Salão Principal",
+      titleSize: 60, subtitleSize: 32, bodySize: 22,
+      titleColor: "#FFD54F", subtitleColor: "#FFF9C4", bodyColor: "#FFFFFF",
+      titleBold: true, titleItalic: false, textAlign: "center",
+      bgType: "gradient", bgColor: "#4a148c",
+      bgGradient: "linear-gradient(135deg, #4a148c 0%, #7b1fa2 50%, #e040fb 100%)",
+      bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+    },
+  },
+  {
+    label: "Horário",
+    emoji: "🕐",
+    data: {
+      title: "Horário de Funcionamento",
+      subtitle: "",
+      body: "Segunda a Sexta: 8h às 18h\nSábado: 8h às 13h\nDomingo e Feriados: Fechado",
+      titleSize: 48, subtitleSize: 28, bodySize: 28,
+      titleColor: "#FFFFFF", subtitleColor: "#E0E0E0", bodyColor: "#B0BEC5",
+      titleBold: true, titleItalic: false, textAlign: "center",
+      bgType: "gradient", bgColor: "#263238",
+      bgGradient: "linear-gradient(135deg, #263238 0%, #37474f 50%, #455a64 100%)",
+      bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 80,
+    },
+  },
+  {
+    label: "NutriCar",
+    emoji: "🥬",
+    data: {
+      title: "NutriCar",
+      subtitle: "Nutrição de qualidade para você",
+      body: "",
+      titleSize: 72, subtitleSize: 28, bodySize: 20,
+      titleColor: "#FFFFFF", subtitleColor: "#C8E6C9", bodyColor: "#E0E0E0",
+      titleBold: true, titleItalic: false, textAlign: "center",
+      bgType: "gradient", bgColor: "#2e7d32",
+      bgGradient: "linear-gradient(135deg, hsl(87 48% 25%) 0%, hsl(87 48% 40%) 50%, hsl(87 48% 51%) 100%)",
+      bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+    },
+  },
+  {
+    label: "Em branco",
+    emoji: "📄",
+    data: { ...DEFAULT_SLIDE },
+  },
+];
 
 const GRADIENT_PRESETS = [
   { label: "Noite Azul", value: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" },
@@ -247,6 +360,31 @@ const SlideEditor = ({
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left: Controls */}
       <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2">
+        {/* Templates */}
+        {!editData && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <LayoutTemplate className="h-4 w-4" /> Templates
+            </h3>
+            <div className="grid grid-cols-4 gap-1.5">
+              {SLIDE_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.label}
+                  onClick={() => setSlide({ ...tpl.data })}
+                  className="group relative rounded-lg border border-border overflow-hidden hover:border-primary transition-colors"
+                >
+                  <SlidePreview data={tpl.data} width={120} height={68} />
+                  <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[9px] text-white font-medium p-1.5 w-full text-center truncate">
+                      {tpl.emoji} {tpl.label}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Text content */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
