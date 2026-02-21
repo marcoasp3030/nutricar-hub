@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Type, AlignLeft, AlignCenter, AlignRight, Bold, Italic, LayoutTemplate } from "lucide-react";
+import { Upload, Type, AlignLeft, AlignCenter, AlignRight, Bold, Italic, LayoutTemplate, ImageIcon, Trash2 } from "lucide-react";
 
 export type SlideData = {
   title: string;
@@ -29,6 +29,10 @@ export type SlideData = {
   overlayOpacity: number;
   verticalAlign: "top" | "center" | "bottom";
   padding: number;
+  logoUrl: string;
+  logoPosition: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "top-center" | "bottom-center";
+  logoSize: number;
+  logoOpacity: number;
 };
 
 const DEFAULT_SLIDE: SlideData = {
@@ -51,6 +55,10 @@ const DEFAULT_SLIDE: SlideData = {
   overlayOpacity: 50,
   verticalAlign: "center",
   padding: 60,
+  logoUrl: "",
+  logoPosition: "top-right",
+  logoSize: 80,
+  logoOpacity: 100,
 };
 
 const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
@@ -67,6 +75,7 @@ const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
       bgType: "gradient", bgColor: "#b71c1c",
       bgGradient: "linear-gradient(135deg, #b71c1c 0%, #e53935 50%, #ff7043 100%)",
       bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+      logoUrl: "", logoPosition: "top-right", logoSize: 80, logoOpacity: 100,
     },
   },
   {
@@ -82,6 +91,7 @@ const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
       bgType: "gradient", bgColor: "#1a237e",
       bgGradient: "linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)",
       bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 80,
+      logoUrl: "", logoPosition: "top-right", logoSize: 80, logoOpacity: 100,
     },
   },
   {
@@ -97,6 +107,7 @@ const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
       bgType: "gradient", bgColor: "#1b5e20",
       bgGradient: "linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #388e3c 100%)",
       bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 80,
+      logoUrl: "", logoPosition: "top-right", logoSize: 80, logoOpacity: 100,
     },
   },
   {
@@ -112,6 +123,7 @@ const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
       bgType: "gradient", bgColor: "#0d47a1",
       bgGradient: "linear-gradient(135deg, #0d47a1 0%, #1565c0 40%, #42a5f5 100%)",
       bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+      logoUrl: "", logoPosition: "top-right", logoSize: 80, logoOpacity: 100,
     },
   },
   {
@@ -127,6 +139,7 @@ const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
       bgType: "gradient", bgColor: "#4a148c",
       bgGradient: "linear-gradient(135deg, #4a148c 0%, #7b1fa2 50%, #e040fb 100%)",
       bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+      logoUrl: "", logoPosition: "top-right", logoSize: 80, logoOpacity: 100,
     },
   },
   {
@@ -142,6 +155,7 @@ const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
       bgType: "gradient", bgColor: "#263238",
       bgGradient: "linear-gradient(135deg, #263238 0%, #37474f 50%, #455a64 100%)",
       bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 80,
+      logoUrl: "", logoPosition: "top-right", logoSize: 80, logoOpacity: 100,
     },
   },
   {
@@ -157,6 +171,7 @@ const SLIDE_TEMPLATES: { label: string; emoji: string; data: SlideData }[] = [
       bgType: "gradient", bgColor: "#2e7d32",
       bgGradient: "linear-gradient(135deg, hsl(87 48% 25%) 0%, hsl(87 48% 40%) 50%, hsl(87 48% 51%) 100%)",
       bgImage: "", overlayOpacity: 50, verticalAlign: "center", padding: 60,
+      logoUrl: "", logoPosition: "top-right", logoSize: 80, logoOpacity: 100,
     },
   },
   {
@@ -176,6 +191,19 @@ const GRADIENT_PRESETS = [
   { label: "Oceano", value: "linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)" },
   { label: "NutriCar", value: "linear-gradient(135deg, hsl(87 48% 35%) 0%, hsl(87 48% 51%) 100%)" },
 ];
+
+/* ─── Logo position helper ─── */
+const logoPositionStyle = (pos: string, pad: number): React.CSSProperties => {
+  switch (pos) {
+    case "top-left": return { top: pad, left: pad };
+    case "top-right": return { top: pad, right: pad };
+    case "top-center": return { top: pad, left: "50%", transform: "translateX(-50%)" };
+    case "bottom-left": return { bottom: pad, left: pad };
+    case "bottom-right": return { bottom: pad, right: pad };
+    case "bottom-center": return { bottom: pad, left: "50%", transform: "translateX(-50%)" };
+    default: return { top: pad, right: pad };
+  }
+};
 
 /* ─── Slide Preview (reusable for TV mockup too) ─── */
 export const SlidePreview = ({
@@ -270,6 +298,20 @@ export const SlidePreview = ({
           </p>
         )}
       </div>
+      {/* Logo overlay */}
+      {data.logoUrl && (
+        <img
+          src={data.logoUrl}
+          alt="Logo"
+          style={{
+            position: "absolute",
+            width: (data.logoSize || 80) * scale,
+            height: "auto",
+            opacity: (data.logoOpacity ?? 100) / 100,
+            ...(logoPositionStyle(data.logoPosition || "top-right", (data.padding || 20) * scale)),
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -294,7 +336,9 @@ const SlideEditor = ({
   const [slide, setSlide] = useState<SlideData>(editData || DEFAULT_SLIDE);
   const [saving, setSaving] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   const update = (field: keyof SlideData, value: any) => {
     setSlide((prev) => ({ ...prev, [field]: value }));
@@ -315,6 +359,24 @@ const SlideEditor = ({
       toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
     } finally {
       setUploadingBg(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const filePath = `logos/${playlistId}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("media").upload(filePath, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("media").getPublicUrl(filePath);
+      update("logoUrl", data.publicUrl);
+    } catch (err: any) {
+      toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingLogo(false);
       e.target.value = "";
     }
   };
@@ -521,6 +583,53 @@ const SlideEditor = ({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Logo */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+            <ImageIcon className="h-4 w-4" /> Logo
+          </h3>
+          <div className="space-y-2">
+            <input ref={logoFileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => logoFileRef.current?.click()} disabled={uploadingLogo}>
+                <Upload className="h-3.5 w-3.5" /> {uploadingLogo ? "Enviando..." : "Upload Logo"}
+              </Button>
+              {slide.logoUrl && (
+                <Button variant="ghost" size="sm" className="text-xs gap-1 text-destructive" onClick={() => update("logoUrl", "")}>
+                  <Trash2 className="h-3 w-3" /> Remover
+                </Button>
+              )}
+            </div>
+            {slide.logoUrl && (
+              <>
+                <img src={slide.logoUrl} alt="Logo" className="h-12 rounded border border-border object-contain bg-muted p-1" />
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Posição</Label>
+                  <Select value={slide.logoPosition} onValueChange={(v: any) => update("logoPosition", v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="top-left" className="text-xs">Topo Esquerda</SelectItem>
+                      <SelectItem value="top-center" className="text-xs">Topo Centro</SelectItem>
+                      <SelectItem value="top-right" className="text-xs">Topo Direita</SelectItem>
+                      <SelectItem value="bottom-left" className="text-xs">Base Esquerda</SelectItem>
+                      <SelectItem value="bottom-center" className="text-xs">Base Centro</SelectItem>
+                      <SelectItem value="bottom-right" className="text-xs">Base Direita</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Tamanho {slide.logoSize}px</Label>
+                  <Slider value={[slide.logoSize]} onValueChange={([v]) => update("logoSize", v)} min={30} max={300} step={5} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Opacidade {slide.logoOpacity}%</Label>
+                  <Slider value={[slide.logoOpacity]} onValueChange={([v]) => update("logoOpacity", v)} min={10} max={100} step={5} />
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <Button onClick={save} disabled={saving} className="w-full">
