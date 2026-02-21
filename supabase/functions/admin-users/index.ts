@@ -227,6 +227,61 @@ Deno.serve(async (req) => {
       }
     }
 
+    // GET FORNECEDOR TABLE PERMISSIONS
+    if (action === 'get-fornecedor-tables') {
+      const { fornecedor: targetFornecedor } = body;
+      if (!targetFornecedor) {
+        return new Response(JSON.stringify({ error: 'Fornecedor é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const { data, error } = await supabaseAdmin
+        .from('fornecedor_tables')
+        .select('table_name')
+        .eq('fornecedor', targetFornecedor);
+      if (error) throw error;
+      return new Response(JSON.stringify({ data: (data || []).map((r: any) => r.table_name) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // SET FORNECEDOR TABLE PERMISSIONS
+    if (action === 'set-fornecedor-tables') {
+      const { fornecedor: targetFornecedor, tables } = body;
+      if (!targetFornecedor) {
+        return new Response(JSON.stringify({ error: 'Fornecedor é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      // Delete existing
+      await supabaseAdmin.from('fornecedor_tables').delete().eq('fornecedor', targetFornecedor);
+      // Insert new
+      if (tables?.length) {
+        await supabaseAdmin.from('fornecedor_tables').insert(
+          tables.map((t: string) => ({ fornecedor: targetFornecedor, table_name: t }))
+        );
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // GET ALL AVAILABLE TABLES
+    if (action === 'available-tables') {
+      const { default: postgres } = await import("npm:postgres@3.4.5");
+      const sql = postgres({
+        host: Deno.env.get('EXTERNAL_DB_HOST')!,
+        user: Deno.env.get('EXTERNAL_DB_USER')!,
+        password: Deno.env.get('EXTERNAL_DB_PASSWORD')!,
+        database: Deno.env.get('EXTERNAL_DB_NAME')!,
+        port: 5432, ssl: false, max: 1, idle_timeout: 5,
+      });
+      try {
+        const result = await sql`
+          SELECT table_name FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name LIKE 'vendas_%'
+          ORDER BY table_name
+        `;
+        await sql.end();
+        return new Response(JSON.stringify({ data: result.map((r: any) => r.table_name) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      } catch (e) {
+        await sql.end();
+        return new Response(JSON.stringify({ data: [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     return new Response(JSON.stringify({ error: 'Ação inválida' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     console.error('Error:', error);

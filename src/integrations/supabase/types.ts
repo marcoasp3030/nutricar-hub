@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      fornecedor_tables: {
+        Row: {
+          created_at: string
+          fornecedor: string
+          id: string
+          table_name: string
+        }
+        Insert: {
+          created_at?: string
+          fornecedor: string
+          id?: string
+          table_name: string
+        }
+        Update: {
+          created_at?: string
+          fornecedor?: string
+          id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
