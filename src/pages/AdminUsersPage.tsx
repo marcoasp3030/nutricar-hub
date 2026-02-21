@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -14,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2 } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserData {
@@ -22,29 +23,29 @@ interface UserData {
   full_name: string;
   email: string;
   fornecedor: string | null;
+  fornecedores: string[];
   roles: string[];
+  is_active: boolean;
   created_at: string;
   last_sign_in: string | null;
 }
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState<UserData[]>([]);
-  const [fornecedores, setFornecedores] = useState<string[]>([]);
+  const [fornecedoresList, setFornecedoresList] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Dialogs
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
 
-  // Form state
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
-  const [formFornecedor, setFormFornecedor] = useState("");
+  const [formFornecedores, setFormFornecedores] = useState<string[]>([]);
   const [formRole, setFormRole] = useState<string>("fornecedor");
   const [formFornecedorSearch, setFormFornecedorSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -71,23 +72,34 @@ const AdminUsersPage = () => {
   useEffect(() => {
     fetchUsers();
     callAdmin({ action: 'fornecedores' })
-      .then(res => setFornecedores(res.data || []))
+      .then(res => setFornecedoresList(res.data || []))
       .catch(() => {});
   }, [fetchUsers]);
 
   const filtered = users.filter(u =>
     u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase()) ||
-    u.fornecedor?.toLowerCase().includes(search.toLowerCase())
+    u.fornecedores?.some(f => f.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const filteredFornecedores = fornecedores.filter(f =>
-    f.toLowerCase().includes(formFornecedorSearch.toLowerCase())
-  ).slice(0, 50);
+  const filteredSuggestions = fornecedoresList
+    .filter(f => f.toLowerCase().includes(formFornecedorSearch.toLowerCase()) && !formFornecedores.includes(f))
+    .slice(0, 30);
 
   const resetForm = () => {
     setFormName(""); setFormEmail(""); setFormPassword("");
-    setFormFornecedor(""); setFormRole("fornecedor"); setFormFornecedorSearch("");
+    setFormFornecedores([]); setFormRole("fornecedor"); setFormFornecedorSearch("");
+  };
+
+  const addFornecedor = (f: string) => {
+    if (f && !formFornecedores.includes(f)) {
+      setFormFornecedores(prev => [...prev, f]);
+    }
+    setFormFornecedorSearch("");
+  };
+
+  const removeFornecedor = (f: string) => {
+    setFormFornecedores(prev => prev.filter(x => x !== f));
   };
 
   const handleCreate = async () => {
@@ -102,7 +114,7 @@ const AdminUsersPage = () => {
         email: formEmail,
         password: formPassword,
         full_name: formName,
-        fornecedor: formFornecedor || null,
+        fornecedores: formFornecedores,
         role: formRole,
       });
       toast.success("Usuário criado com sucesso!");
@@ -124,7 +136,7 @@ const AdminUsersPage = () => {
         action: 'update',
         target_user_id: selectedUser.user_id,
         full_name: formName,
-        fornecedor: formFornecedor || null,
+        fornecedores: formFornecedores,
         role: formRole,
       });
       toast.success("Usuário atualizado!");
@@ -135,6 +147,20 @@ const AdminUsersPage = () => {
       toast.error(e.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async (user: UserData) => {
+    try {
+      await callAdmin({
+        action: 'toggle-active',
+        target_user_id: user.user_id,
+        is_active: !user.is_active,
+      });
+      toast.success(user.is_active ? "Acesso desativado" : "Acesso ativado");
+      fetchUsers();
+    } catch (e: any) {
+      toast.error(e.message);
     }
   };
 
@@ -178,8 +204,9 @@ const AdminUsersPage = () => {
   const openEdit = (user: UserData) => {
     setSelectedUser(user);
     setFormName(user.full_name);
-    setFormFornecedor(user.fornecedor || "");
+    setFormFornecedores(user.fornecedores || []);
     setFormRole(user.roles[0] || "fornecedor");
+    setFormFornecedorSearch("");
     setEditOpen(true);
   };
 
@@ -193,6 +220,52 @@ const AdminUsersPage = () => {
     setSelectedUser(user);
     setDeleteOpen(true);
   };
+
+  // Fornecedor input component reused in create/edit
+  const FornecedorInput = () => (
+    <div>
+      <Label>Fornecedores vinculados</Label>
+      {formFornecedores.length > 0 && (
+        <div className="mt-1 mb-2 flex flex-wrap gap-1.5">
+          {formFornecedores.map(f => (
+            <Badge key={f} variant="secondary" className="gap-1 text-xs py-1">
+              <span className="max-w-[200px] truncate">{f}</span>
+              <button onClick={() => removeFornecedor(f)} className="ml-0.5 hover:text-destructive">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <Input
+          value={formFornecedorSearch}
+          onChange={e => setFormFornecedorSearch(e.target.value)}
+          placeholder="Buscar fornecedor para adicionar..."
+          onKeyDown={e => {
+            if (e.key === 'Enter' && formFornecedorSearch) {
+              e.preventDefault();
+              addFornecedor(formFornecedorSearch);
+            }
+          }}
+        />
+        {formFornecedorSearch && filteredSuggestions.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto rounded-md border bg-popover p-1 text-sm shadow-md">
+            {filteredSuggestions.map(f => (
+              <button
+                key={f}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent"
+                onClick={() => addFornecedor(f)}
+              >
+                <Plus className="h-3 w-3 text-muted-foreground" />
+                <span className="truncate">{f}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -222,9 +295,10 @@ const AdminUsersPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Ativo</TableHead>
                     <TableHead className="text-xs">Nome</TableHead>
                     <TableHead className="text-xs">E-mail</TableHead>
-                    <TableHead className="text-xs">Fornecedor</TableHead>
+                    <TableHead className="text-xs">Fornecedores</TableHead>
                     <TableHead className="text-xs">Papel</TableHead>
                     <TableHead className="text-xs">Último acesso</TableHead>
                     <TableHead className="text-xs w-32">Ações</TableHead>
@@ -232,17 +306,35 @@ const AdminUsersPage = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((u) => (
-                    <TableRow key={u.user_id} className="text-sm">
+                    <TableRow key={u.user_id} className={`text-sm ${!u.is_active ? 'opacity-50' : ''}`}>
+                      <TableCell>
+                        <Switch
+                          checked={u.is_active}
+                          onCheckedChange={() => handleToggleActive(u)}
+                          disabled={u.roles.includes('admin') && u.user_id === users.find(x => x.roles.includes('admin'))?.user_id}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                      <TableCell>{u.fornecedor || <span className="text-muted-foreground italic">Não vinculado</span>}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[250px]">
+                          {u.fornecedores?.length > 0 ? (
+                            u.fornecedores.map(f => (
+                              <Badge key={f} variant="outline" className="text-[10px] py-0 max-w-[200px] truncate">
+                                {f}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground italic text-xs">Não vinculado</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {u.roles.map(r => (
                           <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="mr-1">
                             {r}
                           </Badge>
                         ))}
-                        {u.roles.length === 0 && <span className="text-muted-foreground text-xs">Sem papel</span>}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {u.last_sign_in ? new Date(u.last_sign_in).toLocaleDateString('pt-BR') : 'Nunca'}
@@ -264,7 +356,7 @@ const AdminUsersPage = () => {
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                         Nenhum usuário encontrado.
                       </TableCell>
                     </TableRow>
@@ -306,27 +398,7 @@ const AdminUsersPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Fornecedor vinculado</Label>
-              <Input
-                value={formFornecedorSearch || formFornecedor}
-                onChange={e => { setFormFornecedorSearch(e.target.value); setFormFornecedor(e.target.value); }}
-                placeholder="Digite para buscar ou inserir..."
-              />
-              {formFornecedorSearch && filteredFornecedores.length > 0 && (
-                <div className="mt-1 max-h-32 overflow-y-auto rounded-md border bg-popover p-1 text-sm">
-                  {filteredFornecedores.map(f => (
-                    <button
-                      key={f}
-                      className="block w-full rounded px-2 py-1 text-left hover:bg-accent"
-                      onClick={() => { setFormFornecedor(f); setFormFornecedorSearch(""); }}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <FornecedorInput />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -360,24 +432,7 @@ const AdminUsersPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Fornecedor vinculado</Label>
-              <Input
-                value={formFornecedorSearch || formFornecedor}
-                onChange={e => { setFormFornecedorSearch(e.target.value); setFormFornecedor(e.target.value); }}
-                placeholder="Digite para buscar..."
-              />
-              {formFornecedorSearch && filteredFornecedores.length > 0 && (
-                <div className="mt-1 max-h-32 overflow-y-auto rounded-md border bg-popover p-1 text-sm">
-                  {filteredFornecedores.map(f => (
-                    <button key={f} className="block w-full rounded px-2 py-1 text-left hover:bg-accent"
-                      onClick={() => { setFormFornecedor(f); setFormFornecedorSearch(""); }}>
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <FornecedorInput />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
