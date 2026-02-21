@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { queryVendas } from "@/lib/api";
+import { exportToXLSX, exportToPDF, REPORT_COLUMNS } from "@/lib/exportUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
-import { Download, Filter, Search, ChevronLeft, ChevronRight, Loader2, ArrowUpDown } from "lucide-react";
+import { Download, Filter, Search, ChevronLeft, ChevronRight, Loader2, ArrowUpDown, FileSpreadsheet, FileText } from "lucide-react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -95,6 +96,35 @@ const ReportsPage = ({ tableName }: ReportsPageProps) => {
     URL.revokeObjectURL(url);
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const exportAllData = async (format: "xlsx" | "pdf") => {
+    setExporting(true);
+    try {
+      // Fetch all data (up to 5000 rows) for export
+      const res = await queryVendas({
+        action: "list",
+        filters: { ...filters, search },
+        page: 1,
+        pageSize: 5000,
+        sortBy,
+        sortDir,
+        tableName,
+      });
+      const allData = res.data || [];
+      const filename = `relatorio_nutricar_${tableName}`;
+      if (format === "xlsx") {
+        exportToXLSX(allData, REPORT_COLUMNS, filename);
+      } else {
+        exportToPDF(allData, REPORT_COLUMNS, filename, `Relatório — ${tableName.replace("vendas_", "Vendas ")}`);
+      }
+    } catch (e) {
+      console.error("Export error:", e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const columns = ['periodo', 'produto', 'categoria', 'kind', 'status', 'quantidade', 'valor', 'desconto', 'loja', 'regiao'];
 
   return (
@@ -104,7 +134,13 @@ const ReportsPage = ({ tableName }: ReportsPageProps) => {
           <h1 className="text-2xl font-bold text-foreground">Relatórios</h1>
           <p className="text-sm text-muted-foreground">{total.toLocaleString("pt-BR")} registros</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportAllData("xlsx")} disabled={exporting} className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => exportAllData("pdf")} disabled={exporting} className="gap-2">
+            <FileText className="h-4 w-4" /> PDF
+          </Button>
           <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2">
             <Download className="h-4 w-4" /> CSV
           </Button>
