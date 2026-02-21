@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 interface QueryVendasParams {
-  action: 'kpis' | 'chart' | 'list' | 'filter-options' | 'tables';
+  action: 'kpis' | 'chart' | 'list' | 'filter-options' | 'tables' | 'dashboard';
   filters?: Record<string, any>;
   page?: number;
   pageSize?: number;

@@ -74,6 +74,35 @@ Deno.serve(async (req) => {
         return clause;
       };
 
+      if (action === 'dashboard') {
+        const dateClause = buildDateClause(filters);
+        const groupByExtra = filters.groupBy || 'categoria';
+        let whereClause = '';
+        if (isAdmin && !filters.fornecedor) {
+          whereClause = `WHERE 1=1${dateClause}`;
+        } else {
+          const forn = filters.fornecedor || fornecedor;
+          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
+        }
+
+        const buildGroupQuery = (col: string, limit = 20) =>
+          `SELECT ${col} as name, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(quantidade::numeric),0) as quantidade FROM ${tableNameClean} ${whereClause} GROUP BY ${col} ORDER BY valor DESC LIMIT ${limit}`;
+
+        const [kpis, periodo, status, pagamento, bairro, bandeira, extra] = await Promise.all([
+          sql.unsafe(`SELECT COALESCE(SUM(quantidade::numeric),0) as total_quantidade, COALESCE(SUM(valor::numeric),0) as total_valor, COALESCE(SUM(valor_compra::numeric),0) as total_valor_compra, COALESCE(SUM(desconto::numeric),0) as total_desconto, COUNT(*) as total_registros FROM ${tableNameClean} ${whereClause}`),
+          sql.unsafe(buildGroupQuery('periodo')),
+          sql.unsafe(buildGroupQuery('status')),
+          sql.unsafe(buildGroupQuery('tipo_de_pagamento')),
+          sql.unsafe(buildGroupQuery('bairro', 10)),
+          sql.unsafe(buildGroupQuery('bandeira')),
+          sql.unsafe(buildGroupQuery(groupByExtra)),
+        ]);
+
+        return new Response(JSON.stringify({
+          data: { kpis: kpis[0], periodo, status, pagamento, bairro, bandeira, extra }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
       if (action === 'kpis') {
         const dateClause = buildDateClause(filters);
         let whereClause = '';
