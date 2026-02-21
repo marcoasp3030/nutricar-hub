@@ -90,6 +90,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          orientation: string
           schedule_end: string | null
           schedule_start: string | null
           tags: string[] | null
@@ -102,6 +103,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          orientation?: string
           schedule_end?: string | null
           schedule_start?: string | null
           tags?: string[] | null
@@ -114,6 +116,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          orientation?: string
           schedule_end?: string | null
           schedule_start?: string | null
           tags?: string[] | null
