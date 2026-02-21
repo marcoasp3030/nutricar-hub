@@ -27,6 +27,7 @@ const navItems = {
     { to: "/relatorios", label: "Relatórios", icon: FileText },
   ],
   admin: [
+    { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/admin/usuarios", label: "Usuários", icon: Users },
   ],
 };

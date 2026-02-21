@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -127,7 +128,7 @@ const AppContent = () => {
         onTableChange={setTableName}
       >
         <Routes>
-          <Route path="/" element={<Navigate to={role === 'admin' ? '/admin/usuarios' : '/dashboard'} replace />} />
+          <Route path="/" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
           {role !== 'admin' && (
             <>
               <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
@@ -136,11 +137,14 @@ const AppContent = () => {
             </>
           )}
           {role === "admin" ? (
-            <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+            <>
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+            </>
           ) : (
             <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
           )}
-          <Route path="*" element={<Navigate to={role === 'admin' ? '/admin/usuarios' : '/dashboard'} replace />} />
+          <Route path="*" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
