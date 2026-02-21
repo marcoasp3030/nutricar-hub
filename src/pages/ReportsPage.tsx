@@ -15,9 +15,10 @@ const formatCurrency = (value: number) =>
 
 interface ReportsPageProps {
   tableName: string;
+  fornecedor: string;
 }
 
-const ReportsPage = ({ tableName }: ReportsPageProps) => {
+const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -36,17 +37,17 @@ const ReportsPage = ({ tableName }: ReportsPageProps) => {
   // Load filter options
   useEffect(() => {
     filterFields.forEach(field => {
-      queryVendas({ action: 'filter-options', filters: { field }, tableName })
+      queryVendas({ action: 'filter-options', filters: { field, fornecedor }, tableName })
         .then(res => setFilterOptions(prev => ({ ...prev, [field]: res.data || [] })))
         .catch(console.error);
     });
-  }, [tableName]);
+  }, [tableName, fornecedor]);
 
   const fetchData = useCallback(() => {
     setLoading(true);
     queryVendas({
       action: 'list',
-      filters: { ...filters, search },
+      filters: { ...filters, search, fornecedor },
       page,
       pageSize: 25,
       sortBy,
@@ -57,7 +58,7 @@ const ReportsPage = ({ tableName }: ReportsPageProps) => {
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 0);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [filters, search, page, sortBy, sortDir, tableName]);
+  }, [filters, search, page, sortBy, sortDir, tableName, fornecedor]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

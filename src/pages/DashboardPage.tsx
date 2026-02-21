@@ -26,9 +26,10 @@ const COLORS = [
 
 interface DashboardPageProps {
   tableName: string;
+  fornecedor: string;
 }
 
-const DashboardPage = ({ tableName }: DashboardPageProps) => {
+const DashboardPage = ({ tableName, fornecedor }: DashboardPageProps) => {
   const [kpis, setKpis] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartGroupBy, setChartGroupBy] = useState("categoria");
@@ -48,12 +49,11 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
 
   useEffect(() => {
     setLoading(true);
-    queryVendas({ action: 'dashboard', filters: { ...dateFilters, groupBy: chartGroupBy }, tableName })
+    queryVendas({ action: 'dashboard', filters: { ...dateFilters, groupBy: chartGroupBy, fornecedor }, tableName })
       .then(res => {
         const d = res.data;
         setKpis(d.kpis);
         setPeriodoData(d.periodo || []);
-        // status data no longer needed (filtered to OK only)
         setPagamentoData(d.pagamento || []);
         setBairroData(d.bairro || []);
         setBandeiraData(d.bandeira || []);
@@ -61,7 +61,7 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [tableName, dateFrom, dateTo, chartGroupBy]);
+  }, [tableName, dateFrom, dateTo, chartGroupBy, fornecedor]);
 
   if (loading) {
     return (
