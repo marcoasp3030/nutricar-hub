@@ -285,7 +285,28 @@ Deno.serve(async (req) => {
           WHERE table_schema = 'public' AND table_name LIKE 'vendas_%'
           ORDER BY table_name
         `;
-        return new Response(JSON.stringify({ data: result.map((r: any) => r.table_name) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        const allTables = result.map((r: any) => r.table_name);
+
+        // If admin without fornecedor filter, return all tables
+        if (isAdmin && !filters.fornecedor) {
+          return new Response(JSON.stringify({ data: allTables }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        // For fornecedor users, filter by permissions in fornecedor_tables
+        const forn = filters.fornecedor || fornecedor;
+        const { data: allowedTables } = await supabase
+          .from('fornecedor_tables')
+          .select('table_name')
+          .eq('fornecedor', forn);
+
+        if (allowedTables && allowedTables.length > 0) {
+          const allowed = allowedTables.map((t: any) => t.table_name);
+          const filtered = allTables.filter((t: string) => allowed.includes(t));
+          return new Response(JSON.stringify({ data: filtered }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        // If no permissions set, return all tables (backwards compatible)
+        return new Response(JSON.stringify({ data: allTables }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       return new Response(JSON.stringify({ error: 'Ação inválida' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

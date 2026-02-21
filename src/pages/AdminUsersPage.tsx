@@ -15,8 +15,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check } from "lucide-react";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface UserData {
   user_id: string;
@@ -50,6 +52,14 @@ const AdminUsersPage = () => {
   const [formFornecedorSearch, setFormFornecedorSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Table access management state
+  const [availableTables, setAvailableTables] = useState<string[]>([]);
+  const [tableAccessOpen, setTableAccessOpen] = useState(false);
+  const [tableAccessFornecedor, setTableAccessFornecedor] = useState("");
+  const [tableAccessSelection, setTableAccessSelection] = useState<string[]>([]);
+  const [tableAccessLoading, setTableAccessLoading] = useState(false);
+  const [tableAccessSearch, setTableAccessSearch] = useState("");
+
   const callAdmin = async (body: any) => {
     const { data, error } = await supabase.functions.invoke('admin-users', { body });
     if (error) throw new Error(error.message);
@@ -74,7 +84,48 @@ const AdminUsersPage = () => {
     callAdmin({ action: 'fornecedores' })
       .then(res => setFornecedoresList(res.data || []))
       .catch(() => {});
+    callAdmin({ action: 'available-tables' })
+      .then(res => setAvailableTables(res.data || []))
+      .catch(() => {});
   }, [fetchUsers]);
+
+  const openTableAccess = async (fornecedor: string) => {
+    setTableAccessFornecedor(fornecedor);
+    setTableAccessSearch("");
+    setTableAccessOpen(true);
+    setTableAccessLoading(true);
+    try {
+      const res = await callAdmin({ action: 'get-fornecedor-tables', fornecedor });
+      setTableAccessSelection(res.data || []);
+    } catch {
+      setTableAccessSelection([]);
+    } finally {
+      setTableAccessLoading(false);
+    }
+  };
+
+  const handleSaveTableAccess = async () => {
+    setSubmitting(true);
+    try {
+      await callAdmin({
+        action: 'set-fornecedor-tables',
+        fornecedor: tableAccessFornecedor,
+        tables: tableAccessSelection,
+      });
+      toast.success(`Acesso às bases atualizado para ${tableAccessFornecedor}`);
+      setTableAccessOpen(false);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleTableAccess = (tableName: string) => {
+    setTableAccessSelection(prev =>
+      prev.includes(tableName) ? prev.filter(t => t !== tableName) : [...prev, tableName]
+    );
+  };
 
   const filtered = users.filter(u =>
     u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -267,17 +318,32 @@ const AdminUsersPage = () => {
     </div>
   );
 
+  // Filtered fornecedores for table access tab
+  const filteredFornecedoresForTables = fornecedoresList.filter(f =>
+    f.toLowerCase().includes(tableAccessSearch.toLowerCase())
+  );
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Usuários</h1>
-          <p className="text-sm text-muted-foreground">{users.length} usuários cadastrados</p>
+          <h1 className="text-2xl font-bold text-foreground">Administração</h1>
+          <p className="text-sm text-muted-foreground">Gerenciar usuários e acessos</p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => { resetForm(); setCreateOpen(true); }}>
-          <UserPlus className="h-4 w-4" /> Novo Usuário
-        </Button>
       </div>
+
+      <Tabs defaultValue="usuarios" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="usuarios">Usuários</TabsTrigger>
+          <TabsTrigger value="bases">Acesso às Bases</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="usuarios" className="space-y-4">
+          <div className="flex justify-end">
+            <Button size="sm" className="gap-2" onClick={() => { resetForm(); setCreateOpen(true); }}>
+              <UserPlus className="h-4 w-4" /> Novo Usuário
+            </Button>
+          </div>
 
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
@@ -482,6 +548,118 @@ const AdminUsersPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </TabsContent>
+
+        <TabsContent value="bases" className="space-y-4">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Defina quais bases de dados cada fornecedor pode acessar. Fornecedores sem permissões configuradas terão acesso a todas as bases.
+                </p>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Buscar fornecedor..." value={tableAccessSearch} onChange={(e) => setTableAccessSearch(e.target.value)} className="pl-10" />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-xs">Fornecedor</TableHead>
+                      <TableHead className="text-xs w-40">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredFornecedoresForTables.map(f => (
+                      <TableRow key={f} className="text-sm">
+                        <TableCell className="font-medium">{f}</TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm" className="gap-2" onClick={() => openTableAccess(f)}>
+                            <Database className="h-3.5 w-3.5" /> Configurar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredFornecedoresForTables.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={2} className="py-8 text-center text-muted-foreground">
+                          Nenhum fornecedor encontrado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Table Access Dialog */}
+      <Dialog open={tableAccessOpen} onOpenChange={setTableAccessOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Acesso às Bases de Dados</DialogTitle>
+            <DialogDescription className="truncate">{tableAccessFornecedor}</DialogDescription>
+          </DialogHeader>
+          {tableAccessLoading ? (
+            <div className="flex h-24 items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {availableTables.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma base de dados disponível.</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between pb-2 border-b">
+                    <span className="text-sm font-medium text-foreground">Selecionar bases</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => {
+                        if (tableAccessSelection.length === availableTables.length) {
+                          setTableAccessSelection([]);
+                        } else {
+                          setTableAccessSelection([...availableTables]);
+                        }
+                      }}
+                    >
+                      {tableAccessSelection.length === availableTables.length ? "Desmarcar todas" : "Selecionar todas"}
+                    </Button>
+                  </div>
+                  {availableTables.map(t => (
+                    <label key={t} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent cursor-pointer">
+                      <Checkbox
+                        checked={tableAccessSelection.includes(t)}
+                        onCheckedChange={() => toggleTableAccess(t)}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Database className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{t.replace('vendas_', 'Vendas ')}</span>
+                      </div>
+                    </label>
+                  ))}
+                </>
+              )}
+              {tableAccessSelection.length === 0 && availableTables.length > 0 && (
+                <p className="text-xs text-muted-foreground pt-2 italic">
+                  Sem seleção = acesso a todas as bases (padrão).
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setTableAccessOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveTableAccess} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

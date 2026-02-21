@@ -41,14 +41,18 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
   const items = navItems[role];
 
   useEffect(() => {
-    queryVendas({ action: 'tables' })
+    queryVendas({ action: 'tables', filters: { fornecedor: fornecedor !== 'Não vinculado' ? fornecedor : undefined } })
       .then(res => {
         if (res.data?.length) {
           setTables(res.data);
+          // If current tableName is not in the allowed list, switch to first available
+          if (!res.data.includes(tableName)) {
+            onTableChange(res.data[0]);
+          }
         }
       })
       .catch(console.error);
-  }, []);
+  }, [fornecedor]);
 
   return (
     <div className="flex min-h-screen bg-background">
