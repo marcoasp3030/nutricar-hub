@@ -209,6 +209,78 @@ export type Database = {
         }
         Relationships: []
       }
+      lgpd_consents: {
+        Row: {
+          consent_type: string
+          consented_at: string
+          id: string
+          ip_address: string | null
+          revoked_at: string | null
+          user_agent: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          consent_type?: string
+          consented_at?: string
+          id?: string
+          ip_address?: string | null
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id: string
+          version?: string
+        }
+        Update: {
+          consent_type?: string
+          consented_at?: string
+          id?: string
+          ip_address?: string | null
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      lgpd_requests: {
+        Row: {
+          admin_notes: string | null
+          completed_at: string | null
+          id: string
+          reason: string | null
+          request_type: string
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          completed_at?: string | null
+          id?: string
+          reason?: string | null
+          request_type?: string
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          completed_at?: string | null
+          id?: string
+          reason?: string | null
+          request_type?: string
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       playlist_items: {
         Row: {
           created_at: string
