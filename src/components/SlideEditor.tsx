@@ -1,0 +1,402 @@
+import { useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { useToast } from "@/hooks/use-toast";
+import { Upload, Type, AlignLeft, AlignCenter, AlignRight, Bold, Italic } from "lucide-react";
+
+export type SlideData = {
+  title: string;
+  subtitle: string;
+  body: string;
+  titleSize: number;
+  subtitleSize: number;
+  bodySize: number;
+  titleColor: string;
+  subtitleColor: string;
+  bodyColor: string;
+  titleBold: boolean;
+  titleItalic: boolean;
+  textAlign: "left" | "center" | "right";
+  bgType: "color" | "gradient" | "image";
+  bgColor: string;
+  bgGradient: string;
+  bgImage: string;
+  overlayOpacity: number;
+  verticalAlign: "top" | "center" | "bottom";
+  padding: number;
+};
+
+const DEFAULT_SLIDE: SlideData = {
+  title: "Título do Slide",
+  subtitle: "",
+  body: "",
+  titleSize: 48,
+  subtitleSize: 28,
+  bodySize: 20,
+  titleColor: "#FFFFFF",
+  subtitleColor: "#E0E0E0",
+  bodyColor: "#CCCCCC",
+  titleBold: true,
+  titleItalic: false,
+  textAlign: "center",
+  bgType: "gradient",
+  bgColor: "#1a1a2e",
+  bgGradient: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+  bgImage: "",
+  overlayOpacity: 50,
+  verticalAlign: "center",
+  padding: 60,
+};
+
+const GRADIENT_PRESETS = [
+  { label: "Noite Azul", value: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" },
+  { label: "Sunset", value: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" },
+  { label: "Floresta", value: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)" },
+  { label: "Roxo", value: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
+  { label: "Laranja", value: "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)" },
+  { label: "Escuro", value: "linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 50%, #2d2d2d 100%)" },
+  { label: "Oceano", value: "linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)" },
+  { label: "NutriCar", value: "linear-gradient(135deg, hsl(87 48% 35%) 0%, hsl(87 48% 51%) 100%)" },
+];
+
+/* ─── Slide Preview (reusable for TV mockup too) ─── */
+export const SlidePreview = ({
+  data,
+  width = 480,
+  height = 270,
+  className = "",
+}: {
+  data: SlideData;
+  width?: number;
+  height?: number;
+  className?: string;
+}) => {
+  const scale = width / 1920;
+
+  const bgStyle: React.CSSProperties = {
+    width,
+    height,
+    position: "relative",
+    overflow: "hidden",
+  };
+
+  if (data.bgType === "color") {
+    bgStyle.backgroundColor = data.bgColor;
+  } else if (data.bgType === "gradient") {
+    bgStyle.background = data.bgGradient;
+  }
+
+  const verticalJustify =
+    data.verticalAlign === "top" ? "flex-start" : data.verticalAlign === "bottom" ? "flex-end" : "center";
+
+  return (
+    <div style={bgStyle} className={`rounded ${className}`}>
+      {data.bgType === "image" && data.bgImage && (
+        <>
+          <img
+            src={data.bgImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: `rgba(0,0,0,${data.overlayOpacity / 100})` }}
+          />
+        </>
+      )}
+      <div
+        className="relative flex flex-col h-full w-full"
+        style={{
+          justifyContent: verticalJustify,
+          textAlign: data.textAlign,
+          padding: data.padding * scale,
+        }}
+      >
+        {data.title && (
+          <h1
+            style={{
+              fontSize: data.titleSize * scale,
+              color: data.titleColor,
+              fontWeight: data.titleBold ? 700 : 400,
+              fontStyle: data.titleItalic ? "italic" : "normal",
+              lineHeight: 1.2,
+              marginBottom: 8 * scale,
+            }}
+          >
+            {data.title}
+          </h1>
+        )}
+        {data.subtitle && (
+          <h2
+            style={{
+              fontSize: data.subtitleSize * scale,
+              color: data.subtitleColor,
+              fontWeight: 400,
+              lineHeight: 1.3,
+              marginBottom: 12 * scale,
+            }}
+          >
+            {data.subtitle}
+          </h2>
+        )}
+        {data.body && (
+          <p
+            style={{
+              fontSize: data.bodySize * scale,
+              color: data.bodyColor,
+              lineHeight: 1.5,
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {data.body}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Slide Editor ─── */
+const SlideEditor = ({
+  playlistId,
+  sortOrder,
+  onCreated,
+  editData,
+  editItemId,
+  onUpdated,
+}: {
+  playlistId: string;
+  sortOrder: number;
+  onCreated?: (item: any) => void;
+  editData?: SlideData;
+  editItemId?: string;
+  onUpdated?: (item: any) => void;
+}) => {
+  const { toast } = useToast();
+  const [slide, setSlide] = useState<SlideData>(editData || DEFAULT_SLIDE);
+  const [saving, setSaving] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const update = (field: keyof SlideData, value: any) => {
+    setSlide((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBg(true);
+    try {
+      const filePath = `slides/${playlistId}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("media").upload(filePath, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("media").getPublicUrl(filePath);
+      update("bgImage", data.publicUrl);
+      update("bgType", "image");
+    } catch (err: any) {
+      toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingBg(false);
+      e.target.value = "";
+    }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (editItemId && onUpdated) {
+        const { data, error } = await supabase
+          .from("playlist_items")
+          .update({ slide_data: slide as any })
+          .eq("id", editItemId)
+          .select()
+          .single();
+        if (error) throw error;
+        onUpdated(data);
+        toast({ title: "Slide atualizado!" });
+      } else {
+        const { data, error } = await supabase
+          .from("playlist_items")
+          .insert({
+            playlist_id: playlistId,
+            media_type: "slide",
+            media_url: "",
+            file_name: slide.title || "Slide",
+            sort_order: sortOrder,
+            slide_data: slide as any,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        onCreated?.(data);
+        toast({ title: "Slide adicionado!" });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Left: Controls */}
+      <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2">
+        {/* Text content */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+            <Type className="h-4 w-4" /> Conteúdo
+          </h3>
+          <div className="space-y-2">
+            <Label className="text-xs">Título</Label>
+            <Input value={slide.title} onChange={(e) => update("title", e.target.value)} placeholder="Título principal" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Subtítulo</Label>
+            <Input value={slide.subtitle} onChange={(e) => update("subtitle", e.target.value)} placeholder="Subtítulo (opcional)" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Texto</Label>
+            <Textarea value={slide.body} onChange={(e) => update("body", e.target.value)} placeholder="Corpo do texto (opcional)" rows={3} />
+          </div>
+        </div>
+
+        {/* Typography */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Tipografia</h3>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px]">Título {slide.titleSize}px</Label>
+              <Slider value={[slide.titleSize]} onValueChange={([v]) => update("titleSize", v)} min={20} max={120} step={2} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Subtítulo {slide.subtitleSize}px</Label>
+              <Slider value={[slide.subtitleSize]} onValueChange={([v]) => update("subtitleSize", v)} min={14} max={80} step={2} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Texto {slide.bodySize}px</Label>
+              <Slider value={[slide.bodySize]} onValueChange={([v]) => update("bodySize", v)} min={12} max={60} step={2} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Label className="text-[10px]">Título</Label>
+              <input type="color" value={slide.titleColor} onChange={(e) => update("titleColor", e.target.value)} className="h-6 w-6 rounded border cursor-pointer" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Label className="text-[10px]">Sub</Label>
+              <input type="color" value={slide.subtitleColor} onChange={(e) => update("subtitleColor", e.target.value)} className="h-6 w-6 rounded border cursor-pointer" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Label className="text-[10px]">Texto</Label>
+              <input type="color" value={slide.bodyColor} onChange={(e) => update("bodyColor", e.target.value)} className="h-6 w-6 rounded border cursor-pointer" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant={slide.titleBold ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={() => update("titleBold", !slide.titleBold)}>
+              <Bold className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant={slide.titleItalic ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={() => update("titleItalic", !slide.titleItalic)}>
+              <Italic className="h-3.5 w-3.5" />
+            </Button>
+            <div className="border-l border-border h-6 mx-1" />
+            <Button variant={slide.textAlign === "left" ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={() => update("textAlign", "left")}>
+              <AlignLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant={slide.textAlign === "center" ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={() => update("textAlign", "center")}>
+              <AlignCenter className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant={slide.textAlign === "right" ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={() => update("textAlign", "right")}>
+              <AlignRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[10px]">Posição vertical</Label>
+            <Select value={slide.verticalAlign} onValueChange={(v: any) => update("verticalAlign", v)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="top" className="text-xs">Topo</SelectItem>
+                <SelectItem value="center" className="text-xs">Centro</SelectItem>
+                <SelectItem value="bottom" className="text-xs">Base</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[10px]">Padding {slide.padding}px</Label>
+            <Slider value={[slide.padding]} onValueChange={([v]) => update("padding", v)} min={10} max={200} step={5} />
+          </div>
+        </div>
+
+        {/* Background */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Fundo</h3>
+          <div className="flex gap-2">
+            <Button variant={slide.bgType === "color" ? "default" : "outline"} size="sm" className="text-xs" onClick={() => update("bgType", "color")}>Cor</Button>
+            <Button variant={slide.bgType === "gradient" ? "default" : "outline"} size="sm" className="text-xs" onClick={() => update("bgType", "gradient")}>Gradiente</Button>
+            <Button variant={slide.bgType === "image" ? "default" : "outline"} size="sm" className="text-xs" onClick={() => update("bgType", "image")}>Imagem</Button>
+          </div>
+
+          {slide.bgType === "color" && (
+            <div className="flex items-center gap-2">
+              <input type="color" value={slide.bgColor} onChange={(e) => update("bgColor", e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+              <Input value={slide.bgColor} onChange={(e) => update("bgColor", e.target.value)} className="h-8 text-xs w-28" />
+            </div>
+          )}
+
+          {slide.bgType === "gradient" && (
+            <div className="grid grid-cols-4 gap-1.5">
+              {GRADIENT_PRESETS.map((g) => (
+                <button
+                  key={g.label}
+                  onClick={() => update("bgGradient", g.value)}
+                  className={`h-10 rounded-md border-2 transition-all ${
+                    slide.bgGradient === g.value ? "border-primary ring-1 ring-primary" : "border-transparent"
+                  }`}
+                  style={{ background: g.value }}
+                  title={g.label}
+                />
+              ))}
+            </div>
+          )}
+
+          {slide.bgType === "image" && (
+            <div className="space-y-2">
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
+              <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => fileRef.current?.click()} disabled={uploadingBg}>
+                <Upload className="h-3.5 w-3.5" /> {uploadingBg ? "Enviando..." : "Escolher imagem"}
+              </Button>
+              {slide.bgImage && (
+                <img src={slide.bgImage} alt="" className="h-16 rounded object-cover" />
+              )}
+              <div className="space-y-1">
+                <Label className="text-[10px]">Opacidade do overlay {slide.overlayOpacity}%</Label>
+                <Slider value={[slide.overlayOpacity]} onValueChange={([v]) => update("overlayOpacity", v)} min={0} max={90} step={5} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Button onClick={save} disabled={saving} className="w-full">
+          {saving ? "Salvando..." : editItemId ? "Atualizar Slide" : "Adicionar Slide"}
+        </Button>
+      </div>
+
+      {/* Right: Preview */}
+      <div className="flex flex-col items-center gap-3">
+        <Label className="text-xs text-muted-foreground">Preview (16:9)</Label>
+        <SlidePreview data={slide} width={480} height={270} className="shadow-lg border border-border" />
+      </div>
+    </div>
+  );
+};
+
+export default SlideEditor;
