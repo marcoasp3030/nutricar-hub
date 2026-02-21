@@ -48,28 +48,20 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      queryVendas({ action: 'kpis', tableName, filters: dateFilters }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'periodo', ...dateFilters }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'status', ...dateFilters }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'tipo_de_pagamento', ...dateFilters }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'bairro', ...dateFilters }, tableName }),
-      queryVendas({ action: 'chart', filters: { groupBy: 'bandeira', ...dateFilters }, tableName }),
-    ]).then(([kpiRes, periodoRes, statusRes, pagRes, bairroRes, bandeiraRes]) => {
-      setKpis(kpiRes.data);
-      setPeriodoData(periodoRes.data || []);
-      setStatusData(statusRes.data || []);
-      setPagamentoData(pagRes.data || []);
-      setBairroData((bairroRes.data || []).slice(0, 10));
-      setBandeiraData(bandeiraRes.data || []);
-    }).catch(console.error).finally(() => setLoading(false));
-  }, [tableName, dateFrom, dateTo]);
-
-  useEffect(() => {
-    queryVendas({ action: 'chart', filters: { groupBy: chartGroupBy, ...dateFilters }, tableName })
-      .then(res => setChartData(res.data || []))
-      .catch(console.error);
-  }, [chartGroupBy, tableName, dateFrom, dateTo]);
+    queryVendas({ action: 'dashboard', filters: { ...dateFilters, groupBy: chartGroupBy }, tableName })
+      .then(res => {
+        const d = res.data;
+        setKpis(d.kpis);
+        setPeriodoData(d.periodo || []);
+        setStatusData(d.status || []);
+        setPagamentoData(d.pagamento || []);
+        setBairroData(d.bairro || []);
+        setBandeiraData(d.bandeira || []);
+        setChartData(d.extra || []);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [tableName, dateFrom, dateTo, chartGroupBy]);
 
   if (loading) {
     return (
