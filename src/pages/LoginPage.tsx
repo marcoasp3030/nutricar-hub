@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Lock, Mail, User, Building2, Loader2, Phone, Check, X } from "lucide-react";
+import { Lock, Mail, User, Building2, Loader2, Phone, Check, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -52,6 +52,7 @@ const LoginPage = () => {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [lockCountdown, setLockCountdown] = useState(0);
+  const [pendingMessage, setPendingMessage] = useState(false);
 
   // Countdown timer for lockout
   useEffect(() => {
@@ -101,7 +102,8 @@ const LoginPage = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setPendingMessage(false);
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
@@ -113,6 +115,22 @@ const LoginPage = () => {
         toast.error(`Credenciais inválidas. ${MAX_ATTEMPTS - newAttempts} tentativa(s) restante(s).`);
       }
     } else {
+      // Check if user is pending approval
+      const userId = authData.user?.id;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('user_id', userId)
+          .single();
+
+        if (profile && !profile.is_active) {
+          setPendingMessage(true);
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
+      }
       setLoginAttempts(0);
       setLockedUntil(null);
     }
@@ -158,6 +176,17 @@ const LoginPage = () => {
 
               <TabsContent value="login" className="mt-4">
                 <form onSubmit={handleLogin} className="space-y-4">
+                  {pendingMessage && (
+                    <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-900 dark:bg-orange-950/30">
+                      <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">Cadastro pendente de aprovação</p>
+                        <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
+                          Sua conta foi criada com sucesso, mas ainda aguarda aprovação do administrador. Tente novamente mais tarde.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="login-email">E-mail</Label>
                     <div className="relative">
