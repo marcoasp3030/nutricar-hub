@@ -126,14 +126,23 @@ const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
     }
   };
 
-  const columns = ['periodo', 'produto', 'categoria', 'kind', 'status', 'quantidade', 'valor', 'desconto', 'loja', 'regiao'];
+  const formatPeriodo = (val: string) => {
+    if (!val) return "";
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    } catch { return val; }
+  };
+
+  const columns = ['periodo', 'produto', 'categoria', 'quantidade', 'valor', 'regiao'];
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Relatórios</h1>
-          <p className="text-sm text-muted-foreground">{total.toLocaleString("pt-BR")} registros</p>
+          <p className="text-sm text-muted-foreground">{total.toLocaleString("pt-BR")} registros encontrados</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => exportAllData("xlsx")} disabled={exporting} className="gap-2">
@@ -180,14 +189,14 @@ const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar produto, loja, código..."
+          placeholder="Buscar produto, código, região..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="pl-10"
         />
       </div>
 
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card className="border shadow-sm overflow-hidden rounded-xl">
         {loading ? (
           <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -197,12 +206,12 @@ const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
+                  <TableRow className="bg-muted/40">
                     {columns.map(col => (
-                      <TableHead key={col} className="text-xs cursor-pointer select-none" onClick={() => handleSort(col)}>
+                      <TableHead key={col} className="text-xs font-semibold cursor-pointer select-none whitespace-nowrap" onClick={() => handleSort(col)}>
                         <span className="inline-flex items-center gap-1 capitalize">
-                          {col.replace(/_/g, ' ')}
-                          {sortBy === col && <ArrowUpDown className="h-3 w-3" />}
+                          {col === 'periodo' ? 'Período' : col === 'quantidade' ? 'Qtd.' : col === 'regiao' ? 'Região' : col.replace(/_/g, ' ')}
+                          {sortBy === col && <ArrowUpDown className="h-3 w-3 text-primary" />}
                         </span>
                       </TableHead>
                     ))}
@@ -210,28 +219,18 @@ const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
                 </TableHeader>
                 <TableBody>
                   {data.map((row, i) => (
-                    <TableRow key={i} className="text-sm">
-                      <TableCell className="whitespace-nowrap">{row.periodo}</TableCell>
-                      <TableCell className="max-w-[200px] truncate font-medium">{row.produto}</TableCell>
-                      <TableCell>{row.categoria}</TableCell>
-                      <TableCell>{row.kind}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          row.status === 'Aprovado' || row.status === 'aprovado' ? 'bg-accent text-accent-foreground' :
-                          row.status === 'Pendente' || row.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>{row.status}</span>
-                      </TableCell>
-                      <TableCell className="text-right">{Number(row.quantidade).toLocaleString("pt-BR")}</TableCell>
-                      <TableCell className="text-right whitespace-nowrap">{formatCurrency(Number(row.valor))}</TableCell>
-                      <TableCell className="text-right whitespace-nowrap">{formatCurrency(Number(row.desconto))}</TableCell>
-                      <TableCell>{row.loja}</TableCell>
-                      <TableCell>{row.regiao}</TableCell>
+                    <TableRow key={i} className="text-sm hover:bg-muted/30 transition-colors">
+                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatPeriodo(row.periodo)}</TableCell>
+                      <TableCell className="max-w-[220px] truncate font-medium">{row.produto}</TableCell>
+                      <TableCell className="text-muted-foreground">{row.categoria}</TableCell>
+                      <TableCell className="text-right tabular-nums">{Number(row.quantidade).toLocaleString("pt-BR")}</TableCell>
+                      <TableCell className="text-right tabular-nums font-medium whitespace-nowrap">{formatCurrency(Number(row.valor))}</TableCell>
+                      <TableCell className="text-muted-foreground">{row.regiao}</TableCell>
                     </TableRow>
                   ))}
                   {data.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">Nenhum registro encontrado.</TableCell>
+                      <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">Nenhum registro encontrado.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -239,7 +238,7 @@ const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t p-3">
+              <div className="flex items-center justify-between border-t px-4 py-3">
                 <p className="text-xs text-muted-foreground">Página {page} de {totalPages}</p>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
