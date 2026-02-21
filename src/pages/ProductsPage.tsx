@@ -32,9 +32,10 @@ const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta"
 
 interface ProductsPageProps {
   tableName: string;
+  fornecedor: string;
 }
 
-const ProductsPage = ({ tableName }: ProductsPageProps) => {
+const ProductsPage = ({ tableName, fornecedor }: ProductsPageProps) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
@@ -48,11 +49,11 @@ const ProductsPage = ({ tableName }: ProductsPageProps) => {
 
   useEffect(() => {
     setLoading(true);
-    queryVendas({ action: "produtos", filters: dateFilters, tableName })
+    queryVendas({ action: "produtos", filters: { ...dateFilters, fornecedor }, tableName })
       .then((res) => setData(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [tableName, dateFrom, dateTo]);
+  }, [tableName, dateFrom, dateTo, fornecedor]);
 
   if (loading) {
     return (

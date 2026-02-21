@@ -22,8 +22,19 @@ const AppContent = () => {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [tableName, setTableName] = useState("vendas_2026");
-  const [selectedFornecedor, setSelectedFornecedor] = useState<string>("");
+  const [tableName, setTableName] = useState(() => sessionStorage.getItem("nutricar_table") || "vendas_2026");
+  const [selectedFornecedor, setSelectedFornecedor] = useState<string>(() => sessionStorage.getItem("nutricar_fornecedor") || "");
+
+  // Persist selections in sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem("nutricar_table", tableName);
+  }, [tableName]);
+
+  useEffect(() => {
+    if (selectedFornecedor) {
+      sessionStorage.setItem("nutricar_fornecedor", selectedFornecedor);
+    }
+  }, [selectedFornecedor]);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,9 +128,9 @@ const AppContent = () => {
       >
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage tableName={tableName} />} />
-          <Route path="/produtos" element={<ProductsPage tableName={tableName} />} />
-          <Route path="/relatorios" element={<ReportsPage tableName={tableName} />} />
+          <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
+          <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+          <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
           {role === "admin" ? (
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
           ) : (
