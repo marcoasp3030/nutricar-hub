@@ -44,6 +44,8 @@ const TvPlayerPage = () => {
   const [logo, setLogo] = useState<PlaylistLogo>({ logo_url: "", logo_position: "top-right", logo_size: 80, logo_opacity: 100 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [volume, setVolume] = useState(80);
+  const [mediaFit, setMediaFit] = useState<string>("contain");
+  const [bgColor, setBgColor] = useState("#000000");
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const loadItems = useCallback(async () => {
@@ -89,6 +91,8 @@ const TvPlayerPage = () => {
 
     setOrientation((playlist as any).orientation || "horizontal");
     setVolume((playlist as any).volume ?? 80);
+    setMediaFit((playlist as any).media_fit || "contain");
+    setBgColor((playlist as any).bg_color || "#000000");
     setLogo({
       logo_url: (playlist as any).logo_url || "",
       logo_position: (playlist as any).logo_position || "top-right",
@@ -234,13 +238,15 @@ const TvPlayerPage = () => {
       );
     }
 
+    const fitClass = mediaFit === "cover" ? "object-cover" : mediaFit === "fill" ? "object-fill" : "object-contain";
+
     if (current.media_type === "image") {
       return (
         <div className="w-full h-full flex items-center justify-center">
           <img
             src={current.media_url}
             alt=""
-            className="max-w-full max-h-full object-contain"
+            className={`w-full h-full ${fitClass}`}
             style={{ transform: `rotate(${rot}deg)` }}
           />
         </div>
@@ -258,7 +264,7 @@ const TvPlayerPage = () => {
             muted
             playsInline
             onEnded={advanceToNext}
-            className="max-w-full max-h-full object-contain"
+            className={`w-full h-full ${fitClass}`}
             style={{ transform: `rotate(${rot}deg)` }}
           />
         </div>
@@ -270,8 +276,9 @@ const TvPlayerPage = () => {
 
   return (
     <div
-      className="fixed inset-0 bg-black overflow-hidden cursor-none"
+      className="fixed inset-0 overflow-hidden cursor-none"
       style={{
+        backgroundColor: bgColor,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

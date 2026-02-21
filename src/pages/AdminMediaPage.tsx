@@ -42,6 +42,8 @@ type Playlist = {
   logo_size: number;
   logo_opacity: number;
   volume: number;
+  media_fit: string;
+  bg_color: string;
 };
 
 type PlaylistItem = {
@@ -1168,6 +1170,48 @@ const AdminMediaPage = () => {
                         </div>
                       </div>
                     )}
+                   </div>
+
+                  {/* Display settings */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <Label className="text-xs font-semibold">Exibição</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Ajuste de mídia</Label>
+                      <Select
+                        value={selectedPlaylist.media_fit || "contain"}
+                        onValueChange={async (v) => {
+                          await supabase.from("playlists").update({ media_fit: v } as any).eq("id", selectedPlaylist.id);
+                          setSelectedPlaylist({ ...selectedPlaylist, media_fit: v });
+                          setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, media_fit: v } : p)));
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="contain">Conter (mostrar completo)</SelectItem>
+                          <SelectItem value="cover">Cobrir (preencher tela)</SelectItem>
+                          <SelectItem value="fill">Esticar (distorcer)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Cor de fundo</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={selectedPlaylist.bg_color || "#000000"}
+                          onChange={async (e) => {
+                            const v = e.target.value;
+                            await supabase.from("playlists").update({ bg_color: v } as any).eq("id", selectedPlaylist.id);
+                            setSelectedPlaylist({ ...selectedPlaylist, bg_color: v });
+                            setPlaylists((prev) => prev.map((p) => (p.id === selectedPlaylist.id ? { ...p, bg_color: v } : p)));
+                          }}
+                          className="w-8 h-8 rounded border cursor-pointer"
+                        />
+                        <span className="text-[10px] text-muted-foreground">{selectedPlaylist.bg_color || "#000000"}</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
