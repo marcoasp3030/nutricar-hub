@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo-nutricar.webp";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,9 @@ const formatPhone = (value: string) => {
   return digits.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
 };
 
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 60;
+
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,6 +39,25 @@ const LoginPage = () => {
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState("login");
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [lockCountdown, setLockCountdown] = useState(0);
+
+  // Countdown timer for lockout
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const interval = setInterval(() => {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setLockCountdown(0);
+        setLoginAttempts(0);
+      } else {
+        setLockCountdown(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
 
   const lookupCnpj = async (value: string) => {
     const digits = value.replace(/\D/g, '');
@@ -60,11 +82,30 @@ const LoginPage = () => {
     }
   };
 
+  const isLocked = lockedUntil !== null && Date.now() < lockedUntil;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) {
+      toast.error(`Muitas tentativas. Aguarde ${lockCountdown}s para tentar novamente.`);
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) toast.error(error.message);
+    if (error) {
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      if (newAttempts >= MAX_ATTEMPTS) {
+        const lockTime = Date.now() + LOCKOUT_SECONDS * 1000;
+        setLockedUntil(lockTime);
+        toast.error(`Conta bloqueada temporariamente. Tente novamente em ${LOCKOUT_SECONDS} segundos.`);
+      } else {
+        toast.error(`Credenciais inválidas. ${MAX_ATTEMPTS - newAttempts} tentativa(s) restante(s).`);
+      }
+    } else {
+      setLoginAttempts(0);
+      setLockedUntil(null);
+    }
     setLoading(false);
   };
 
@@ -117,8 +158,13 @@ const LoginPage = () => {
                       <Input id="login-password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Entrando..." : "Entrar"}
+                  {isLocked && (
+                    <p className="text-sm text-destructive text-center font-medium">
+                      Bloqueado por {lockCountdown}s — muitas tentativas falhas
+                    </p>
+                  )}
+                  <Button type="submit" className="w-full" disabled={loading || isLocked}>
+                    {isLocked ? `Aguarde ${lockCountdown}s` : loading ? "Entrando..." : "Entrar"}
                   </Button>
                 </form>
               </TabsContent>
