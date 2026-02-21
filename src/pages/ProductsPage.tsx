@@ -1,0 +1,309 @@
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line, Legend,
+} from "recharts";
+import { queryVendas } from "@/lib/api";
+import {
+  Loader2, CalendarIcon, X, TrendingUp, TrendingDown, Clock, ShoppingBasket,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+const COLORS = [
+  "hsl(87, 48%, 51%)", "hsl(87, 48%, 65%)", "hsl(200, 60%, 50%)",
+  "hsl(45, 80%, 55%)", "hsl(340, 65%, 55%)", "hsl(160, 50%, 45%)",
+  "hsl(270, 50%, 55%)", "hsl(30, 70%, 50%)", "hsl(10, 60%, 50%)",
+  "hsl(180, 50%, 45%)", "hsl(220, 55%, 55%)", "hsl(60, 60%, 50%)",
+  "hsl(300, 40%, 55%)", "hsl(120, 45%, 50%)", "hsl(0, 50%, 55%)",
+];
+
+const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+interface ProductsPageProps {
+  tableName: string;
+}
+
+const ProductsPage = ({ tableName }: ProductsPageProps) => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+
+  const dateFilters = {
+    ...(dateFrom ? { dateFrom: format(dateFrom, "yyyy-MM-dd") } : {}),
+    ...(dateTo ? { dateTo: format(dateTo, "yyyy-MM-dd") } : {}),
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    queryVendas({ action: "produtos", filters: dateFilters, tableName })
+      .then((res) => setData(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [tableName, dateFrom, dateTo]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const porHoraFormatted = (data.porHora || []).map((h: any) => ({
+    ...h,
+    name: `${String(h.hora).padStart(2, "0")}h`,
+  }));
+
+  const porDiaSemanaFormatted = (data.porDiaSemana || []).map((d: any) => ({
+    ...d,
+    name: DIAS_SEMANA[Number(d.dia)] || d.dia,
+  }));
+
+  // Find peak hour
+  const peakHour = porHoraFormatted.reduce(
+    (max: any, h: any) => (Number(h.quantidade) > Number(max?.quantidade || 0) ? h : max),
+    porHoraFormatted[0]
+  );
+
+  const topProduct = data.topVenda?.[0];
+  const worstProduct = data.menosVenda?.[0];
+
+  const kpiCards = [
+    {
+      label: "Total de Produtos",
+      value: Number(data.totalProdutos || 0).toLocaleString("pt-BR"),
+      icon: ShoppingBasket,
+    },
+    {
+      label: "Produto Mais Vendido",
+      value: topProduct?.name?.substring(0, 25) || "—",
+      sub: topProduct ? `${Number(topProduct.quantidade).toLocaleString("pt-BR")} un.` : "",
+      icon: TrendingUp,
+    },
+    {
+      label: "Produto Menos Vendido",
+      value: worstProduct?.name?.substring(0, 25) || "—",
+      sub: worstProduct ? `${Number(worstProduct.quantidade).toLocaleString("pt-BR")} un.` : "",
+      icon: TrendingDown,
+    },
+    {
+      label: "Horário de Pico",
+      value: peakHour?.name || "—",
+      sub: peakHour ? `${Number(peakHour.quantidade).toLocaleString("pt-BR")} vendas` : "",
+      icon: Clock,
+    },
+  ];
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-wrap items-end gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Análise de Produtos</h1>
+          <p className="text-sm text-muted-foreground">
+            Visão detalhada do desempenho dos produtos
+            {(dateFrom || dateTo) && " (filtrado)"}
+          </p>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[160px] justify-start text-left text-sm font-normal", !dateFrom && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[160px] justify-start text-left text-sm font-normal", !dateTo && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+            </PopoverContent>
+          </Popover>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="icon" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} title="Limpar filtro">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {kpiCards.map((kpi) => (
+          <Card key={kpi.label} className="border-0 shadow-sm">
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent">
+                <kpi.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                <p className="truncate text-base font-bold text-foreground">{kpi.value}</p>
+                {kpi.sub && <p className="text-xs text-muted-foreground">{kpi.sub}</p>}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Row 1: Top vendidos + Menos vendidos */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" /> Top 15 — Mais Vendidos (Qtd)
+            </h3>
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart data={data.topVenda} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
+                <Tooltip
+                  formatter={(v: number, name: string) =>
+                    name === "valor" ? formatCurrency(v) : Number(v).toLocaleString("pt-BR")
+                  }
+                />
+                <Bar dataKey="quantidade" name="Quantidade" fill="hsl(87,48%,51%)" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-destructive" /> Top 15 — Menos Vendidos (Qtd)
+            </h3>
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart data={data.menosVenda} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
+                <Tooltip formatter={(v: number) => Number(v).toLocaleString("pt-BR")} />
+                <Bar dataKey="quantidade" name="Quantidade" fill="hsl(340,65%,55%)" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 2: Vendas por Hora + Dia da Semana */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" /> Vendas por Hora do Dia
+            </h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={porHoraFormatted}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <YAxis yAxisId="left" tick={{ fontSize: 10 }} stroke="hsl(87,48%,51%)" />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(200,60%,50%)" />
+                <Tooltip
+                  formatter={(v: number, name: string) =>
+                    name === "Valor" ? formatCurrency(v) : Number(v).toLocaleString("pt-BR")
+                  }
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="quantidade" name="Quantidade" fill="hsl(87,48%,51%)" radius={[4, 4, 0, 0]} fillOpacity={0.7} />
+                <Line yAxisId="right" type="monotone" dataKey="valor" name="Valor" stroke="hsl(200,60%,50%)" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Vendas por Dia da Semana</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={porDiaSemanaFormatted}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <YAxis tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <Tooltip
+                  formatter={(v: number, name: string) =>
+                    name === "valor" ? formatCurrency(v) : Number(v).toLocaleString("pt-BR")
+                  }
+                />
+                <Legend />
+                <Bar dataKey="quantidade" name="Quantidade" fill="hsl(87,48%,51%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="valor" name="Valor (R$)" fill="hsl(200,60%,50%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 3: Categoria + Margem */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Produtos por Categoria</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={data.porCategoria}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  dataKey="quantidade"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  paddingAngle={2}
+                >
+                  {(data.porCategoria || []).map((_: any, i: number) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => Number(v).toLocaleString("pt-BR")} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Top 15 — Margem por Produto</h3>
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart data={data.margemProduto} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
+                <Tooltip
+                  formatter={(v: number, name: string) =>
+                    name === "margem_pct" ? `${v}%` : formatCurrency(v)
+                  }
+                />
+                <Legend />
+                <Bar dataKey="margem" name="Margem (R$)" fill="hsl(160,50%,45%)" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default ProductsPage;

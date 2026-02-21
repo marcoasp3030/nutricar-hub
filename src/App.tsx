@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserProfile } from "@/lib/api";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
+import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AppLayout from "./components/AppLayout";
@@ -99,6 +100,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage tableName={tableName} />} />
+          <Route path="/produtos" element={<ProductsPage tableName={tableName} />} />
           <Route path="/relatorios" element={<ReportsPage tableName={tableName} />} />
           {role === "admin" ? (
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
