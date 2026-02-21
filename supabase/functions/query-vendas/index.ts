@@ -88,17 +88,37 @@ Deno.serve(async (req) => {
         const buildGroupQuery = (col: string, limit = 20) =>
           `SELECT ${col} as name, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(quantidade::numeric),0) as quantidade FROM ${tableNameClean} ${whereClause} GROUP BY ${col} ORDER BY valor DESC LIMIT ${limit}`;
 
-        const [kpis, periodo, pagamento, bairro, bandeira, extra] = await Promise.all([
+        // Period KPI queries
+        const periodKpiSelect = `COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(quantidade::numeric),0) as quantidade, COUNT(*) as registros`;
+        const baseWhere = whereClause;
+        const todayFilter = `${baseWhere} AND periodo::date = CURRENT_DATE`;
+        const last7Filter = `${baseWhere} AND periodo::date >= CURRENT_DATE - INTERVAL '6 days'`;
+        const currentMonthFilter = `${baseWhere} AND DATE_TRUNC('month', periodo::date) = DATE_TRUNC('month', CURRENT_DATE)`;
+        const prevMonthFilter = `${baseWhere} AND DATE_TRUNC('month', periodo::date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`;
+
+        const [kpis, periodo, pagamento, bairro, bandeira, extra, kpiHoje, kpi7dias, kpiMesAtual, kpiMesAnterior] = await Promise.all([
           sql.unsafe(`SELECT COALESCE(SUM(quantidade::numeric),0) as total_quantidade, COALESCE(SUM(valor::numeric),0) as total_valor, COALESCE(SUM(valor_compra::numeric),0) as total_valor_compra, COALESCE(SUM(desconto::numeric),0) as total_desconto, COUNT(*) as total_registros FROM ${tableNameClean} ${whereClause}`),
           sql.unsafe(buildGroupQuery('periodo')),
           sql.unsafe(buildGroupQuery('tipo_de_pagamento')),
           sql.unsafe(buildGroupQuery('bairro', 10)),
           sql.unsafe(buildGroupQuery('bandeira')),
           sql.unsafe(buildGroupQuery(groupByExtra)),
+          sql.unsafe(`SELECT ${periodKpiSelect} FROM ${tableNameClean} ${todayFilter}`),
+          sql.unsafe(`SELECT ${periodKpiSelect} FROM ${tableNameClean} ${last7Filter}`),
+          sql.unsafe(`SELECT ${periodKpiSelect} FROM ${tableNameClean} ${currentMonthFilter}`),
+          sql.unsafe(`SELECT ${periodKpiSelect} FROM ${tableNameClean} ${prevMonthFilter}`),
         ]);
 
         return new Response(JSON.stringify({
-          data: { kpis: kpis[0], periodo, status: [], pagamento, bairro, bandeira, extra }
+          data: {
+            kpis: kpis[0], periodo, status: [], pagamento, bairro, bandeira, extra,
+            periodKpis: {
+              hoje: kpiHoje[0],
+              ultimos7dias: kpi7dias[0],
+              mesAtual: kpiMesAtual[0],
+              mesAnterior: kpiMesAnterior[0],
+            }
+          }
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 

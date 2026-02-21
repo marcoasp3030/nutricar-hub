@@ -12,7 +12,7 @@ import {
   PolarAngleAxis, PolarRadiusAxis, ComposedChart, Line,
 } from "recharts";
 import { queryVendas } from "@/lib/api";
-import { Package, DollarSign, ShoppingCart, Percent, Loader2, CalendarIcon, X } from "lucide-react";
+import { Package, DollarSign, ShoppingCart, Percent, Loader2, CalendarIcon, X, CalendarDays, Calendar as CalendarIconAlt, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const formatCurrency = (value: number) =>
@@ -31,6 +31,7 @@ interface DashboardPageProps {
 
 const DashboardPage = ({ tableName, fornecedor }: DashboardPageProps) => {
   const [kpis, setKpis] = useState<any>(null);
+  const [periodKpis, setPeriodKpis] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartGroupBy, setChartGroupBy] = useState("categoria");
   const [periodoData, setPeriodoData] = useState<any[]>([]);
@@ -53,6 +54,7 @@ const DashboardPage = ({ tableName, fornecedor }: DashboardPageProps) => {
       .then(res => {
         const d = res.data;
         setKpis(d.kpis);
+        setPeriodKpis(d.periodKpis);
         setPeriodoData(d.periodo || []);
         setPagamentoData(d.pagamento || []);
         setBairroData(d.bairro || []);
@@ -135,7 +137,45 @@ const DashboardPage = ({ tableName, fornecedor }: DashboardPageProps) => {
         ))}
       </div>
 
+      {/* Period KPI Cards */}
+      {periodKpis && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Hoje", data: periodKpis.hoje, icon: CalendarIcon, color: "hsl(87, 48%, 51%)" },
+            { label: "Últimos 7 dias", data: periodKpis.ultimos7dias, icon: CalendarDays, color: "hsl(200, 60%, 50%)" },
+            { label: "Mês Atual", data: periodKpis.mesAtual, icon: TrendingUp, color: "hsl(45, 80%, 55%)" },
+            { label: "Mês Anterior", data: periodKpis.mesAnterior, icon: CalendarIconAlt, color: "hsl(340, 65%, 55%)" },
+          ].map((period) => (
+            <Card key={period.label} className="border-0 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${period.color}20` }}>
+                    <period.icon className="h-4 w-4" style={{ color: period.color }} />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">{period.label}</h3>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Valor</span>
+                    <span className="font-bold text-foreground">{formatCurrency(Number(period.data?.valor || 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Quantidade</span>
+                    <span className="font-semibold text-foreground">{Number(period.data?.quantidade || 0).toLocaleString("pt-BR")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Registros</span>
+                    <span className="text-muted-foreground">{Number(period.data?.registros || 0).toLocaleString("pt-BR")}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
+
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <h3 className="mb-4 text-sm font-semibold text-foreground">Valor por Período</h3>
