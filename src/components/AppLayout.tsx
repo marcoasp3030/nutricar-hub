@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-nutricar.webp";
 import {
-  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database,
+  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,10 +21,12 @@ interface AppLayoutProps {
 const navItems = {
   fornecedor: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/produtos", label: "Produtos", icon: ShoppingBasket },
     { to: "/relatorios", label: "Relatórios", icon: FileText },
   ],
   admin: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/produtos", label: "Produtos", icon: ShoppingBasket },
     { to: "/relatorios", label: "Relatórios", icon: FileText },
     { to: "/admin/usuarios", label: "Usuários", icon: Users },
   ],
