@@ -14,6 +14,25 @@ type PlaylistItem = {
   rotation: number;
 };
 
+type PlaylistLogo = {
+  logo_url: string;
+  logo_position: string;
+  logo_size: number;
+  logo_opacity: number;
+};
+
+const logoPositionStyle = (pos: string, pad: number): React.CSSProperties => {
+  switch (pos) {
+    case "top-left": return { top: pad, left: pad };
+    case "top-right": return { top: pad, right: pad };
+    case "top-center": return { top: pad, left: "50%", transform: "translateX(-50%)" };
+    case "bottom-left": return { bottom: pad, left: pad };
+    case "bottom-right": return { bottom: pad, right: pad };
+    case "bottom-center": return { bottom: pad, left: "50%", transform: "translateX(-50%)" };
+    default: return { top: pad, right: pad };
+  }
+};
+
 const TvPlayerPage = () => {
   const { playlistId } = useParams<{ playlistId: string }>();
   const [items, setItems] = useState<PlaylistItem[]>([]);
@@ -22,6 +41,7 @@ const TvPlayerPage = () => {
   const [transitioning, setTransitioning] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
+  const [logo, setLogo] = useState<PlaylistLogo>({ logo_url: "", logo_position: "top-right", logo_size: 80, logo_opacity: 100 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -42,6 +62,12 @@ const TvPlayerPage = () => {
       }
 
       setOrientation((playlist as any).orientation || "horizontal");
+      setLogo({
+        logo_url: (playlist as any).logo_url || "",
+        logo_position: (playlist as any).logo_position || "top-right",
+        logo_size: (playlist as any).logo_size || 80,
+        logo_opacity: (playlist as any).logo_opacity ?? 100,
+      });
 
       const { data: playlistItems } = await supabase
         .from("playlist_items")
@@ -194,6 +220,21 @@ const TvPlayerPage = () => {
       >
         {renderItem()}
       </div>
+
+      {/* Playlist logo overlay */}
+      {logo.logo_url && current && current.media_type !== "slide" && (
+        <img
+          src={logo.logo_url}
+          alt="Logo"
+          className="fixed z-40 pointer-events-none"
+          style={{
+            width: logo.logo_size,
+            height: "auto",
+            opacity: logo.logo_opacity / 100,
+            ...logoPositionStyle(logo.logo_position, 20),
+          }}
+        />
+      )}
 
       {/* Progress bar */}
       {items.length > 1 && (

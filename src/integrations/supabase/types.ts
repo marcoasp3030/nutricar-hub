@@ -92,6 +92,10 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          logo_opacity: number | null
+          logo_position: string | null
+          logo_size: number | null
+          logo_url: string | null
           name: string
           orientation: string
           schedule_end: string | null
@@ -105,6 +109,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          logo_opacity?: number | null
+          logo_position?: string | null
+          logo_size?: number | null
+          logo_url?: string | null
           name: string
           orientation?: string
           schedule_end?: string | null
@@ -118,6 +126,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          logo_opacity?: number | null
+          logo_position?: string | null
+          logo_size?: number | null
+          logo_url?: string | null
           name?: string
           orientation?: string
           schedule_end?: string | null
