@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { FileText, DollarSign, CheckCircle, Clock, Package, Send } from "lucide-react";
+import { FileText, DollarSign, CheckCircle, Clock, Package, Send, History } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -40,6 +40,9 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const [requestPkg, setRequestPkg] = useState<any>(null);
   const [requestNotes, setRequestNotes] = useState("");
   const [requesting, setRequesting] = useState(false);
+  const [historyDialog, setHistoryDialog] = useState(false);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchData = async () => {
       setLoading(true);
@@ -76,6 +79,18 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
     setRequestNotes("");
     setRequestPkg(null);
     fetchData();
+  };
+
+  const openHistory = async (contractId: string) => {
+    setHistoryDialog(true);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("ad_contract_history")
+      .select("*")
+      .eq("contract_id", contractId)
+      .order("created_at", { ascending: false });
+    setHistoryData(data || []);
+    setHistoryLoading(false);
   };
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -132,6 +147,7 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
                   <TableHead>Duração</TableHead>
                   <TableHead>Início</TableHead>
                   <TableHead>Fim</TableHead>
+                  <TableHead className="w-16"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -145,11 +161,14 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
                       <TableCell>{c.ad_packages?.duration_months} {c.ad_packages?.duration_months === 1 ? "mês" : "meses"}</TableCell>
                       <TableCell className="text-xs">{c.start_date || "—"}</TableCell>
                       <TableCell className="text-xs">{c.end_date || "—"}</TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" onClick={() => openHistory(c.id)} title="Histórico"><History className="h-4 w-4" /></Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {contracts.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Você não possui contratos</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Você não possui contratos</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -247,6 +266,42 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
               <Button className="w-full" onClick={handleRequest} disabled={requesting}>
                 {requesting ? "Enviando..." : "Confirmar Solicitação"}
               </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={historyDialog} onOpenChange={setHistoryDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5" /> Histórico do Contrato</DialogTitle>
+          </DialogHeader>
+          {historyLoading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" /></div>
+          ) : historyData.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum registro de histórico</p>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {historyData.map(h => {
+                const oldSt = h.old_status ? (STATUS_MAP[h.old_status]?.label || h.old_status) : "—";
+                const newSt = STATUS_MAP[h.new_status]?.label || h.new_status;
+                return (
+                  <div key={h.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
+                    <div className="flex-1 text-sm">
+                      <p>
+                        {h.old_status ? (
+                          <><span className="text-muted-foreground">{oldSt}</span> → <span className="font-medium">{newSt}</span></>
+                        ) : (
+                          <>Criado como <span className="font-medium">{newSt}</span></>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </DialogContent>
