@@ -421,7 +421,7 @@ const SlideEditor = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left: Controls */}
-      <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2">
+      <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-2">
         {/* Templates */}
         {!editData && (
           <div className="space-y-2">
