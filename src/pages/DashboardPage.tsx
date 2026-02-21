@@ -33,7 +33,7 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartGroupBy, setChartGroupBy] = useState("categoria");
   const [periodoData, setPeriodoData] = useState<any[]>([]);
-  const [statusData, setStatusData] = useState<any[]>([]);
+  // status chart removed - dashboard now only shows status=OK data
   const [pagamentoData, setPagamentoData] = useState<any[]>([]);
   const [bairroData, setBairroData] = useState<any[]>([]);
   const [bandeiraData, setBandeiraData] = useState<any[]>([]);
@@ -53,7 +53,7 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
         const d = res.data;
         setKpis(d.kpis);
         setPeriodoData(d.periodo || []);
-        setStatusData(d.status || []);
+        // status data no longer needed (filtered to OK only)
         setPagamentoData(d.pagamento || []);
         setBairroData(d.bairro || []);
         setBandeiraData(d.bandeira || []);
@@ -182,22 +182,8 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Por Status</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={statusData} cx="50%" cy="50%" outerRadius={80} dataKey="valor" label={({ name }) => name}>
-                  {statusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-5">
             <h3 className="mb-4 text-sm font-semibold text-foreground">Tipo de Pagamento</h3>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={pagamentoData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
                 <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
@@ -208,31 +194,11 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Row 3: Bairro + Bandeira */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Top 10 Bairros por Valor</h3>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={bairroData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
-                <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" angle={-30} textAnchor="end" height={70} />
-                <YAxis tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="valor" radius={[4,4,0,0]}>
-                  {bairroData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
 
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <h3 className="mb-4 text-sm font-semibold text-foreground">Por Bandeira</h3>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie data={bandeiraData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="valor" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} paddingAngle={2}>
                   {bandeiraData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -243,6 +209,24 @@ const DashboardPage = ({ tableName }: DashboardPageProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Row 3: Bairro */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Top 10 Bairros por Valor</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={bairroData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
+              <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" angle={-30} textAnchor="end" height={70} />
+              <YAxis tick={{ fontSize: 11 }} stroke="hsl(90,10%,45%)" />
+              <Tooltip formatter={(v: number) => formatCurrency(v)} />
+              <Bar dataKey="valor" radius={[4,4,0,0]}>
+                {bairroData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* Row 4: Comparativo Período (valor + quantidade) */}
       <Card className="border-0 shadow-sm">

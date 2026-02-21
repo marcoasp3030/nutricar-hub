@@ -79,19 +79,18 @@ Deno.serve(async (req) => {
         const groupByExtra = filters.groupBy || 'categoria';
         let whereClause = '';
         if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE 1=1${dateClause}`;
+          whereClause = `WHERE status = 'OK'${dateClause}`;
         } else {
           const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
+          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' AND status = 'OK'${dateClause}`;
         }
 
         const buildGroupQuery = (col: string, limit = 20) =>
           `SELECT ${col} as name, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(quantidade::numeric),0) as quantidade FROM ${tableNameClean} ${whereClause} GROUP BY ${col} ORDER BY valor DESC LIMIT ${limit}`;
 
-        const [kpis, periodo, status, pagamento, bairro, bandeira, extra] = await Promise.all([
+        const [kpis, periodo, pagamento, bairro, bandeira, extra] = await Promise.all([
           sql.unsafe(`SELECT COALESCE(SUM(quantidade::numeric),0) as total_quantidade, COALESCE(SUM(valor::numeric),0) as total_valor, COALESCE(SUM(valor_compra::numeric),0) as total_valor_compra, COALESCE(SUM(desconto::numeric),0) as total_desconto, COUNT(*) as total_registros FROM ${tableNameClean} ${whereClause}`),
           sql.unsafe(buildGroupQuery('periodo')),
-          sql.unsafe(buildGroupQuery('status')),
           sql.unsafe(buildGroupQuery('tipo_de_pagamento')),
           sql.unsafe(buildGroupQuery('bairro', 10)),
           sql.unsafe(buildGroupQuery('bandeira')),
@@ -99,7 +98,7 @@ Deno.serve(async (req) => {
         ]);
 
         return new Response(JSON.stringify({
-          data: { kpis: kpis[0], periodo, status, pagamento, bairro, bandeira, extra }
+          data: { kpis: kpis[0], periodo, status: [], pagamento, bairro, bandeira, extra }
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
@@ -116,25 +115,22 @@ Deno.serve(async (req) => {
         const statusOk = ` AND status = 'OK'`;
         const whereOk = whereClause + statusOk;
 
-        const [topVenda, menosVenda, porHora, porCategoria, margemProduto, porDiaSemana, totalProdutos] = await Promise.all([
-          // Top 15 produtos que mais vendem (quantidade)
+        const [topVenda, menosVenda, porHora, porCategoria, margemProduto, porDiaSemana, totalProdutos, categoriaPorHora, topPorCategoria] = await Promise.all([
           sql.unsafe(`SELECT produto as name, COALESCE(SUM(quantidade::numeric),0) as quantidade, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(valor_compra::numeric),0) as valor_compra FROM ${tableNameClean} ${whereOk} GROUP BY produto ORDER BY quantidade DESC LIMIT 15`),
-          // Top 15 produtos que menos vendem (quantidade > 0)
           sql.unsafe(`SELECT produto as name, COALESCE(SUM(quantidade::numeric),0) as quantidade, COALESCE(SUM(valor::numeric),0) as valor FROM ${tableNameClean} ${whereOk} GROUP BY produto HAVING SUM(quantidade::numeric) > 0 ORDER BY quantidade ASC LIMIT 15`),
-          // Vendas por hora do dia
           sql.unsafe(`SELECT EXTRACT(HOUR FROM periodo::timestamp) as hora, COALESCE(SUM(quantidade::numeric),0) as quantidade, COALESCE(SUM(valor::numeric),0) as valor, COUNT(DISTINCT produto) as produtos_distintos FROM ${tableNameClean} ${whereOk} GROUP BY hora ORDER BY hora`),
-          // Produtos por categoria (quantidade e valor)
-          sql.unsafe(`SELECT categoria as name, COUNT(DISTINCT produto) as total_produtos, COALESCE(SUM(quantidade::numeric),0) as quantidade, COALESCE(SUM(valor::numeric),0) as valor FROM ${tableNameClean} ${whereOk} GROUP BY categoria ORDER BY valor DESC LIMIT 10`),
-          // Top 15 produtos por margem (valor - valor_compra)
+          sql.unsafe(`SELECT categoria as name, COUNT(DISTINCT produto) as total_produtos, COALESCE(SUM(quantidade::numeric),0) as quantidade, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(valor_compra::numeric),0) as valor_compra, COALESCE(SUM(valor::numeric) - SUM(valor_compra::numeric),0) as margem FROM ${tableNameClean} ${whereOk} GROUP BY categoria ORDER BY valor DESC LIMIT 10`),
           sql.unsafe(`SELECT produto as name, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(valor_compra::numeric),0) as valor_compra, COALESCE(SUM(valor::numeric) - SUM(valor_compra::numeric),0) as margem, CASE WHEN SUM(valor::numeric) > 0 THEN ROUND(((SUM(valor::numeric) - SUM(valor_compra::numeric)) / SUM(valor::numeric)) * 100, 1) ELSE 0 END as margem_pct FROM ${tableNameClean} ${whereOk} GROUP BY produto HAVING SUM(valor::numeric) > 0 ORDER BY margem DESC LIMIT 15`),
-          // Vendas por dia da semana
           sql.unsafe(`SELECT EXTRACT(DOW FROM periodo::timestamp) as dia, COALESCE(SUM(quantidade::numeric),0) as quantidade, COALESCE(SUM(valor::numeric),0) as valor FROM ${tableNameClean} ${whereOk} GROUP BY dia ORDER BY dia`),
-          // Total de produtos distintos
           sql.unsafe(`SELECT COUNT(DISTINCT produto) as total FROM ${tableNameClean} ${whereOk}`),
+          // Vendas por categoria × hora
+          sql.unsafe(`SELECT categoria, EXTRACT(HOUR FROM periodo::timestamp) as hora, COALESCE(SUM(quantidade::numeric),0) as quantidade FROM ${tableNameClean} ${whereOk} GROUP BY categoria, hora ORDER BY categoria, hora`),
+          // Top 5 produtos por cada categoria (top 5 categorias)
+          sql.unsafe(`WITH ranked AS (SELECT categoria, produto as name, SUM(quantidade::numeric) as quantidade, SUM(valor::numeric) as valor, ROW_NUMBER() OVER (PARTITION BY categoria ORDER BY SUM(quantidade::numeric) DESC) as rn FROM ${tableNameClean} ${whereOk} GROUP BY categoria, produto) SELECT * FROM ranked WHERE rn <= 5 ORDER BY categoria, rn`),
         ]);
 
         return new Response(JSON.stringify({
-          data: { topVenda, menosVenda, porHora, porCategoria, margemProduto, porDiaSemana, totalProdutos: totalProdutos[0]?.total || 0 }
+          data: { topVenda, menosVenda, porHora, porCategoria, margemProduto, porDiaSemana, totalProdutos: totalProdutos[0]?.total || 0, categoriaPorHora, topPorCategoria }
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
