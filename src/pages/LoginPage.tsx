@@ -120,7 +120,7 @@ const LoginPage = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Conta criada! Faça login.");
+      toast.success("Conta criada! Aguarde a aprovação do administrador para acessar o portal.");
       setTab("login");
     }
     setLoading(false);

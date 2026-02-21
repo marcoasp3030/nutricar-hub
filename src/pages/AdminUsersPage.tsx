@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock, Phone, Mail } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock, Phone, Mail, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -389,12 +389,106 @@ const AdminUsersPage = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="usuarios" className="space-y-4">
+      <Tabs defaultValue="pendentes" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="pendentes" className="gap-1.5">
+            <UserCheck className="h-3.5 w-3.5" />
+            Pendentes
+            {users.filter(u => !u.is_active && !u.roles.includes('admin')).length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
+                {users.filter(u => !u.is_active && !u.roles.includes('admin')).length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
           <TabsTrigger value="acessos">Últimos Acessos</TabsTrigger>
           <TabsTrigger value="bases">Acesso às Bases</TabsTrigger>
         </TabsList>
+
+        {/* Pendentes Tab */}
+        <TabsContent value="pendentes" className="space-y-4">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <UserCheck className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Cadastros Pendentes de Aprovação</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Novos usuários que se cadastraram e aguardam aprovação para acessar o portal.
+              </p>
+              {loading ? (
+                <div className="flex h-32 items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (() => {
+                const pendingUsers = users.filter(u => !u.is_active && !u.roles.includes('admin'));
+                return pendingUsers.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <UserCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Nenhum cadastro pendente de aprovação.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs">Nome</TableHead>
+                          <TableHead className="text-xs">E-mail</TableHead>
+                          <TableHead className="text-xs">CNPJ</TableHead>
+                          <TableHead className="text-xs">Telefone</TableHead>
+                          <TableHead className="text-xs">Cadastrado em</TableHead>
+                          <TableHead className="text-xs w-48">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingUsers.map(u => (
+                          <TableRow key={u.user_id} className="text-sm">
+                            <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground tabular-nums">
+                              {u.cnpj ? u.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '—'}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{u.phone || '—'}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {new Date(u.created_at).toLocaleDateString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1.5">
+                                <Button
+                                  size="sm"
+                                  className="gap-1.5 h-8"
+                                  onClick={() => handleToggleActive(u)}
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Aprovar
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-8"
+                                  onClick={() => openEdit(u)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" /> Editar
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 h-8 hover:text-destructive"
+                                  onClick={() => openDelete(u)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" /> Rejeitar
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Últimos Acessos Tab */}
         <TabsContent value="acessos" className="space-y-4">
