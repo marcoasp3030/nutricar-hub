@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       const firstFornecedor = fornecedores?.[0] || null;
       await supabaseAdmin
         .from('profiles')
-        .update({ full_name, fornecedor: firstFornecedor, is_active: true, cnpj: body.cnpj || null })
+        .update({ full_name, fornecedor: firstFornecedor, is_active: true, cnpj: body.cnpj || null, phone: body.phone || null, financial_email: body.financial_email || null })
         .eq('user_id', newUserId);
 
       // Insert fornecedores
@@ -131,6 +131,8 @@ Deno.serve(async (req) => {
       if (is_active !== undefined) updates.is_active = is_active;
       if (fornecedores !== undefined) updates.fornecedor = fornecedores?.[0] || null;
       if (body.cnpj !== undefined) updates.cnpj = body.cnpj || null;
+      if (body.phone !== undefined) updates.phone = body.phone || null;
+      if (body.financial_email !== undefined) updates.financial_email = body.financial_email || null;
 
       if (Object.keys(updates).length) {
         await supabaseAdmin.from('profiles').update(updates).eq('user_id', target_user_id);
