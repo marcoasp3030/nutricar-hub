@@ -170,7 +170,7 @@ const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
                       <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos</SelectItem>
-                        {(filterOptions[field] || []).map(v => (
+                        {(filterOptions[field] || []).filter(v => v !== "").map(v => (
                           <SelectItem key={v} value={v}>{v}</SelectItem>
                         ))}
                       </SelectContent>
