@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Upload, Trash2, Play, Pause, Monitor, Clock, Image as ImageIcon,
   Video, Music, GripVertical, Settings2, Eye, ChevronLeft, ChevronRight,
-  Presentation, Pencil, Copy, Tag, X, RotateCw,
+  Presentation, Pencil, Copy, Tag, X, RotateCw, Link2,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -699,6 +699,18 @@ const AdminMediaPage = () => {
                       <Eye className="h-4 w-4" /> Preview — {selectedPlaylist.name}
                     </CardTitle>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => {
+                          const url = `${window.location.origin}/tv/${selectedPlaylist.id}`;
+                          navigator.clipboard.writeText(url);
+                          toast({ title: "URL copiada!", description: url });
+                        }}
+                      >
+                        <Link2 className="h-3.5 w-3.5" /> Copiar URL TV
+                      </Button>
                       <Label className="text-xs">Ativa</Label>
                       <Switch checked={selectedPlaylist.is_active} onCheckedChange={() => toggleActive(selectedPlaylist)} />
                     </div>
