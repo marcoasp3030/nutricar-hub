@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Upload, Trash2, Play, Pause, Monitor, Clock, Image as ImageIcon,
   Video, Music, GripVertical, Settings2, Eye, ChevronLeft, ChevronRight,
-  Presentation, Pencil, Copy, Tag, X,
+  Presentation, Pencil, Copy, Tag, X, RotateCw,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -46,6 +46,7 @@ type PlaylistItem = {
   transition: string;
   sort_order: number;
   slide_data?: SlideData | null;
+  rotation: number;
 };
 
 const TRANSITIONS = [
@@ -80,7 +81,7 @@ const SortableItem = ({
 
       <div className="h-12 w-16 flex-shrink-0 overflow-hidden rounded bg-muted flex items-center justify-center">
         {item.media_type === "image" ? (
-          <img src={item.media_url} alt="" className="h-full w-full object-cover" />
+          <img src={item.media_url} alt="" className="h-full w-full object-cover" style={{ transform: `rotate(${item.rotation || 0}deg)` }} />
         ) : item.media_type === "slide" && item.slide_data ? (
           <SlidePreview data={item.slide_data} width={64} height={36} />
         ) : item.media_type === "video" ? (
@@ -121,6 +122,18 @@ const SortableItem = ({
         {item.media_type === "slide" && onEditSlide && (
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEditSlide(item)}>
             <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        )}
+
+        {(item.media_type === "image" || item.media_type === "video") && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title={`Girar (${((item.rotation || 0) + 90) % 360}°)`}
+            onClick={() => onUpdate(item.id, "rotation", ((item.rotation || 0) + 90) % 360)}
+          >
+            <RotateCw className="h-3.5 w-3.5" />
           </Button>
         )}
 
@@ -189,14 +202,23 @@ const TvMockup = ({
 
   const renderCurrentItem = () => {
     if (!currentItem) return null;
+    const rot = (currentItem as any).rotation || 0;
     if (currentItem.media_type === "slide" && currentItem.slide_data) {
       return <SlidePreview data={currentItem.slide_data} width={screenW} height={screenH} />;
     }
     if (currentItem.media_type === "image") {
-      return <img src={currentItem.media_url} alt="" className="h-full w-full object-contain bg-black" />;
+      return (
+        <div className="h-full w-full flex items-center justify-center bg-black overflow-hidden">
+          <img src={currentItem.media_url} alt="" className="max-h-full max-w-full object-contain transition-transform duration-300" style={{ transform: `rotate(${rot}deg)` }} />
+        </div>
+      );
     }
     if (currentItem.media_type === "video") {
-      return <video src={currentItem.media_url} autoPlay={playing} muted className="h-full w-full object-contain bg-black" />;
+      return (
+        <div className="h-full w-full flex items-center justify-center bg-black overflow-hidden">
+          <video src={currentItem.media_url} autoPlay={playing} muted className="max-h-full max-w-full object-contain transition-transform duration-300" style={{ transform: `rotate(${rot}deg)` }} />
+        </div>
+      );
     }
     return null;
   };
