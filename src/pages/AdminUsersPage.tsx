@@ -482,6 +482,7 @@ const AdminUsersPage = () => {
                   <TableRow className="bg-muted/50">
                     <TableHead className="text-xs">Ativo</TableHead>
                     <TableHead className="text-xs">Nome</TableHead>
+                    <TableHead className="text-xs">CNPJ</TableHead>
                     <TableHead className="text-xs">E-mail</TableHead>
                     <TableHead className="text-xs">Fornecedores</TableHead>
                     <TableHead className="text-xs">Papel</TableHead>
@@ -500,6 +501,9 @@ const AdminUsersPage = () => {
                         />
                       </TableCell>
                       <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
+                        {u.cnpj ? u.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '—'}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{u.email}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-[250px]">
@@ -541,7 +545,7 @@ const AdminUsersPage = () => {
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                         Nenhum usuário encontrado.
                       </TableCell>
                     </TableRow>
