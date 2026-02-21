@@ -143,9 +143,14 @@ const TvMockup = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
+  const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visualItems = items.filter((i) => i.media_type !== "audio");
   const audioItem = items.find((i) => i.media_type === "audio");
+
+  const isHorizontal = orientation === "horizontal";
+  const screenW = isHorizontal ? 480 : 220;
+  const screenH = isHorizontal ? 270 : 390;
 
   useEffect(() => { setCurrentIndex(0); }, [items.length]);
 
@@ -181,7 +186,7 @@ const TvMockup = ({
   const renderCurrentItem = () => {
     if (!currentItem) return null;
     if (currentItem.media_type === "slide" && currentItem.slide_data) {
-      return <SlidePreview data={currentItem.slide_data} width={480} height={270} />;
+      return <SlidePreview data={currentItem.slide_data} width={screenW} height={screenH} />;
     }
     if (currentItem.media_type === "image") {
       return <img src={currentItem.media_url} alt="" className="h-full w-full object-contain bg-black" />;
@@ -193,36 +198,133 @@ const TvMockup = ({
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="relative">
-        <div className="rounded-2xl border-[6px] border-foreground/80 bg-black overflow-hidden shadow-2xl" style={{ width: 480, height: 270 }}>
-          {visualItems.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              <div className="text-center space-y-2">
-                <Monitor className="h-10 w-10 mx-auto opacity-30" />
-                <p className="text-xs">Adicione mídias à playlist</p>
-              </div>
-            </div>
-          ) : currentItem ? (
-            <div className={`h-full w-full transition-all duration-500 ease-in-out ${getTransitionClass()}`}>
-              {renderCurrentItem()}
-            </div>
-          ) : null}
-
-          {playing && visualItems.length > 1 && (
-            <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 p-1">
-              {visualItems.map((_, i) => (
-                <div key={i} className="h-0.5 flex-1 rounded-full overflow-hidden bg-white/20">
-                  <div className={`h-full rounded-full transition-all ${i < currentIndex ? "w-full bg-white/60" : i === currentIndex ? "bg-white/80 animate-pulse w-full" : "w-0"}`} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="mx-auto h-4 w-32 rounded-b-lg bg-foreground/70" />
-        <div className="mx-auto h-2 w-48 rounded-b-md bg-foreground/50" />
+    <div className="flex flex-col items-center gap-4">
+      {/* Orientation toggle */}
+      <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+        <button
+          onClick={() => setOrientation("horizontal")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+            isHorizontal ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Monitor className="h-3.5 w-3.5" /> Horizontal
+        </button>
+        <button
+          onClick={() => setOrientation("vertical")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+            !isHorizontal ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          Vertical
+        </button>
       </div>
 
+      {/* Realistic TV */}
+      <div className="relative" style={{ perspective: "1200px" }}>
+        {/* TV Frame */}
+        <div
+          className="relative rounded-[8px] transition-all duration-500 ease-in-out"
+          style={{
+            width: screenW + 20,
+            height: screenH + 20,
+            background: "linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 30%, #1a1a1a 70%, #111 100%)",
+            boxShadow: "0 20px 60px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.1)",
+            padding: "10px",
+          }}
+        >
+          {/* Inner bezel */}
+          <div
+            className="relative w-full h-full rounded-[4px] overflow-hidden"
+            style={{
+              boxShadow: "inset 0 0 20px rgba(0,0,0,0.6), inset 0 0 3px rgba(0,0,0,0.8)",
+              background: "#000",
+            }}
+          >
+            {/* Screen reflection overlay */}
+            <div
+              className="absolute inset-0 z-20 pointer-events-none"
+              style={{
+                background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.02) 100%)",
+              }}
+            />
+
+            {visualItems.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="text-center space-y-2">
+                  <Monitor className="h-10 w-10 mx-auto text-white/10" />
+                  <p className="text-[10px] text-white/20">Sem sinal</p>
+                </div>
+              </div>
+            ) : currentItem ? (
+              <div className={`h-full w-full transition-all duration-500 ease-in-out ${getTransitionClass()}`}>
+                {renderCurrentItem()}
+              </div>
+            ) : null}
+
+            {/* Progress dots */}
+            {playing && visualItems.length > 1 && (
+              <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 p-1.5 z-10">
+                {visualItems.map((_, i) => (
+                  <div key={i} className="h-[3px] flex-1 rounded-full overflow-hidden bg-white/15">
+                    <div className={`h-full rounded-full transition-all duration-300 ${i < currentIndex ? "w-full bg-white/50" : i === currentIndex ? "bg-white/70 animate-pulse w-full" : "w-0"}`} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* LED indicator */}
+          <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2">
+            <div
+              className={`h-[3px] w-[3px] rounded-full transition-colors duration-500 ${playing ? "bg-green-400" : visualItems.length > 0 ? "bg-amber-400" : "bg-red-500"}`}
+              style={{ boxShadow: playing ? "0 0 4px rgba(74,222,128,0.6)" : visualItems.length > 0 ? "0 0 4px rgba(251,191,36,0.4)" : "0 0 4px rgba(239,68,68,0.4)" }}
+            />
+          </div>
+
+          {/* Brand logo on frame */}
+          <div className="absolute bottom-[2px] right-3">
+            <span className="text-[6px] font-bold tracking-widest text-white/15 uppercase">NutriCar</span>
+          </div>
+        </div>
+
+        {/* TV Stand */}
+        {isHorizontal ? (
+          <>
+            {/* Neck */}
+            <div className="mx-auto w-[60px] h-[28px]" style={{
+              background: "linear-gradient(180deg, #222 0%, #1a1a1a 100%)",
+              clipPath: "polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%)",
+            }} />
+            {/* Base */}
+            <div className="mx-auto w-[160px] h-[8px] rounded-[4px]" style={{
+              background: "linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 50%, #111 100%)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+            }} />
+          </>
+        ) : (
+          <>
+            {/* Vertical stand - thinner neck */}
+            <div className="mx-auto w-[40px] h-[24px]" style={{
+              background: "linear-gradient(180deg, #222 0%, #1a1a1a 100%)",
+              clipPath: "polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)",
+            }} />
+            <div className="mx-auto w-[120px] h-[8px] rounded-[4px]" style={{
+              background: "linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 50%, #111 100%)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+            }} />
+          </>
+        )}
+
+        {/* Shadow under TV */}
+        <div className="mx-auto mt-1 rounded-full opacity-20 blur-md" style={{
+          width: isHorizontal ? 200 : 140,
+          height: 6,
+          background: "radial-gradient(ellipse, rgba(0,0,0,0.8), transparent)",
+        }} />
+      </div>
+
+      {/* Controls */}
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))} disabled={visualItems.length === 0}>
           <ChevronLeft className="h-4 w-4" />
