@@ -179,6 +179,8 @@ const TvMockup = ({
   logoPosition,
   logoSize,
   logoOpacity,
+  mediaFit,
+  bgColor,
 }: {
   items: PlaylistItem[];
   playing: boolean;
@@ -189,6 +191,8 @@ const TvMockup = ({
   logoPosition?: string;
   logoSize?: number;
   logoOpacity?: number;
+  mediaFit?: string;
+  bgColor?: string;
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
@@ -237,17 +241,18 @@ const TvMockup = ({
     if (currentItem.media_type === "slide" && currentItem.slide_data) {
       return <SlidePreview data={currentItem.slide_data} width={screenW} height={screenH} />;
     }
+    const fitClass = mediaFit === "cover" ? "object-cover" : mediaFit === "fill" ? "object-fill" : "object-contain";
     if (currentItem.media_type === "image") {
       return (
-        <div className="h-full w-full flex items-center justify-center bg-black overflow-hidden">
-          <img src={currentItem.media_url} alt="" className="max-h-full max-w-full object-contain transition-transform duration-300" style={{ transform: `rotate(${rot}deg)` }} />
+        <div className="h-full w-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: bgColor || "#000" }}>
+          <img src={currentItem.media_url} alt="" className={`w-full h-full ${fitClass} transition-transform duration-300`} style={{ transform: `rotate(${rot}deg)` }} />
         </div>
       );
     }
     if (currentItem.media_type === "video") {
       return (
-        <div className="h-full w-full flex items-center justify-center bg-black overflow-hidden">
-          <video src={currentItem.media_url} autoPlay={playing} muted className="max-h-full max-w-full object-contain transition-transform duration-300" style={{ transform: `rotate(${rot}deg)` }} />
+        <div className="h-full w-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: bgColor || "#000" }}>
+          <video src={currentItem.media_url} autoPlay={playing} muted className={`w-full h-full ${fitClass} transition-transform duration-300`} style={{ transform: `rotate(${rot}deg)` }} />
         </div>
       );
     }
@@ -965,7 +970,7 @@ const AdminMediaPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <TvMockup
+                   <TvMockup
                     items={items}
                     playing={playing}
                     onTogglePlay={() => setPlaying(!playing)}
@@ -974,6 +979,8 @@ const AdminMediaPage = () => {
                     logoPosition={selectedPlaylist.logo_position}
                     logoSize={selectedPlaylist.logo_size}
                     logoOpacity={selectedPlaylist.logo_opacity}
+                    mediaFit={selectedPlaylist.media_fit}
+                    bgColor={selectedPlaylist.bg_color}
                     onOrientationChange={async (o) => {
                       await supabase.from("playlists").update({ orientation: o } as any).eq("id", selectedPlaylist.id);
                       setSelectedPlaylist({ ...selectedPlaylist, orientation: o });
