@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Lock, Mail, User, Building2, Loader2, Phone, Check, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,6 +49,7 @@ const LoginPage = () => {
   const [financialEmail, setFinancialEmail] = useState("");
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [lgpdConsent, setLgpdConsent] = useState(false);
   const [tab, setTab] = useState("login");
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
@@ -149,8 +151,12 @@ const LoginPage = () => {
       toast.error("A senha não atende aos requisitos de segurança.");
       return;
     }
+    if (!lgpdConsent) {
+      toast.error("Você precisa aceitar os Termos de Uso e Política de Privacidade.");
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data: signupData, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName, cnpj: cnpj.replace(/\D/g, '') || null, phone: phone || null, financial_email: financialEmail || null } },
@@ -158,6 +164,14 @@ const LoginPage = () => {
     if (error) {
       toast.error(error.message);
     } else {
+      // Register LGPD consent
+      if (signupData.user?.id) {
+        await supabase.from("lgpd_consents" as any).insert({
+          user_id: signupData.user.id,
+          consent_type: "terms_and_privacy",
+          version: "1.0",
+        });
+      }
       toast.success("Conta criada! Aguarde a aprovação do administrador para acessar o portal.");
       setTab("login");
     }
@@ -286,7 +300,24 @@ const LoginPage = () => {
                       </div>
                     )}
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading || !isPasswordStrong(password)}>
+                  <div className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      id="lgpd-consent"
+                      checked={lgpdConsent}
+                      onCheckedChange={(v) => setLgpdConsent(v === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="lgpd-consent" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                      Li e aceito os{" "}
+                      <a href="https://nutricar.com.br/termos" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
+                        Termos de Uso
+                      </a>{" "}e a{" "}
+                      <a href="https://nutricar.com.br/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">
+                        Política de Privacidade
+                      </a>{" "}(LGPD).
+                    </Label>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading || !isPasswordStrong(password) || !lgpdConsent}>
                     {loading ? "Criando..." : "Criar Conta"}
                   </Button>
                 </form>
