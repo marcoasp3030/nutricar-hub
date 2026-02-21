@@ -108,8 +108,11 @@ const AppContent = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="text-center space-y-3">
-          <h2 className="text-xl font-bold text-foreground">Acesso Desativado</h2>
-          <p className="text-sm text-muted-foreground">Seu acesso ao portal foi desativado pelo administrador.</p>
+          <h2 className="text-xl font-bold text-foreground">Acesso Pendente</h2>
+          <p className="text-sm text-muted-foreground">
+            Sua conta foi criada com sucesso, mas ainda aguarda aprovação do administrador.
+            <br />Você será notificado quando o acesso for liberado.
+          </p>
           <Button variant="outline" onClick={() => supabase.auth.signOut()}>Sair</Button>
         </div>
       </div>
