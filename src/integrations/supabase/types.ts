@@ -20,6 +20,7 @@ export type Database = {
           fornecedor: string | null
           full_name: string
           id: string
+          is_active: boolean
           updated_at: string
           user_id: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           fornecedor?: string | null
           full_name?: string
           id?: string
+          is_active?: boolean
           updated_at?: string
           user_id: string
         }
@@ -36,7 +38,29 @@ export type Database = {
           fornecedor?: string | null
           full_name?: string
           id?: string
+          is_active?: boolean
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_fornecedores: {
+        Row: {
+          created_at: string
+          fornecedor: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fornecedor: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fornecedor?: string
+          id?: string
           user_id?: string
         }
         Relationships: []
@@ -65,6 +89,7 @@ export type Database = {
     }
     Functions: {
       get_user_fornecedor: { Args: { _user_id: string }; Returns: string }
+      get_user_fornecedores: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

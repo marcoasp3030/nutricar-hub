@@ -34,11 +34,18 @@ export async function getUserProfile() {
     .select('role')
     .eq('user_id', user.id);
 
+  const { data: fornecedores } = await supabase
+    .from('user_fornecedores')
+    .select('fornecedor')
+    .eq('user_id', user.id);
+
   return {
     ...profile,
     user_id: user.id,
     email: user.email,
     roles: roles?.map((r: any) => r.role) || [],
     isAdmin: roles?.some((r: any) => r.role === 'admin') || false,
+    fornecedores: fornecedores?.map((f: any) => f.fornecedor) || [],
+    is_active: profile?.is_active ?? true,
   };
 }

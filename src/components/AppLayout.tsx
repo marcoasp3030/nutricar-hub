@@ -13,6 +13,8 @@ interface AppLayoutProps {
   children: ReactNode;
   role: "fornecedor" | "admin";
   fornecedor: string;
+  fornecedores: string[];
+  onFornecedorChange: (f: string) => void;
   onLogout: () => void;
   tableName: string;
   onTableChange: (t: string) => void;
@@ -32,7 +34,7 @@ const navItems = {
   ],
 };
 
-const AppLayout = ({ children, role, fornecedor, onLogout, tableName, onTableChange }: AppLayoutProps) => {
+const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChange, onLogout, tableName, onTableChange }: AppLayoutProps) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tables, setTables] = useState<string[]>([]);
@@ -94,10 +96,24 @@ const AppLayout = ({ children, role, fornecedor, onLogout, tableName, onTableCha
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
-            <p className="text-xs text-muted-foreground">Fornecedor</p>
-            <p className="truncate text-sm font-medium text-sidebar-foreground">{fornecedor}</p>
-          </div>
+          {fornecedores.length > 1 ? (
+            <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
+              <p className="text-xs text-muted-foreground mb-1">Fornecedor</p>
+              <Select value={fornecedor} onValueChange={onFornecedorChange}>
+                <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {fornecedores.map(f => (
+                    <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
+              <p className="text-xs text-muted-foreground">Fornecedor</p>
+              <p className="truncate text-sm font-medium text-sidebar-foreground">{fornecedor}</p>
+            </div>
+          )}
           <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive" onClick={onLogout}>
             <LogOut className="h-4 w-4" /> Sair
           </Button>

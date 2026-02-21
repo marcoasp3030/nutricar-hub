@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { getUserProfile } from "@/lib/api";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -22,6 +23,7 @@ const AppContent = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tableName, setTableName] = useState("vendas_2026");
+  const [selectedFornecedor, setSelectedFornecedor] = useState<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -85,14 +87,30 @@ const AppContent = () => {
     return <LoginPage />;
   }
 
+  // Check if user is active
+  if (profile && !profile.isAdmin && !profile.is_active) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="text-center space-y-3">
+          <h2 className="text-xl font-bold text-foreground">Acesso Desativado</h2>
+          <p className="text-sm text-muted-foreground">Seu acesso ao portal foi desativado pelo administrador.</p>
+          <Button variant="outline" onClick={() => supabase.auth.signOut()}>Sair</Button>
+        </div>
+      </div>
+    );
+  }
+
   const role = profile?.isAdmin ? "admin" : "fornecedor";
-  const fornecedor = profile?.fornecedor || "Não vinculado";
+  const fornecedores: string[] = profile?.fornecedores || [];
+  const activeFornecedor = selectedFornecedor || fornecedores[0] || "Não vinculado";
 
   return (
     <BrowserRouter>
       <AppLayout
         role={role as "admin" | "fornecedor"}
-        fornecedor={fornecedor}
+        fornecedor={activeFornecedor}
+        fornecedores={fornecedores}
+        onFornecedorChange={setSelectedFornecedor}
         onLogout={() => supabase.auth.signOut()}
         tableName={tableName}
         onTableChange={setTableName}

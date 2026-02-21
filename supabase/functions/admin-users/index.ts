@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify the caller is an admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -31,14 +30,12 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Check admin role
     const { data: roles } = await supabaseUser.from('user_roles').select('role').eq('user_id', userId);
     const isAdmin = roles?.some((r: any) => r.role === 'admin');
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: 'Acesso negado. Apenas administradores.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Use service role client for admin operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -57,21 +54,19 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
-      // Get roles for all users
-      const { data: allRoles } = await supabaseAdmin
-        .from('user_roles')
-        .select('*');
-
-      // Get auth users for emails
+      const { data: allRoles } = await supabaseAdmin.from('user_roles').select('*');
+      const { data: allFornecedores } = await supabaseAdmin.from('user_fornecedores').select('*');
       const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
 
       const users = (profiles || []).map((p: any) => {
         const authUser = authData?.users?.find((u: any) => u.id === p.user_id);
         const userRoles = allRoles?.filter((r: any) => r.user_id === p.user_id) || [];
+        const userFornecedores = allFornecedores?.filter((f: any) => f.user_id === p.user_id) || [];
         return {
           ...p,
           email: authUser?.email || '',
           roles: userRoles.map((r: any) => r.role),
+          fornecedores: userFornecedores.map((f: any) => f.fornecedor),
           last_sign_in: authUser?.last_sign_in_at || null,
         };
       });
@@ -81,13 +76,12 @@ Deno.serve(async (req) => {
 
     // CREATE USER
     if (action === 'create') {
-      const { email, password, full_name, fornecedor, role } = body;
+      const { email, password, full_name, fornecedores, role } = body;
 
       if (!email || !password || !full_name) {
         return new Response(JSON.stringify({ error: 'E-mail, senha e nome são obrigatórios' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // Create auth user
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -101,17 +95,23 @@ Deno.serve(async (req) => {
 
       const newUserId = newUser.user.id;
 
-      // Update profile with fornecedor
+      // Update profile
+      const firstFornecedor = fornecedores?.[0] || null;
       await supabaseAdmin
         .from('profiles')
-        .update({ full_name, fornecedor: fornecedor || null })
+        .update({ full_name, fornecedor: firstFornecedor, is_active: true })
         .eq('user_id', newUserId);
+
+      // Insert fornecedores
+      if (fornecedores?.length) {
+        await supabaseAdmin
+          .from('user_fornecedores')
+          .insert(fornecedores.map((f: string) => ({ user_id: newUserId, fornecedor: f })));
+      }
 
       // Set role
       if (role) {
-        await supabaseAdmin
-          .from('user_roles')
-          .insert({ user_id: newUserId, role });
+        await supabaseAdmin.from('user_roles').insert({ user_id: newUserId, role });
       }
 
       return new Response(JSON.stringify({ success: true, user_id: newUserId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -119,29 +119,49 @@ Deno.serve(async (req) => {
 
     // UPDATE USER
     if (action === 'update') {
-      const { target_user_id, full_name, fornecedor, role } = body;
+      const { target_user_id, full_name, fornecedores, role, is_active } = body;
 
       if (!target_user_id) {
         return new Response(JSON.stringify({ error: 'ID do usuário é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // Update profile
-      await supabaseAdmin
-        .from('profiles')
-        .update({ full_name, fornecedor: fornecedor || null })
-        .eq('user_id', target_user_id);
+      const updates: any = {};
+      if (full_name !== undefined) updates.full_name = full_name;
+      if (is_active !== undefined) updates.is_active = is_active;
+      if (fornecedores !== undefined) updates.fornecedor = fornecedores?.[0] || null;
 
-      // Update role - delete existing and insert new
-      if (role) {
-        await supabaseAdmin
-          .from('user_roles')
-          .delete()
-          .eq('user_id', target_user_id);
-
-        await supabaseAdmin
-          .from('user_roles')
-          .insert({ user_id: target_user_id, role });
+      if (Object.keys(updates).length) {
+        await supabaseAdmin.from('profiles').update(updates).eq('user_id', target_user_id);
       }
+
+      // Update fornecedores
+      if (fornecedores !== undefined) {
+        await supabaseAdmin.from('user_fornecedores').delete().eq('user_id', target_user_id);
+        if (fornecedores.length) {
+          await supabaseAdmin
+            .from('user_fornecedores')
+            .insert(fornecedores.map((f: string) => ({ user_id: target_user_id, fornecedor: f })));
+        }
+      }
+
+      // Update role
+      if (role) {
+        await supabaseAdmin.from('user_roles').delete().eq('user_id', target_user_id);
+        await supabaseAdmin.from('user_roles').insert({ user_id: target_user_id, role });
+      }
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // TOGGLE ACTIVE
+    if (action === 'toggle-active') {
+      const { target_user_id, is_active } = body;
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: 'ID do usuário é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      await supabaseAdmin.from('profiles').update({ is_active }).eq('user_id', target_user_id);
 
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -149,15 +169,11 @@ Deno.serve(async (req) => {
     // RESET PASSWORD
     if (action === 'reset-password') {
       const { target_user_id, new_password } = body;
-
       if (!target_user_id || !new_password) {
         return new Response(JSON.stringify({ error: 'ID e nova senha são obrigatórios' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, {
-        password: new_password,
-      });
-
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, { password: new_password });
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -168,12 +184,9 @@ Deno.serve(async (req) => {
     // DELETE USER
     if (action === 'delete') {
       const { target_user_id } = body;
-
       if (!target_user_id) {
         return new Response(JSON.stringify({ error: 'ID do usuário é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-
-      // Prevent self-deletion
       if (target_user_id === userId) {
         return new Response(JSON.stringify({ error: 'Não é possível excluir sua própria conta' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -186,9 +199,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // GET FORNECEDORES (from external DB for autocomplete)
+    // GET FORNECEDORES
     if (action === 'fornecedores') {
-      // Query external DB for unique fornecedores
       const { default: postgres } = await import("npm:postgres@3.4.5");
       const sql = postgres({
         host: Deno.env.get('EXTERNAL_DB_HOST')!,
@@ -205,8 +217,7 @@ Deno.serve(async (req) => {
         const result = await sql`
           SELECT DISTINCT fornecedor FROM vendas_2026 
           WHERE fornecedor IS NOT NULL AND fornecedor != ''
-          ORDER BY fornecedor 
-          LIMIT 500
+          ORDER BY fornecedor LIMIT 500
         `;
         await sql.end();
         return new Response(JSON.stringify({ data: result.map((r: any) => r.fornecedor) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
