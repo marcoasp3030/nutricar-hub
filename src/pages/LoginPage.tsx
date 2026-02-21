@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Lock, Mail, User, Building2, Loader2, Phone } from "lucide-react";
+import { Lock, Mail, User, Building2, Loader2, Phone, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -28,6 +28,16 @@ const formatPhone = (value: string) => {
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 60;
+
+const passwordRules = [
+  { test: (p: string) => p.length >= 8, label: "Mínimo 8 caracteres" },
+  { test: (p: string) => /[A-Z]/.test(p), label: "Letra maiúscula" },
+  { test: (p: string) => /[a-z]/.test(p), label: "Letra minúscula" },
+  { test: (p: string) => /[0-9]/.test(p), label: "Número" },
+  { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: "Caractere especial (!@#$...)" },
+];
+
+const isPasswordStrong = (p: string) => passwordRules.every(r => r.test(p));
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -111,6 +121,10 @@ const LoginPage = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPasswordStrong(password)) {
+      toast.error("A senha não atende aos requisitos de segurança.");
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -221,10 +235,23 @@ const LoginPage = () => {
                     <Label htmlFor="signup-password">Senha</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required minLength={6} />
+                      <Input id="signup-password" type="password" placeholder="Mínimo 8 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required minLength={8} />
                     </div>
+                    {tab === "signup" && password.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        {passwordRules.map((rule, i) => {
+                          const passed = rule.test(password);
+                          return (
+                            <div key={i} className={`flex items-center gap-2 text-xs ${passed ? 'text-green-600' : 'text-muted-foreground'}`}>
+                              {passed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                              {rule.label}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || !isPasswordStrong(password)}>
                     {loading ? "Criando..." : "Criar Conta"}
                   </Button>
                 </form>
