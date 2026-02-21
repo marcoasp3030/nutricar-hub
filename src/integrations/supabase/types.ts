@@ -242,6 +242,42 @@ export type Database = {
         }
         Relationships: []
       }
+      lgpd_documents: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          title: string
+          type: string
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          title: string
+          type: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       lgpd_requests: {
         Row: {
           admin_notes: string | null
