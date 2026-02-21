@@ -74,10 +74,12 @@ const AppContent = () => {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage tableName={tableName} />} />
           <Route path="/relatorios" element={<ReportsPage tableName={tableName} />} />
-          {role === "admin" && (
+          {role === "admin" ? (
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+          ) : (
+            <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
           )}
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
