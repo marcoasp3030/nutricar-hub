@@ -43,6 +43,7 @@ const TvPlayerPage = () => {
   const [error, setError] = useState("");
   const [logo, setLogo] = useState<PlaylistLogo>({ logo_url: "", logo_position: "top-right", logo_size: 80, logo_opacity: 100 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [started, setStarted] = useState(false);
 
   const loadItems = useCallback(async () => {
     if (!playlistId) return;
@@ -176,6 +177,20 @@ const TvPlayerPage = () => {
     );
   }
 
+  if (!started) {
+    return (
+      <div
+        className="fixed inset-0 bg-black flex flex-col items-center justify-center cursor-pointer"
+        onClick={() => setStarted(true)}
+      >
+        <div className="w-16 h-16 rounded-full border-2 border-white/40 flex items-center justify-center mb-4">
+          <div className="w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-l-[20px] border-l-white/80 ml-1" />
+        </div>
+        <p className="text-white/50 text-sm">Clique para iniciar</p>
+      </div>
+    );
+  }
+
   const current = items[currentIndex];
   const transition = current?.transition || "fade";
 
@@ -228,7 +243,7 @@ const TvPlayerPage = () => {
             key={current.id + currentIndex}
             src={current.media_url}
             autoPlay
-            muted
+            playsInline
             onEnded={advanceToNext}
             className="max-w-full max-h-full object-contain"
             style={{ transform: `rotate(${rot}deg)` }}
