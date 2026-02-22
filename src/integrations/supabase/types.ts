@@ -478,6 +478,8 @@ export type Database = {
       }
       store_tvs: {
         Row: {
+          address: string | null
+          city: string | null
           created_at: string
           id: string
           playlist_id: string | null
@@ -489,6 +491,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           created_at?: string
           id?: string
           playlist_id?: string | null
@@ -500,6 +504,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
+          city?: string | null
           created_at?: string
           id?: string
           playlist_id?: string | null
