@@ -14,6 +14,46 @@ const supabase = () => createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
+// Rate limit config: max requests per window
+const RATE_LIMIT_MAX = 120; // requests
+const RATE_LIMIT_WINDOW_MINUTES = 1; // per minute
+
+// Check and enforce rate limiting
+async function checkRateLimit(db: any, keyId: string): Promise<Response | null> {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
+
+  // Get current request count in window
+  const { data: existing } = await db
+    .from('tv_api_rate_limits')
+    .select('id, request_count')
+    .eq('api_key_id', keyId)
+    .gte('window_start', windowStart)
+    .order('window_start', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (existing && existing.request_count >= RATE_LIMIT_MAX) {
+    return json({
+      error: 'Rate limit exceeded',
+      retry_after_seconds: RATE_LIMIT_WINDOW_MINUTES * 60,
+    }, 429);
+  }
+
+  if (existing) {
+    await db.from('tv_api_rate_limits')
+      .update({ request_count: existing.request_count + 1 })
+      .eq('id', existing.id);
+  } else {
+    await db.from('tv_api_rate_limits').insert({
+      api_key_id: keyId,
+      window_start: new Date().toISOString(),
+      request_count: 1,
+    });
+  }
+
+  return null;
+}
+
 // Validate API key and return unit info
 async function authenticate(req: Request): Promise<{ unitId: string; keyId: string } | Response> {
   const apiKey = req.headers.get('x-api-key');
@@ -39,6 +79,10 @@ async function authenticate(req: Request): Promise<{ unitId: string; keyId: stri
   if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {
     return json({ error: 'API key expired' }, 401);
   }
+
+  // Check rate limit
+  const rateLimitResponse = await checkRateLimit(db, keyData.id);
+  if (rateLimitResponse) return rateLimitResponse;
 
   // Validate unit exists
   const { data: unit, error: unitError } = await db

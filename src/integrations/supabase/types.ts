@@ -639,6 +639,35 @@ export type Database = {
         }
         Relationships: []
       }
+      tv_api_rate_limits: {
+        Row: {
+          api_key_id: string
+          id: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          api_key_id: string
+          id?: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          api_key_id?: string
+          id?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_api_rate_limits_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "tv_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tv_commands: {
         Row: {
           acknowledged_at: string | null
