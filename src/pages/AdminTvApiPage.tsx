@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Key, Copy, Trash2, Plus, Loader2, Send, Monitor, FileText, RefreshCw, Eye, EyeOff, AlertTriangle, Shield, Activity } from "lucide-react";
+import { Key, Copy, Trash2, Plus, Loader2, Send, Monitor, FileText, RefreshCw, Eye, EyeOff, AlertTriangle, Shield, Activity, Upload, Package, ToggleLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 
@@ -62,6 +62,22 @@ interface RateLimitInfo {
   label?: string;
 }
 
+interface OtaRelease {
+  id: string;
+  version: string;
+  version_code: number;
+  channel: string;
+  release_notes: string | null;
+  file_url: string | null;
+  file_size_bytes: number | null;
+  checksum_sha256: string | null;
+  is_active: boolean;
+  is_mandatory: boolean;
+  min_version_code: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const AdminTvApiPage = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [units, setUnits] = useState<TvUnit[]>([]);
@@ -89,6 +105,22 @@ const AdminTvApiPage = () => {
   // Log filters
   const [logUnitFilter, setLogUnitFilter] = useState("all");
   const [logLevelFilter, setLogLevelFilter] = useState("all");
+
+  // OTA state
+  const [otaReleases, setOtaReleases] = useState<OtaRelease[]>([]);
+  const [createOtaOpen, setCreateOtaOpen] = useState(false);
+  const [otaVersion, setOtaVersion] = useState("");
+  const [otaVersionCode, setOtaVersionCode] = useState("");
+  const [otaChannel, setOtaChannel] = useState("stable");
+  const [otaReleaseNotes, setOtaReleaseNotes] = useState("");
+  const [otaFileUrl, setOtaFileUrl] = useState("");
+  const [otaFileSize, setOtaFileSize] = useState("");
+  const [otaChecksum, setOtaChecksum] = useState("");
+  const [otaIsMandatory, setOtaIsMandatory] = useState(false);
+  const [otaMinVersionCode, setOtaMinVersionCode] = useState("");
+  const [otaChannelFilter, setOtaChannelFilter] = useState("all");
+  const [deleteOtaOpen, setDeleteOtaOpen] = useState(false);
+  const [selectedOta, setSelectedOta] = useState<OtaRelease | null>(null);
 
   const fetchApiKeys = useCallback(async () => {
     const { data } = await supabase.from('tv_api_keys').select('*').order('created_at', { ascending: false });
@@ -126,9 +158,14 @@ const AdminTvApiPage = () => {
     setRateLimits(enriched);
   }, [apiKeys]);
 
+  const fetchOtaReleases = useCallback(async () => {
+    const { data } = await supabase.from('tv_ota_releases').select('*').order('version_code', { ascending: false });
+    setOtaReleases((data as any) || []);
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchApiKeys(), fetchUnits(), fetchCommands(), fetchLogs()])
+    Promise.all([fetchApiKeys(), fetchUnits(), fetchCommands(), fetchLogs(), fetchOtaReleases()])
       .finally(() => setLoading(false));
   }, []);
 
@@ -227,6 +264,75 @@ const AdminTvApiPage = () => {
     });
   };
 
+  const handleCreateOta = async () => {
+    if (!otaVersion.trim() || !otaVersionCode.trim()) {
+      toast.error("Versão e código são obrigatórios");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('tv_ota_releases').insert({
+        version: otaVersion.trim(),
+        version_code: parseInt(otaVersionCode, 10),
+        channel: otaChannel,
+        release_notes: otaReleaseNotes.trim() || null,
+        file_url: otaFileUrl.trim() || null,
+        file_size_bytes: otaFileSize ? parseInt(otaFileSize, 10) : null,
+        checksum_sha256: otaChecksum.trim() || null,
+        is_mandatory: otaIsMandatory,
+        min_version_code: otaMinVersionCode ? parseInt(otaMinVersionCode, 10) : 0,
+        created_by: user!.id,
+      } as any);
+      if (error) throw error;
+      toast.success("Release OTA criada!");
+      setCreateOtaOpen(false);
+      resetOtaForm();
+      fetchOtaReleases();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetOtaForm = () => {
+    setOtaVersion(""); setOtaVersionCode(""); setOtaChannel("stable");
+    setOtaReleaseNotes(""); setOtaFileUrl(""); setOtaFileSize("");
+    setOtaChecksum(""); setOtaIsMandatory(false); setOtaMinVersionCode("");
+  };
+
+  const handleToggleOta = async (release: OtaRelease) => {
+    const { error } = await supabase.from('tv_ota_releases').update({ is_active: !release.is_active } as any).eq('id', release.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(release.is_active ? "Release desativada" : "Release ativada");
+      fetchOtaReleases();
+    }
+  };
+
+  const handleDeleteOta = async () => {
+    if (!selectedOta) return;
+    const { error } = await supabase.from('tv_ota_releases').delete().eq('id', selectedOta.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Release excluída");
+      setDeleteOtaOpen(false);
+      fetchOtaReleases();
+    }
+  };
+
+  const filteredOtaReleases = otaReleases.filter(r =>
+    otaChannelFilter === 'all' || r.channel === otaChannelFilter
+  );
+
+  const formatBytes = (bytes: number | null) => {
+    if (!bytes) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  };
+
   const filteredLogs = logs.filter(l => {
     if (logUnitFilter !== 'all' && l.unit_id !== logUnitFilter) return false;
     if (logLevelFilter !== 'all' && l.level !== logLevelFilter) return false;
@@ -256,6 +362,7 @@ const AdminTvApiPage = () => {
           <TabsTrigger value="keys" className="gap-1.5"><Key className="h-3.5 w-3.5" />Chaves API</TabsTrigger>
           <TabsTrigger value="commands" className="gap-1.5"><Send className="h-3.5 w-3.5" />Comandos</TabsTrigger>
           <TabsTrigger value="logs" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Logs</TabsTrigger>
+          <TabsTrigger value="ota" className="gap-1.5"><Package className="h-3.5 w-3.5" />OTA</TabsTrigger>
           <TabsTrigger value="docs" className="gap-1.5"><Monitor className="h-3.5 w-3.5" />Documentação</TabsTrigger>
           <TabsTrigger value="ratelimit" className="gap-1.5"><Shield className="h-3.5 w-3.5" />Rate Limit</TabsTrigger>
         </TabsList>
@@ -452,6 +559,126 @@ const AdminTvApiPage = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* OTA Tab */}
+        <TabsContent value="ota" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3 items-end">
+              <div>
+                <Label className="text-xs">Canal</Label>
+                <Select value={otaChannelFilter} onValueChange={setOtaChannelFilter}>
+                  <SelectTrigger className="w-36 h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="stable">Stable</SelectItem>
+                    <SelectItem value="beta">Beta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" size="sm" className="gap-1.5 h-9" onClick={fetchOtaReleases}>
+                <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+              </Button>
+            </div>
+            <Button size="sm" className="gap-2" onClick={() => setCreateOtaOpen(true)}>
+              <Upload className="h-4 w-4" /> Nova Release
+            </Button>
+          </div>
+
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Ativa</TableHead>
+                    <TableHead className="text-xs">Versão</TableHead>
+                    <TableHead className="text-xs">Código</TableHead>
+                    <TableHead className="text-xs">Canal</TableHead>
+                    <TableHead className="text-xs">Tamanho</TableHead>
+                    <TableHead className="text-xs">Obrigatória</TableHead>
+                    <TableHead className="text-xs">Notas</TableHead>
+                    <TableHead className="text-xs">Criada em</TableHead>
+                    <TableHead className="text-xs w-24">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOtaReleases.map(r => (
+                    <TableRow key={r.id} className={`text-sm ${!r.is_active ? 'opacity-50' : ''}`}>
+                      <TableCell>
+                        <Switch checked={r.is_active} onCheckedChange={() => handleToggleOta(r)} />
+                      </TableCell>
+                      <TableCell className="font-mono font-semibold">{r.version}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.version_code}</TableCell>
+                      <TableCell>
+                        <Badge variant={r.channel === 'stable' ? 'default' : 'secondary'}>
+                          {r.channel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatBytes(r.file_size_bytes)}</TableCell>
+                      <TableCell>
+                        {r.is_mandatory ? (
+                          <Badge variant="destructive" className="text-[10px]">Sim</Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Não</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                        {r.release_notes || '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(r.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {r.file_url && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(r.file_url!, '_blank')}>
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => { setSelectedOta(r); setDeleteOtaOpen(true); }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredOtaReleases.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                        Nenhuma release OTA encontrada.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* OTA Stats */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="text-xs text-muted-foreground">Total de releases</div>
+                <div className="text-2xl font-bold">{otaReleases.length}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="text-xs text-muted-foreground">Última stable</div>
+                <div className="text-lg font-semibold font-mono">
+                  {otaReleases.find(r => r.channel === 'stable' && r.is_active)?.version || '—'}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="text-xs text-muted-foreground">Última beta</div>
+                <div className="text-lg font-semibold font-mono">
+                  {otaReleases.find(r => r.channel === 'beta' && r.is_active)?.version || '—'}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Rate Limit Tab */}
@@ -735,6 +962,90 @@ x-unit-id: <id_da_unidade_tv>`}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteKey} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create OTA Release Dialog */}
+      <Dialog open={createOtaOpen} onOpenChange={setCreateOtaOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nova Release OTA</DialogTitle>
+            <DialogDescription>Publicar uma nova versão para atualização remota das TVs.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Versão *</Label>
+                <Input value={otaVersion} onChange={e => setOtaVersion(e.target.value)} placeholder="1.2.0" />
+              </div>
+              <div>
+                <Label>Código da versão *</Label>
+                <Input type="number" value={otaVersionCode} onChange={e => setOtaVersionCode(e.target.value)} placeholder="120" />
+              </div>
+            </div>
+            <div>
+              <Label>Canal</Label>
+              <Select value={otaChannel} onValueChange={setOtaChannel}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stable">Stable</SelectItem>
+                  <SelectItem value="beta">Beta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>URL do arquivo (APK/bundle)</Label>
+              <Input value={otaFileUrl} onChange={e => setOtaFileUrl(e.target.value)} placeholder="https://..." />
+              <p className="text-xs text-muted-foreground mt-1">URL pública do arquivo de atualização.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tamanho (bytes)</Label>
+                <Input type="number" value={otaFileSize} onChange={e => setOtaFileSize(e.target.value)} placeholder="15000000" />
+              </div>
+              <div>
+                <Label>Versão mínima (código)</Label>
+                <Input type="number" value={otaMinVersionCode} onChange={e => setOtaMinVersionCode(e.target.value)} placeholder="0" />
+              </div>
+            </div>
+            <div>
+              <Label>Checksum SHA-256</Label>
+              <Input value={otaChecksum} onChange={e => setOtaChecksum(e.target.value)} placeholder="abc123..." className="font-mono text-xs" />
+            </div>
+            <div>
+              <Label>Notas da versão</Label>
+              <Textarea value={otaReleaseNotes} onChange={e => setOtaReleaseNotes(e.target.value)} placeholder="Correções de bugs, novas funcionalidades..." rows={3} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={otaIsMandatory} onCheckedChange={setOtaIsMandatory} />
+              <Label className="text-sm">Atualização obrigatória</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateOtaOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateOta} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Publicar Release
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete OTA Confirm */}
+      <AlertDialog open={deleteOtaOpen} onOpenChange={setDeleteOtaOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir release OTA?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A release <strong>v{selectedOta?.version}</strong> (código {selectedOta?.version_code}) será excluída permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOta} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
