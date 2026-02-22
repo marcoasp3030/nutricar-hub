@@ -19,6 +19,7 @@ import FornecedorContractsPage from "./pages/FornecedorContractsPage";
 import AdminLgpdPage from "./pages/AdminLgpdPage";
 import AdminStoresPage from "./pages/AdminStoresPage";
 import LgpdPage from "./pages/LgpdPage";
+import AdminTvApiPage from "./pages/AdminTvApiPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
 import NotFound from "./pages/NotFound";
@@ -194,6 +195,9 @@ const AppContent = () => {
         )}
         {hasPermission('admin_lgpd') && (
           <Route path="/admin/lgpd" element={<AdminLgpdPage />} />
+        )}
+        {hasPermission('admin_tv_api') && (
+          <Route path="/admin/tv-api" element={<AdminTvApiPage />} />
         )}
 
         <Route path="*" element={<Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />} />

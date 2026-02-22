@@ -48,6 +48,7 @@ const AVAILABLE_PERMISSIONS = [
   { key: 'admin_lojas', label: 'Lojas & TVs', group: 'Administração' },
   { key: 'admin_publicidade', label: 'Publicidade', group: 'Administração' },
   { key: 'admin_lgpd', label: 'LGPD', group: 'Administração' },
+  { key: 'admin_tv_api', label: 'API TV', group: 'Administração' },
 ];
 
 const PERMISSION_TEMPLATES = [
