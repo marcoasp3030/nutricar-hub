@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay } from "lucide-react";
+import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin } from "lucide-react";
 
 type PlaylistOption = { id: string; name: string };
 
@@ -20,6 +20,8 @@ type StoreTv = {
   tv_model: string | null;
   tv_inches: number | null;
   playlist_id: string | null;
+  city: string | null;
+  address: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -31,6 +33,8 @@ const emptyForm = {
   tv_model: "",
   tv_inches: "",
   playlist_id: "__none__",
+  city: "",
+  address: "",
 };
 
 const AdminStoresPage = () => {
@@ -74,6 +78,8 @@ const AdminStoresPage = () => {
       tv_model: s.tv_model || "",
       tv_inches: s.tv_inches?.toString() || "",
       playlist_id: s.playlist_id || "__none__",
+      city: s.city || "",
+      address: s.address || "",
     });
     setDialogOpen(true);
   };
@@ -95,6 +101,8 @@ const AdminStoresPage = () => {
       tv_model: form.tv_model.trim() || null,
       tv_inches: form.tv_inches ? parseInt(form.tv_inches) : null,
       playlist_id: form.playlist_id === "__none__" ? null : form.playlist_id,
+      city: form.city.trim() || null,
+      address: form.address.trim() || null,
     };
 
     if (editingId) {
@@ -156,6 +164,24 @@ const AdminStoresPage = () => {
                   onChange={(e) => setForm({ ...form, store_name: e.target.value })}
                   placeholder="Ex: Nutricar Centro"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Cidade</Label>
+                  <Input
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    placeholder="Ex: São Paulo"
+                  />
+                </div>
+                <div>
+                  <Label>Endereço</Label>
+                  <Input
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    placeholder="Ex: Rua das Flores, 123"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -285,6 +311,12 @@ const AdminStoresPage = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground truncate">{s.store_name}</p>
+                    {(s.city || s.address) && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                        {[s.city, s.address].filter(Boolean).join(" — ")}
+                      </p>
+                    )}
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <Badge variant="secondary" className="text-xs">
                         {s.tv_quantity} TV{s.tv_quantity > 1 ? "s" : ""}
