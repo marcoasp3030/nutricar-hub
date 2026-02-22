@@ -275,6 +275,35 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // GET USER PERMISSIONS
+    if (action === 'get-permissions') {
+      const { target_user_id } = body;
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: 'ID do usuário é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const { data, error } = await supabaseAdmin
+        .from('user_permissions')
+        .select('permission')
+        .eq('user_id', target_user_id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ data: (data || []).map((r: any) => r.permission) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // SET USER PERMISSIONS
+    if (action === 'set-permissions') {
+      const { target_user_id, permissions } = body;
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: 'ID do usuário é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      await supabaseAdmin.from('user_permissions').delete().eq('user_id', target_user_id);
+      if (permissions?.length) {
+        await supabaseAdmin.from('user_permissions').insert(
+          permissions.map((p: string) => ({ user_id: target_user_id, permission: p }))
+        );
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // GET ALL AVAILABLE TABLES
     if (action === 'available-tables') {
       const { default: postgres } = await import("npm:postgres@3.4.5");

@@ -39,13 +39,23 @@ export async function getUserProfile() {
     .select('fornecedor')
     .eq('user_id', user.id);
 
+  const { data: permissions } = await supabase
+    .from('user_permissions')
+    .select('permission')
+    .eq('user_id', user.id);
+
+  const userRoles = roles?.map((r: any) => r.role) || [];
+
   return {
     ...profile,
     user_id: user.id,
     email: user.email,
-    roles: roles?.map((r: any) => r.role) || [],
-    isAdmin: roles?.some((r: any) => r.role === 'admin') || false,
+    roles: userRoles,
+    isAdmin: userRoles.includes('admin'),
+    isGerente: userRoles.includes('gerente'),
+    isFuncionario: userRoles.includes('funcionario'),
     fornecedores: fornecedores?.map((f: any) => f.fornecedor) || [],
+    permissions: permissions?.map((p: any) => p.permission) || [],
     is_active: profile?.is_active ?? false,
   };
 }

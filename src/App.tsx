@@ -106,7 +106,7 @@ const AppContent = () => {
     return <LoginPage />;
   }
 
-  // Check if user is active
+  // Check if user is active (admins always pass)
   if (profile && !profile.isAdmin && !profile.is_active) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -122,44 +122,81 @@ const AppContent = () => {
     );
   }
 
-  const role = profile?.isAdmin ? "admin" : "fornecedor";
+  const isAdmin = profile?.isAdmin;
+  const isGerente = profile?.isGerente;
+  const isFuncionario = profile?.isFuncionario;
+  const userPermissions: string[] = profile?.permissions || [];
+  
+  // Determine effective role for layout
+  const role = isAdmin ? "admin" : (isGerente || isFuncionario) ? "staff" : "fornecedor";
   const fornecedores: string[] = profile?.fornecedores || [];
   const activeFornecedor = selectedFornecedor || fornecedores[0] || "Não vinculado";
 
+  // Permission check helper
+  const hasPermission = (perm: string) => {
+    if (isAdmin) return true; // Admin has all permissions
+    if (!isGerente && !isFuncionario) {
+      // Regular fornecedor has default fornecedor permissions
+      return ['dashboard', 'produtos', 'relatorios', 'contratos', 'meus_dados'].includes(perm);
+    }
+    return userPermissions.includes(perm);
+  };
+
+  // For staff (gerente/funcionario), determine which nav items to show
+  const staffRole = isGerente ? "gerente" : isFuncionario ? "funcionario" : null;
+
   return (
     <AppLayout
-      role={role as "admin" | "fornecedor"}
+      role={isAdmin ? "admin" : (staffRole || "fornecedor") as any}
       fornecedor={activeFornecedor}
       fornecedores={fornecedores}
       onFornecedorChange={setSelectedFornecedor}
       onLogout={() => supabase.auth.signOut()}
       tableName={tableName}
       onTableChange={setTableName}
+      permissions={userPermissions}
     >
       <Routes>
-        <Route path="/" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
-        {role !== 'admin' && (
-          <>
-            <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
-            <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
-            <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
-            <Route path="/contratos" element={<FornecedorContractsPage fornecedor={activeFornecedor} />} />
-            <Route path="/meus-dados" element={<LgpdPage />} />
-          </>
+        <Route path="/" element={<Navigate to={isAdmin ? '/admin/dashboard' : hasPermission('dashboard') ? '/dashboard' : hasPermission('admin_dashboard') ? '/admin/dashboard' : '/dashboard'} replace />} />
+        
+        {/* Fornecedor / staff pages - permission gated */}
+        {hasPermission('dashboard') && (
+          <Route path="/dashboard" element={<DashboardPage tableName={tableName} fornecedor={activeFornecedor} />} />
         )}
-        {role === "admin" ? (
-          <>
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/admin/usuarios" element={<AdminUsersPage />} />
-            <Route path="/admin/midia" element={<AdminMediaPage />} />
-            <Route path="/admin/lojas" element={<AdminStoresPage />} />
-            <Route path="/admin/publicidade" element={<AdminAdvertisingPage />} />
-            <Route path="/admin/lgpd" element={<AdminLgpdPage />} />
-          </>
-        ) : (
-          <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
+        {hasPermission('produtos') && (
+          <Route path="/produtos" element={<ProductsPage tableName={tableName} fornecedor={activeFornecedor} />} />
         )}
-        <Route path="*" element={<Navigate to={role === 'admin' ? '/admin/dashboard' : '/dashboard'} replace />} />
+        {hasPermission('relatorios') && (
+          <Route path="/relatorios" element={<ReportsPage tableName={tableName} fornecedor={activeFornecedor} />} />
+        )}
+        {hasPermission('contratos') && (
+          <Route path="/contratos" element={<FornecedorContractsPage fornecedor={activeFornecedor} />} />
+        )}
+        {hasPermission('meus_dados') && (
+          <Route path="/meus-dados" element={<LgpdPage />} />
+        )}
+
+        {/* Admin pages - permission gated */}
+        {hasPermission('admin_dashboard') && (
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        )}
+        {hasPermission('admin_usuarios') && (
+          <Route path="/admin/usuarios" element={<AdminUsersPage />} />
+        )}
+        {hasPermission('admin_midia') && (
+          <Route path="/admin/midia" element={<AdminMediaPage />} />
+        )}
+        {hasPermission('admin_lojas') && (
+          <Route path="/admin/lojas" element={<AdminStoresPage />} />
+        )}
+        {hasPermission('admin_publicidade') && (
+          <Route path="/admin/publicidade" element={<AdminAdvertisingPage />} />
+        )}
+        {hasPermission('admin_lgpd') && (
+          <Route path="/admin/lgpd" element={<AdminLgpdPage />} />
+        )}
+
+        <Route path="*" element={<Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />} />
       </Routes>
     </AppLayout>
   );

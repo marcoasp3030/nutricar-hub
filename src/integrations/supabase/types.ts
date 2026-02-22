@@ -656,6 +656,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -743,7 +764,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "fornecedor"
+      app_role: "admin" | "fornecedor" | "gerente" | "funcionario"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -871,7 +892,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "fornecedor"],
+      app_role: ["admin", "fornecedor", "gerente", "funcionario"],
     },
   },
 } as const
