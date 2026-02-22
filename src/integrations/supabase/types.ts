@@ -603,6 +603,35 @@ export type Database = {
           },
         ]
       }
+      tv_connectivity_log: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_connectivity_log_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "store_tv_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_fornecedores: {
         Row: {
           created_at: string
