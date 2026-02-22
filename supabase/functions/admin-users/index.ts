@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       const firstFornecedor = fornecedores?.[0] || null;
       await supabaseAdmin
         .from('profiles')
-        .update({ full_name, fornecedor: firstFornecedor, is_active: true, cnpj: body.cnpj || null, phone: body.phone || null, financial_email: body.financial_email || null })
+        .update({ full_name, fornecedor: firstFornecedor, is_active: true, registration_status: 'approved', cnpj: body.cnpj || null, phone: body.phone || null, financial_email: body.financial_email || null })
         .eq('user_id', newUserId);
 
       // Insert fornecedores
@@ -164,7 +164,21 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'ID do usuário é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      await supabaseAdmin.from('profiles').update({ is_active }).eq('user_id', target_user_id);
+      const updates: any = { is_active };
+      if (is_active) updates.registration_status = 'approved';
+      await supabaseAdmin.from('profiles').update(updates).eq('user_id', target_user_id);
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // REJECT USER (mark as rejected without deleting)
+    if (action === 'reject') {
+      const { target_user_id } = body;
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: 'ID do usuário é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      await supabaseAdmin.from('profiles').update({ registration_status: 'rejected', is_active: false }).eq('user_id', target_user_id);
 
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
