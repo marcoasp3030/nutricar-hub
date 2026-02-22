@@ -643,6 +643,11 @@ x-unit-id: <id_da_unidade_tv>`}
                     desc: 'Buscar configurações da unidade de TV e dados da loja.',
                     response: '{ unit: { id, label, tv_format, store: { store_name, city } } }',
                   },
+                  {
+                    method: 'GET', path: '/ota/check',
+                    desc: 'Verificar se há atualização OTA disponível. Parâmetros: current_version_code (int), channel (stable|beta).',
+                    response: '{ update_available: true, update: { version, version_code, file_url, file_size_bytes, checksum_sha256, is_mandatory, release_notes } }',
+                  },
                 ].map(ep => (
                   <div key={ep.path} className="border rounded-lg p-4 space-y-2">
                     <div className="flex items-center gap-2">

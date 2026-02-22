@@ -287,6 +287,65 @@ async function handleGetConfig(unitId: string) {
   });
 }
 
+// GET /ota/check?current_version_code=X&channel=stable - Check for OTA updates
+async function handleOtaCheck(unitId: string, url: URL) {
+  const db = supabase();
+  const currentVersionCode = parseInt(url.searchParams.get('current_version_code') || '0', 10);
+  const channel = url.searchParams.get('channel') || 'stable';
+
+  const { data: latest } = await db
+    .from('tv_ota_releases')
+    .select('id, version, version_code, channel, release_notes, file_url, file_size_bytes, checksum_sha256, is_mandatory, min_version_code, created_at')
+    .eq('channel', channel)
+    .eq('is_active', true)
+    .gt('version_code', currentVersionCode)
+    .order('version_code', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!latest) {
+    return json({ update_available: false, current_version_code: currentVersionCode });
+  }
+
+  // Check if the TV meets the minimum version requirement
+  if (latest.min_version_code > 0 && currentVersionCode < latest.min_version_code) {
+    // Get intermediate update first
+    const { data: intermediate } = await db
+      .from('tv_ota_releases')
+      .select('id, version, version_code, channel, release_notes, file_url, file_size_bytes, checksum_sha256, is_mandatory, created_at')
+      .eq('channel', channel)
+      .eq('is_active', true)
+      .gt('version_code', currentVersionCode)
+      .lte('version_code', latest.min_version_code)
+      .order('version_code', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (intermediate) {
+      return json({
+        update_available: true,
+        current_version_code: currentVersionCode,
+        update: { ...intermediate, is_mandatory: true },
+        note: 'Intermediate update required before latest version',
+      });
+    }
+  }
+
+  // Log OTA check
+  await db.from('tv_logs').insert({
+    unit_id: unitId,
+    level: 'info',
+    event: 'ota_check',
+    details: { current_version_code: currentVersionCode, available: latest.version_code, channel },
+  });
+
+  return json({
+    update_available: true,
+    current_version_code: currentVersionCode,
+    update: latest,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -297,9 +356,10 @@ Deno.serve(async (req) => {
     // Extract route: /tv-api/playlist → "playlist"
     const pathParts = url.pathname.split('/').filter(Boolean);
     const route = pathParts[pathParts.length - 1] || '';
-    // For /commands/ack, check second-to-last
+    // For /commands/ack and /ota/check
     const isAck = pathParts.length >= 2 && pathParts[pathParts.length - 2] === 'commands' && route === 'ack';
-    const effectiveRoute = isAck ? 'commands-ack' : route;
+    const isOtaCheck = pathParts.length >= 2 && pathParts[pathParts.length - 2] === 'ota' && route === 'check';
+    const effectiveRoute = isAck ? 'commands-ack' : isOtaCheck ? 'ota-check' : route;
 
     // Authenticate
     const auth = await authenticate(req);
@@ -333,6 +393,9 @@ Deno.serve(async (req) => {
       case 'GET:config':
         return await handleGetConfig(unitId);
 
+      case 'GET:ota-check':
+        return await handleOtaCheck(unitId, url);
+
       default:
         return json({
           error: 'Unknown endpoint',
@@ -343,6 +406,7 @@ Deno.serve(async (req) => {
             'POST /tv-api/commands/ack',
             'POST /tv-api/logs',
             'GET /tv-api/config',
+            'GET /tv-api/ota/check?current_version_code=1&channel=stable',
           ],
         }, 404);
     }

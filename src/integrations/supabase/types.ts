@@ -773,6 +773,57 @@ export type Database = {
           },
         ]
       }
+      tv_ota_releases: {
+        Row: {
+          channel: string
+          checksum_sha256: string | null
+          created_at: string
+          created_by: string
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          is_active: boolean
+          is_mandatory: boolean
+          min_version_code: number | null
+          release_notes: string | null
+          updated_at: string
+          version: string
+          version_code: number
+        }
+        Insert: {
+          channel?: string
+          checksum_sha256?: string | null
+          created_at?: string
+          created_by: string
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          is_active?: boolean
+          is_mandatory?: boolean
+          min_version_code?: number | null
+          release_notes?: string | null
+          updated_at?: string
+          version: string
+          version_code: number
+        }
+        Update: {
+          channel?: string
+          checksum_sha256?: string | null
+          created_at?: string
+          created_by?: string
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          is_active?: boolean
+          is_mandatory?: boolean
+          min_version_code?: number | null
+          release_notes?: string | null
+          updated_at?: string
+          version?: string
+          version_code?: number
+        }
+        Relationships: []
+      }
       user_fornecedores: {
         Row: {
           created_at: string
