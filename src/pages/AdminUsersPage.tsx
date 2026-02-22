@@ -50,6 +50,34 @@ const AVAILABLE_PERMISSIONS = [
   { key: 'admin_lgpd', label: 'LGPD', group: 'Administração' },
 ];
 
+const PERMISSION_TEMPLATES = [
+  {
+    label: 'Gerente Completo',
+    description: 'Acesso total a todas as páginas',
+    permissions: AVAILABLE_PERMISSIONS.map(p => p.key),
+  },
+  {
+    label: 'Apenas Vendas',
+    description: 'Dashboard, produtos e relatórios',
+    permissions: ['dashboard', 'produtos', 'relatorios'],
+  },
+  {
+    label: 'Gestão Interna',
+    description: 'Admin sem gestão de usuários',
+    permissions: ['admin_dashboard', 'admin_midia', 'admin_lojas', 'admin_publicidade'],
+  },
+  {
+    label: 'Apenas Visualização',
+    description: 'Somente dashboards',
+    permissions: ['dashboard', 'admin_dashboard'],
+  },
+  {
+    label: 'Limpar Tudo',
+    description: 'Remover todas as permissões',
+    permissions: [] as string[],
+  },
+];
+
 const AdminUsersPage = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [fornecedoresList, setFornecedoresList] = useState<string[]>([]);
@@ -1186,6 +1214,28 @@ const AdminUsersPage = () => {
                   </div>
                 );
               })()}
+
+              {/* Templates */}
+              <div className="border-b pb-3">
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Aplicar template</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PERMISSION_TEMPLATES.map(t => (
+                    <Button
+                      key={t.label}
+                      variant={JSON.stringify(formPermissions.sort()) === JSON.stringify([...t.permissions].sort()) ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 text-xs"
+                      title={t.description}
+                      onClick={() => {
+                        setFormPermissions([...t.permissions]);
+                        toast.success(`Template "${t.label}" aplicado`);
+                      }}
+                    >
+                      {t.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
               {['Fornecedor', 'Administração'].map(group => (
                 <div key={group}>
