@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock, Phone, Mail, UserCheck, UserX } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock, Phone, Mail, UserCheck, UserX, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +35,20 @@ interface UserData {
   created_at: string;
   last_sign_in: string | null;
 }
+
+const AVAILABLE_PERMISSIONS = [
+  { key: 'dashboard', label: 'Dashboard de Vendas', group: 'Fornecedor' },
+  { key: 'produtos', label: 'Produtos', group: 'Fornecedor' },
+  { key: 'relatorios', label: 'Relatórios', group: 'Fornecedor' },
+  { key: 'contratos', label: 'Mídia TV (Contratos)', group: 'Fornecedor' },
+  { key: 'meus_dados', label: 'Meus Dados', group: 'Fornecedor' },
+  { key: 'admin_dashboard', label: 'Dashboard Admin', group: 'Administração' },
+  { key: 'admin_usuarios', label: 'Gestão de Usuários', group: 'Administração' },
+  { key: 'admin_midia', label: 'Mídia TV (Gestão)', group: 'Administração' },
+  { key: 'admin_lojas', label: 'Lojas & TVs', group: 'Administração' },
+  { key: 'admin_publicidade', label: 'Publicidade', group: 'Administração' },
+  { key: 'admin_lgpd', label: 'LGPD', group: 'Administração' },
+];
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState<UserData[]>([]);
@@ -68,6 +82,12 @@ const AdminUsersPage = () => {
   const [tableAccessSelection, setTableAccessSelection] = useState<string[]>([]);
   const [tableAccessLoading, setTableAccessLoading] = useState(false);
   const [tableAccessSearch, setTableAccessSearch] = useState("");
+
+  // Permissions state
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [permissionsUser, setPermissionsUser] = useState<UserData | null>(null);
+  const [formPermissions, setFormPermissions] = useState<string[]>([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
 
   const callAdmin = async (body: any) => {
     const { data, error } = await supabase.functions.invoke('admin-users', { body });
@@ -352,6 +372,44 @@ const AdminUsersPage = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openPermissions = async (user: UserData) => {
+    setPermissionsUser(user);
+    setPermissionsOpen(true);
+    setPermissionsLoading(true);
+    try {
+      const res = await callAdmin({ action: 'get-permissions', target_user_id: user.user_id });
+      setFormPermissions(res.data || []);
+    } catch {
+      setFormPermissions([]);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permissionsUser) return;
+    setSubmitting(true);
+    try {
+      await callAdmin({
+        action: 'set-permissions',
+        target_user_id: permissionsUser.user_id,
+        permissions: formPermissions,
+      });
+      toast.success("Permissões atualizadas!");
+      setPermissionsOpen(false);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const togglePermission = (perm: string) => {
+    setFormPermissions(prev =>
+      prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+    );
   };
 
   // Fornecedor input component reused in create/edit
@@ -758,6 +816,11 @@ const AdminUsersPage = () => {
                           <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(u)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          {(u.roles.includes('gerente') || u.roles.includes('funcionario')) && (
+                            <Button variant="ghost" size="icon" title="Permissões" onClick={() => openPermissions(u)}>
+                              <ShieldCheck className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" title="Resetar senha" onClick={() => openReset(u)}>
                             <KeyRound className="h-4 w-4" />
                           </Button>
@@ -877,6 +940,8 @@ const AdminUsersPage = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="fornecedor">Fornecedor</SelectItem>
+                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="funcionario">Funcionário</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>
               </Select>
@@ -932,6 +997,8 @@ const AdminUsersPage = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="fornecedor">Fornecedor</SelectItem>
+                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="funcionario">Funcionário</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>
               </Select>
@@ -1064,6 +1131,54 @@ const AdminUsersPage = () => {
             <Button onClick={handleSaveTableAccess} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Permissions Dialog */}
+      <Dialog open={permissionsOpen} onOpenChange={setPermissionsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Permissões de Acesso</DialogTitle>
+            <DialogDescription>
+              Definir quais páginas <strong>{permissionsUser?.full_name}</strong> ({permissionsUser?.roles.join(', ')}) pode acessar.
+            </DialogDescription>
+          </DialogHeader>
+          {permissionsLoading ? (
+            <div className="flex h-24 items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {['Fornecedor', 'Administração'].map(group => (
+                <div key={group}>
+                  <h4 className="text-sm font-semibold text-foreground mb-2">{group}</h4>
+                  <div className="space-y-1">
+                    {AVAILABLE_PERMISSIONS.filter(p => p.group === group).map(perm => (
+                      <label key={perm.key} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent cursor-pointer">
+                        <Checkbox
+                          checked={formPermissions.includes(perm.key)}
+                          onCheckedChange={() => togglePermission(perm.key)}
+                        />
+                        <span className="text-sm">{perm.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {formPermissions.length === 0 && (
+                <p className="text-xs text-muted-foreground italic">
+                  Sem permissões = sem acesso a nenhuma página.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPermissionsOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSavePermissions} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Salvar Permissões
             </Button>
           </DialogFooter>
         </DialogContent>

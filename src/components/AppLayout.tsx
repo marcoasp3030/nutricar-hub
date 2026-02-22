@@ -11,38 +11,55 @@ import { queryVendas } from "@/lib/api";
 
 interface AppLayoutProps {
   children: ReactNode;
-  role: "fornecedor" | "admin";
+  role: "fornecedor" | "admin" | "gerente" | "funcionario";
   fornecedor: string;
   fornecedores: string[];
   onFornecedorChange: (f: string) => void;
   onLogout: () => void;
   tableName: string;
   onTableChange: (t: string) => void;
+  permissions?: string[];
 }
 
-const navItems = {
-  fornecedor: [
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/produtos", label: "Produtos", icon: ShoppingBasket },
-    { to: "/relatorios", label: "Relatórios", icon: FileText },
-    { to: "/contratos", label: "Mídia TV", icon: Megaphone },
-    { to: "/meus-dados", label: "Meus Dados", icon: Shield },
-  ],
-  admin: [
-    { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/admin/usuarios", label: "Usuários", icon: Users },
-    { to: "/admin/midia", label: "Mídia TV", icon: MonitorPlay },
-    { to: "/admin/lojas", label: "Lojas & TVs", icon: Store },
-    { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone },
-    { to: "/admin/lgpd", label: "LGPD", icon: Shield },
-  ],
+const allNavItems = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard" },
+  { to: "/produtos", label: "Produtos", icon: ShoppingBasket, permission: "produtos" },
+  { to: "/relatorios", label: "Relatórios", icon: FileText, permission: "relatorios" },
+  { to: "/contratos", label: "Mídia TV", icon: Megaphone, permission: "contratos" },
+  { to: "/meus-dados", label: "Meus Dados", icon: Shield, permission: "meus_dados" },
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "admin_dashboard" },
+  { to: "/admin/usuarios", label: "Usuários", icon: Users, permission: "admin_usuarios" },
+  { to: "/admin/midia", label: "Mídia TV", icon: MonitorPlay, permission: "admin_midia" },
+  { to: "/admin/lojas", label: "Lojas & TVs", icon: Store, permission: "admin_lojas" },
+  { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone, permission: "admin_publicidade" },
+  { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
+];
+
+const defaultNavItems = {
+  fornecedor: ["dashboard", "produtos", "relatorios", "contratos", "meus_dados"],
+  admin: ["admin_dashboard", "admin_usuarios", "admin_midia", "admin_lojas", "admin_publicidade", "admin_lgpd"],
 };
 
-const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChange, onLogout, tableName, onTableChange }: AppLayoutProps) => {
+const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChange, onLogout, tableName, onTableChange, permissions }: AppLayoutProps) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tables, setTables] = useState<string[]>([]);
-  const items = navItems[role];
+
+  // Build nav items based on permissions
+  const items = (() => {
+    if (role === 'admin') {
+      return allNavItems.filter(item => defaultNavItems.admin.includes(item.permission));
+    }
+    if (role === 'fornecedor') {
+      return allNavItems.filter(item => defaultNavItems.fornecedor.includes(item.permission));
+    }
+    // gerente/funcionario - use permissions
+    if (permissions && permissions.length > 0) {
+      return allNavItems.filter(item => permissions.includes(item.permission));
+    }
+    return [];
+  })();
+  
 
   useEffect(() => {
     if (role === 'admin') return; // Admin doesn't need table data
@@ -135,7 +152,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
           </Button>
           <div className="flex-1" />
           <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
-            {role === "admin" ? "Admin" : "Fornecedor"}
+            {role === "admin" ? "Admin" : role === "gerente" ? "Gerente" : role === "funcionario" ? "Funcionário" : "Fornecedor"}
           </span>
         </header>
         <main className="flex-1 p-4 lg:p-6">{children}</main>
