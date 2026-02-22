@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock, Phone, Mail, UserCheck, UserX, ShieldCheck } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, KeyRound, Loader2, X, Plus, Database, Check, Clock, Phone, Mail, UserCheck, UserX, ShieldCheck, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1151,6 +1151,42 @@ const AdminUsersPage = () => {
             </div>
           ) : (
             <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {/* Copy from another user */}
+              {(() => {
+                const staffUsers = users.filter(u =>
+                  (u.roles.includes('gerente') || u.roles.includes('funcionario')) &&
+                  u.user_id !== permissionsUser?.user_id
+                );
+                if (staffUsers.length === 0) return null;
+                return (
+                  <div className="border-b pb-3">
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">Copiar permissões de</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {staffUsers.map(u => (
+                        <Button
+                          key={u.user_id}
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 h-7 text-xs"
+                          onClick={async () => {
+                            try {
+                              const res = await callAdmin({ action: 'get-permissions', target_user_id: u.user_id });
+                              setFormPermissions(res.data || []);
+                              toast.success(`Permissões copiadas de ${u.full_name}`);
+                            } catch {
+                              toast.error("Erro ao copiar permissões");
+                            }
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                          {u.full_name || u.email}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {['Fornecedor', 'Administração'].map(group => (
                 <div key={group}>
                   <h4 className="text-sm font-semibold text-foreground mb-2">{group}</h4>
