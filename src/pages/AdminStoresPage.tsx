@@ -42,6 +42,7 @@ const AdminStoresPage = () => {
   const [stores, setStores] = useState<StoreTv[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCity, setSelectedCity] = useState("__all__");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -135,6 +136,8 @@ const AdminStoresPage = () => {
     loadData();
   };
 
+  const cities = [...new Set(stores.map(s => s.city).filter(Boolean))] as string[];
+  const filteredStores = selectedCity === "__all__" ? stores : stores.filter(s => s.city === selectedCity);
   const totalTvs = stores.reduce((sum, s) => sum + s.tv_quantity, 0);
   const horizontalCount = stores.filter(s => s.tv_format === "horizontal").reduce((sum, s) => sum + s.tv_quantity, 0);
   const verticalCount = stores.filter(s => s.tv_format === "vertical").reduce((sum, s) => sum + s.tv_quantity, 0);
@@ -286,6 +289,25 @@ const AdminStoresPage = () => {
         </Card>
       </div>
 
+      {/* City filter */}
+      {cities.length > 0 && (
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedCity} onValueChange={setSelectedCity}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por cidade" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as cidades</SelectItem>
+              {cities.sort().map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedCity !== "__all__" && (
+            <span className="text-xs text-muted-foreground">{filteredStores.length} loja{filteredStores.length !== 1 ? "s" : ""}</span>
+          )}
+        </div>
+      )}
+
       {/* Store list */}
       {loading ? (
         <div className="flex justify-center py-12">
@@ -301,7 +323,7 @@ const AdminStoresPage = () => {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {stores.map((s) => {
+          {filteredStores.map((s) => {
             const plName = getPlaylistName(s.playlist_id);
             return (
               <Card key={s.id}>
