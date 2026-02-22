@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Key, Copy, Trash2, Plus, Loader2, Send, Monitor, FileText, RefreshCw, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Key, Copy, Trash2, Plus, Loader2, Send, Monitor, FileText, RefreshCw, Eye, EyeOff, AlertTriangle, Shield, Activity } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 interface ApiKey {
   id: string;
@@ -54,6 +55,13 @@ interface TvLog {
   store_tv_units?: { label: string } | null;
 }
 
+interface RateLimitInfo {
+  api_key_id: string;
+  request_count: number;
+  window_start: string;
+  label?: string;
+}
+
 const AdminTvApiPage = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [units, setUnits] = useState<TvUnit[]>([]);
@@ -61,6 +69,8 @@ const AdminTvApiPage = () => {
   const [logs, setLogs] = useState<TvLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [rateLimits, setRateLimits] = useState<RateLimitInfo[]>([]);
+  const RATE_LIMIT_MAX = 120;
 
   // API Key form
   const [createKeyOpen, setCreateKeyOpen] = useState(false);
@@ -100,11 +110,35 @@ const AdminTvApiPage = () => {
     setLogs((data as any) || []);
   }, []);
 
+  const fetchRateLimits = useCallback(async () => {
+    const windowStart = new Date(Date.now() - 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from('tv_api_rate_limits')
+      .select('api_key_id, request_count, window_start')
+      .gte('window_start', windowStart)
+      .order('window_start', { ascending: false });
+    
+    // Enrich with key labels
+    const enriched: RateLimitInfo[] = ((data as any) || []).map((rl: any) => {
+      const key = apiKeys.find(k => k.id === rl.api_key_id);
+      return { ...rl, label: key?.label || rl.api_key_id.slice(0, 8) };
+    });
+    setRateLimits(enriched);
+  }, [apiKeys]);
+
   useEffect(() => {
     setLoading(true);
     Promise.all([fetchApiKeys(), fetchUnits(), fetchCommands(), fetchLogs()])
       .finally(() => setLoading(false));
   }, []);
+
+  // Auto-refresh rate limits every 10s
+  useEffect(() => {
+    if (apiKeys.length === 0) return;
+    fetchRateLimits();
+    const interval = setInterval(fetchRateLimits, 10000);
+    return () => clearInterval(interval);
+  }, [apiKeys, fetchRateLimits]);
 
   const handleCreateKey = async () => {
     setSubmitting(true);
@@ -223,6 +257,7 @@ const AdminTvApiPage = () => {
           <TabsTrigger value="commands" className="gap-1.5"><Send className="h-3.5 w-3.5" />Comandos</TabsTrigger>
           <TabsTrigger value="logs" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Logs</TabsTrigger>
           <TabsTrigger value="docs" className="gap-1.5"><Monitor className="h-3.5 w-3.5" />Documentação</TabsTrigger>
+          <TabsTrigger value="ratelimit" className="gap-1.5"><Shield className="h-3.5 w-3.5" />Rate Limit</TabsTrigger>
         </TabsList>
 
         {/* API Keys Tab */}
@@ -410,6 +445,130 @@ const AdminTvApiPage = () => {
                     <TableRow>
                       <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                         Nenhum log encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Rate Limit Tab */}
+        <TabsContent value="ratelimit" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Uso em tempo real</h3>
+              <p className="text-xs text-muted-foreground">Atualiza automaticamente a cada 10 segundos • Limite: {RATE_LIMIT_MAX} req/min por chave</p>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 h-9" onClick={fetchRateLimits}>
+              <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+            </Button>
+          </div>
+
+          {apiKeys.length === 0 ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Nenhuma chave API criada.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {apiKeys.map(key => {
+                const rl = rateLimits.find(r => r.api_key_id === key.id);
+                const count = rl?.request_count || 0;
+                const percentage = Math.min((count / RATE_LIMIT_MAX) * 100, 100);
+                const isWarning = percentage >= 70;
+                const isDanger = percentage >= 90;
+                const windowAge = rl ? Math.round((Date.now() - new Date(rl.window_start).getTime()) / 1000) : null;
+
+                return (
+                  <Card key={key.id} className="border-0 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <Activity className={`h-4 w-4 ${isDanger ? 'text-destructive' : isWarning ? 'text-yellow-500' : 'text-primary'}`} />
+                          {key.label}
+                        </CardTitle>
+                        <Badge variant={!key.is_active ? 'secondary' : isDanger ? 'destructive' : isWarning ? 'secondary' : 'default'}>
+                          {!key.is_active ? 'Inativa' : isDanger ? 'Crítico' : isWarning ? 'Alto' : 'Normal'}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Requisições / min</span>
+                          <span className={`font-mono font-semibold ${isDanger ? 'text-destructive' : isWarning ? 'text-yellow-600' : 'text-foreground'}`}>
+                            {count} / {RATE_LIMIT_MAX}
+                          </span>
+                        </div>
+                        <Progress
+                          value={percentage}
+                          className={`h-2.5 ${isDanger ? '[&>div]:bg-destructive' : isWarning ? '[&>div]:bg-yellow-500' : ''}`}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        <div>
+                          <span className="block font-medium text-foreground">Último uso</span>
+                          {key.last_used_at
+                            ? new Date(key.last_used_at).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                            : 'Nunca'}
+                        </div>
+                        <div>
+                          <span className="block font-medium text-foreground">Janela ativa</span>
+                          {windowAge !== null ? `${windowAge}s atrás` : 'Sem atividade'}
+                        </div>
+                      </div>
+                      {percentage >= 100 && (
+                        <div className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          Rate limit atingido! Requisições bloqueadas.
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Histórico recente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Chave</TableHead>
+                    <TableHead className="text-xs">Requisições</TableHead>
+                    <TableHead className="text-xs">% Usado</TableHead>
+                    <TableHead className="text-xs">Janela</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rateLimits.length > 0 ? rateLimits.map((rl, i) => {
+                    const pct = Math.min((rl.request_count / RATE_LIMIT_MAX) * 100, 100);
+                    return (
+                      <TableRow key={i} className="text-sm">
+                        <TableCell className="font-medium text-xs">{rl.label}</TableCell>
+                        <TableCell className="font-mono text-xs">{rl.request_count}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={pct} className={`h-1.5 w-20 ${pct >= 90 ? '[&>div]:bg-destructive' : pct >= 70 ? '[&>div]:bg-yellow-500' : ''}`} />
+                            <span className="text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(rl.window_start).toLocaleTimeString('pt-BR')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-muted-foreground text-xs">
+                        Nenhuma atividade de rate limiting registrada.
                       </TableCell>
                     </TableRow>
                   )}
