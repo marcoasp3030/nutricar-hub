@@ -104,8 +104,10 @@ const AdminStoresPage = () => {
 
   const [onlineCount, setOnlineCount] = useState({ online: 0, total: 0 });
   const prevStatusRef = useRef<Record<string, boolean>>({});
-  const [connectivityLog, setConnectivityLog] = useState<{ id: string; unit_label: string; status: string; created_at: string }[]>([]);
+  const [connectivityLog, setConnectivityLog] = useState<{ id: string; unit_id: string; unit_label: string; store_id: string; store_name: string; status: string; created_at: string }[]>([]);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [logFilterStore, setLogFilterStore] = useState("__all__");
+  const [logFilterUnit, setLogFilterUnit] = useState("__all__");
 
   const loadData = async () => {
     const [storesRes, playlistsRes, unitsRes] = await Promise.all([
@@ -138,22 +140,38 @@ const AdminStoresPage = () => {
       .from("tv_connectivity_log")
       .select("id, unit_id, status, created_at")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
     if (!data) return;
-    // Enrich with unit labels
+    // Enrich with unit labels + store info
     const unitIds = [...new Set(data.map(d => d.unit_id))];
     const { data: unitsData } = await supabase
       .from("store_tv_units")
-      .select("id, label")
+      .select("id, label, store_id")
       .in("id", unitIds);
-    const labelMap: Record<string, string> = {};
-    unitsData?.forEach(u => { labelMap[u.id] = u.label; });
-    setConnectivityLog(data.map(d => ({
-      id: d.id,
-      unit_label: labelMap[d.unit_id] || "TV desconhecida",
-      status: d.status,
-      created_at: d.created_at,
-    })));
+    const unitMap: Record<string, { label: string; store_id: string }> = {};
+    unitsData?.forEach(u => { unitMap[u.id] = { label: u.label, store_id: u.store_id }; });
+    // Get store names
+    const storeIds = [...new Set(Object.values(unitMap).map(u => u.store_id))];
+    const storeNameMap: Record<string, string> = {};
+    if (storeIds.length > 0) {
+      const { data: storesData } = await supabase
+        .from("store_tvs")
+        .select("id, store_name")
+        .in("id", storeIds);
+      storesData?.forEach(s => { storeNameMap[s.id] = s.store_name; });
+    }
+    setConnectivityLog(data.map(d => {
+      const unit = unitMap[d.unit_id];
+      return {
+        id: d.id,
+        unit_id: d.unit_id,
+        unit_label: unit?.label || "TV desconhecida",
+        store_id: unit?.store_id || "",
+        store_name: unit ? (storeNameMap[unit.store_id] || "Loja desconhecida") : "Loja desconhecida",
+        status: d.status,
+        created_at: d.created_at,
+      };
+    }));
   };
 
   // Refresh online status + toast on changes
@@ -439,80 +457,120 @@ const AdminStoresPage = () => {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="border-t px-4 pb-4">
-              {connectivityLog.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Nenhum evento registrado ainda.</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Os eventos aparecerão quando as TVs forem ligadas/desligadas.</p>
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-3 mt-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <Store className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Select value={logFilterStore} onValueChange={(v) => { setLogFilterStore(v); setLogFilterUnit("__all__"); }}>
+                    <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Todas as lojas" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas as lojas</SelectItem>
+                      {[...new Set(connectivityLog.map(l => l.store_id))].map(sid => {
+                        const name = connectivityLog.find(l => l.store_id === sid)?.store_name || sid;
+                        return <SelectItem key={sid} value={sid}>{name}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : (
-                <ScrollArea className="max-h-[320px] mt-3">
-                  <div className="relative pl-6">
-                    {/* Timeline line */}
-                    <div className="absolute left-[9px] top-1 bottom-1 w-px bg-border" />
-                    <div className="space-y-0">
-                      {connectivityLog.map((log, i) => {
-                        const isOnline = log.status === "online";
-                        const date = new Date(log.created_at);
-                        const now = new Date();
-                        const diffMs = now.getTime() - date.getTime();
-                        const diffMin = Math.floor(diffMs / 60000);
-                        const diffHrs = Math.floor(diffMin / 60);
-                        let timeAgo = "";
-                        if (diffMin < 1) timeAgo = "agora";
-                        else if (diffMin < 60) timeAgo = `${diffMin}min atrás`;
-                        else if (diffHrs < 24) timeAgo = `${diffHrs}h atrás`;
-                        else timeAgo = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+                <div className="flex items-center gap-2">
+                  <Tv className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Select value={logFilterUnit} onValueChange={setLogFilterUnit}>
+                    <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Todas as TVs" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas as TVs</SelectItem>
+                      {[...new Map(
+                        connectivityLog
+                          .filter(l => logFilterStore === "__all__" || l.store_id === logFilterStore)
+                          .map(l => [l.unit_id, l.unit_label])
+                      ).entries()].map(([uid, label]) => (
+                        <SelectItem key={uid} value={uid}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(logFilterStore !== "__all__" || logFilterUnit !== "__all__") && (
+                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setLogFilterStore("__all__"); setLogFilterUnit("__all__"); }}>
+                    Limpar filtros
+                  </Button>
+                )}
+              </div>
+              {(() => {
+                const filteredLog = connectivityLog
+                  .filter(l => logFilterStore === "__all__" || l.store_id === logFilterStore)
+                  .filter(l => logFilterUnit === "__all__" || l.unit_id === logFilterUnit);
+                return filteredLog.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhum evento encontrado{(logFilterStore !== "__all__" || logFilterUnit !== "__all__") ? " com os filtros selecionados" : ""}.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Os eventos aparecerão quando as TVs forem ligadas/desligadas.</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="max-h-[320px]">
+                    <div className="relative pl-6">
+                      <div className="absolute left-[9px] top-1 bottom-1 w-px bg-border" />
+                      <div className="space-y-0">
+                        {filteredLog.map((log, i) => {
+                          const isOnline = log.status === "online";
+                          const date = new Date(log.created_at);
+                          const now = new Date();
+                          const diffMs = now.getTime() - date.getTime();
+                          const diffMin = Math.floor(diffMs / 60000);
+                          const diffHrs = Math.floor(diffMin / 60);
+                          let timeAgo = "";
+                          if (diffMin < 1) timeAgo = "agora";
+                          else if (diffMin < 60) timeAgo = `${diffMin}min atrás`;
+                          else if (diffHrs < 24) timeAgo = `${diffHrs}h atrás`;
+                          else timeAgo = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 
-                        // Group separator for date changes
-                        const prevDate = i > 0 ? new Date(connectivityLog[i - 1].created_at) : null;
-                        const showDateSep = i === 0 || (prevDate && date.toDateString() !== prevDate.toDateString());
+                          const prevDate = i > 0 ? new Date(filteredLog[i - 1].created_at) : null;
+                          const showDateSep = i === 0 || (prevDate && date.toDateString() !== prevDate.toDateString());
 
-                        return (
-                          <div key={log.id}>
-                            {showDateSep && (
-                              <div className="flex items-center gap-2 py-2 -ml-6">
-                                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                                  {date.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}
-                                </span>
-                                <div className="flex-1 h-px bg-border" />
-                              </div>
-                            )}
-                            <div className="relative flex items-start gap-3 py-1.5">
-                              {/* Dot */}
-                              <div
-                                className={`absolute -left-6 top-2.5 h-[10px] w-[10px] rounded-full border-2 border-background ${
-                                  isOnline ? "bg-green-500" : "bg-red-400"
-                                }`}
-                                style={{ boxShadow: isOnline ? "0 0 6px rgba(34,197,94,0.4)" : "0 0 6px rgba(248,113,113,0.3)" }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium truncate">{log.unit_label}</span>
-                                  <Badge
-                                    variant={isOnline ? "secondary" : "outline"}
-                                    className={`text-[10px] gap-0.5 ${isOnline ? "text-green-700 bg-green-500/10" : "text-red-600"}`}
-                                  >
-                                    {isOnline ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
-                                    {isOnline ? "Online" : "Offline"}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <Clock className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-[11px] text-muted-foreground">
-                                    {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                          return (
+                            <div key={log.id}>
+                              {showDateSep && (
+                                <div className="flex items-center gap-2 py-2 -ml-6">
+                                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                                    {date.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground/60">• {timeAgo}</span>
+                                  <div className="flex-1 h-px bg-border" />
+                                </div>
+                              )}
+                              <div className="relative flex items-start gap-3 py-1.5">
+                                <div
+                                  className={`absolute -left-6 top-2.5 h-[10px] w-[10px] rounded-full border-2 border-background ${
+                                    isOnline ? "bg-green-500" : "bg-red-400"
+                                  }`}
+                                  style={{ boxShadow: isOnline ? "0 0 6px rgba(34,197,94,0.4)" : "0 0 6px rgba(248,113,113,0.3)" }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium truncate">{log.unit_label}</span>
+                                    <span className="text-[10px] text-muted-foreground truncate">({log.store_name})</span>
+                                    <Badge
+                                      variant={isOnline ? "secondary" : "outline"}
+                                      className={`text-[10px] gap-0.5 ${isOnline ? "text-green-700 bg-green-500/10" : "text-red-600"}`}
+                                    >
+                                      {isOnline ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
+                                      {isOnline ? "Online" : "Offline"}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <Clock className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground/60">• {timeAgo}</span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                </ScrollArea>
-              )}
+                  </ScrollArea>
+                );
+              })()}
             </div>
           </CollapsibleContent>
         </Card>
