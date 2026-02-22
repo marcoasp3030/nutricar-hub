@@ -18,6 +18,7 @@ interface UserData {
   fornecedores: string[];
   roles: string[];
   is_active: boolean;
+  registration_status: string;
   created_at: string;
   last_sign_in: string | null;
 }
@@ -63,14 +64,14 @@ const AdminDashboardPage = () => {
       admins: admins.length,
       ativos: ativos.length,
       inativos: inativos.length,
-      pendentes: inativos.length,
+      pendentes: fornecedores.filter((u) => (u.registration_status || 'pending') === 'pending').length,
       nuncaAcessou: nuncaAcessou.length,
       totalFornecedoresVinculados: allFornecedoresSet.size,
     };
   }, [users]);
 
   const pendingUsers = useMemo(() => {
-    return users.filter((u) => !u.is_active && !u.roles.includes("admin"));
+    return users.filter((u) => (u.registration_status || 'pending') === 'pending' && !u.roles.includes("admin"));
   }, [users]);
 
   const recentLogins = useMemo(() => {
