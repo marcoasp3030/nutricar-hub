@@ -17,6 +17,7 @@ import AdminMediaPage from "./pages/AdminMediaPage";
 import AdminAdvertisingPage from "./pages/AdminAdvertisingPage";
 import FornecedorContractsPage from "./pages/FornecedorContractsPage";
 import AdminLgpdPage from "./pages/AdminLgpdPage";
+import AdminStoresPage from "./pages/AdminStoresPage";
 import LgpdPage from "./pages/LgpdPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
@@ -151,6 +152,7 @@ const AppContent = () => {
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/usuarios" element={<AdminUsersPage />} />
             <Route path="/admin/midia" element={<AdminMediaPage />} />
+            <Route path="/admin/lojas" element={<AdminStoresPage />} />
             <Route path="/admin/publicidade" element={<AdminAdvertisingPage />} />
             <Route path="/admin/lgpd" element={<AdminLgpdPage />} />
           </>
