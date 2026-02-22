@@ -99,13 +99,19 @@ const AdminStoresPage = () => {
   const [unitStoreId, setUnitStoreId] = useState<string | null>(null);
   const [unitForm, setUnitForm] = useState(emptyUnitForm);
 
+  const [onlineCount, setOnlineCount] = useState({ online: 0, total: 0 });
+
   const loadData = async () => {
-    const [storesRes, playlistsRes] = await Promise.all([
+    const [storesRes, playlistsRes, unitsRes] = await Promise.all([
       supabase.from("store_tvs").select("*").order("store_name"),
       supabase.from("playlists").select("id, name").order("name"),
+      supabase.from("store_tv_units").select("id, is_online"),
     ]);
     if (storesRes.data) setStores(storesRes.data as StoreTv[]);
     if (playlistsRes.data) setPlaylists(playlistsRes.data as PlaylistOption[]);
+    if (unitsRes.data) {
+      setOnlineCount({ online: unitsRes.data.filter(u => u.is_online).length, total: unitsRes.data.length });
+    }
     setLoading(false);
   };
 
@@ -332,10 +338,11 @@ const AdminStoresPage = () => {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-lg bg-primary/10 p-2.5"><Store className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{stores.length}</p><p className="text-xs text-muted-foreground">Lojas cadastradas</p></div></CardContent></Card>
         <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-lg bg-primary/10 p-2.5"><Monitor className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{totalTvs}</p><p className="text-xs text-muted-foreground">TVs no total</p></div></CardContent></Card>
         <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-lg bg-primary/10 p-2.5"><MonitorSmartphone className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{horizontalCount}H / {verticalCount}V</p><p className="text-xs text-muted-foreground">Horizontal / Vertical</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-3 p-4"><div className={`rounded-lg p-2.5 ${onlineCount.online > 0 ? "bg-green-500/10" : "bg-muted"}`}><Wifi className={`h-5 w-5 ${onlineCount.online > 0 ? "text-green-600" : "text-muted-foreground"}`} /></div><div><p className="text-2xl font-bold">{onlineCount.online}<span className="text-sm font-normal text-muted-foreground">/{onlineCount.total}</span></p><p className="text-xs text-muted-foreground">TVs online agora</p></div></CardContent></Card>
       </div>
 
       {/* Filters */}
