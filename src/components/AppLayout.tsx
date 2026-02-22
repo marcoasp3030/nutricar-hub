@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-nutricar.webp";
 import {
-  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store,
+  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,11 +33,12 @@ const allNavItems = [
   { to: "/admin/lojas", label: "Lojas & TVs", icon: Store, permission: "admin_lojas" },
   { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone, permission: "admin_publicidade" },
   { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
+  { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api" },
 ];
 
 const defaultNavItems = {
   fornecedor: ["dashboard", "produtos", "relatorios", "contratos", "meus_dados"],
-  admin: ["admin_dashboard", "admin_usuarios", "admin_midia", "admin_lojas", "admin_publicidade", "admin_lgpd"],
+  admin: ["admin_dashboard", "admin_usuarios", "admin_midia", "admin_lojas", "admin_publicidade", "admin_lgpd", "admin_tv_api"],
 };
 
 const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChange, onLogout, tableName, onTableChange, permissions }: AppLayoutProps) => {

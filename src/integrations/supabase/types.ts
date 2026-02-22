@@ -606,6 +606,80 @@ export type Database = {
           },
         ]
       }
+      tv_api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          label: string
+          last_used_at: string | null
+        }
+        Insert: {
+          api_key?: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_used_at?: string | null
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_used_at?: string | null
+        }
+        Relationships: []
+      }
+      tv_commands: {
+        Row: {
+          acknowledged_at: string | null
+          command: string
+          created_at: string
+          created_by: string | null
+          id: string
+          payload: Json | null
+          status: string
+          unit_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          command: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payload?: Json | null
+          status?: string
+          unit_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          command?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payload?: Json | null
+          status?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_commands_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "store_tv_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tv_connectivity_log: {
         Row: {
           created_at: string
@@ -628,6 +702,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tv_connectivity_log_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "store_tv_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tv_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event: string
+          id: string
+          level: string
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event: string
+          id?: string
+          level?: string
+          unit_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event?: string
+          id?: string
+          level?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_logs_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "store_tv_units"
