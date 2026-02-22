@@ -124,7 +124,25 @@ const AdminStoresPage = () => {
     if (data) setUnits(prev => ({ ...prev, [storeId]: data as TvUnit[] }));
   };
 
+  // Refresh only online status (lightweight)
+  const refreshOnlineStatus = async () => {
+    const { data } = await supabase.from("store_tv_units").select("id, is_online, store_id");
+    if (!data) return;
+    setOnlineCount({ online: data.filter(u => u.is_online).length, total: data.length });
+    // Also refresh expanded store units if any
+    if (expandedStore) {
+      const storeUnits = data.filter(u => u.store_id === expandedStore);
+      if (storeUnits.length > 0) loadUnits(expandedStore);
+    }
+  };
+
   useEffect(() => { loadData(); }, []);
+
+  // Auto-refresh online status every 30s
+  useEffect(() => {
+    const interval = setInterval(refreshOnlineStatus, 30_000);
+    return () => clearInterval(interval);
+  }, [expandedStore]);
 
   const toggleExpand = (storeId: string) => {
     if (expandedStore === storeId) {
