@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-interface ExportColumn {
+export interface ExportColumn {
   key: string;
   label: string;
   format?: "currency" | "number" | "text";
