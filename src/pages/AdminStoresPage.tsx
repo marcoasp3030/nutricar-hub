@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin } from "lucide-react";
+import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin, Search } from "lucide-react";
 
 type PlaylistOption = { id: string; name: string };
 
@@ -43,6 +43,7 @@ const AdminStoresPage = () => {
   const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState("__all__");
+  const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -137,7 +138,9 @@ const AdminStoresPage = () => {
   };
 
   const cities = [...new Set(stores.map(s => s.city).filter(Boolean))] as string[];
-  const filteredStores = selectedCity === "__all__" ? stores : stores.filter(s => s.city === selectedCity);
+  const filteredStores = stores
+    .filter(s => selectedCity === "__all__" || s.city === selectedCity)
+    .filter(s => !searchQuery || s.store_name.toLowerCase().includes(searchQuery.toLowerCase()));
   const totalTvs = stores.reduce((sum, s) => sum + s.tv_quantity, 0);
   const horizontalCount = stores.filter(s => s.tv_format === "horizontal").reduce((sum, s) => sum + s.tv_quantity, 0);
   const verticalCount = stores.filter(s => s.tv_format === "vertical").reduce((sum, s) => sum + s.tv_quantity, 0);
@@ -290,23 +293,34 @@ const AdminStoresPage = () => {
       </div>
 
       {/* City filter */}
-      {cities.length > 0 && (
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedCity} onValueChange={setSelectedCity}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por cidade" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas as cidades</SelectItem>
-              {cities.sort().map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedCity !== "__all__" && (
-            <span className="text-xs text-muted-foreground">{filteredStores.length} loja{filteredStores.length !== 1 ? "s" : ""}</span>
-          )}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por nome..."
+            className="pl-9"
+          />
         </div>
-      )}
+        {cities.length > 0 && (
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedCity} onValueChange={setSelectedCity}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por cidade" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas as cidades</SelectItem>
+                {cities.sort().map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {(selectedCity !== "__all__" || searchQuery) && (
+          <span className="text-xs text-muted-foreground">{filteredStores.length} loja{filteredStores.length !== 1 ? "s" : ""}</span>
+        )}
+      </div>
 
       {/* Store list */}
       {loading ? (
