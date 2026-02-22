@@ -482,6 +482,7 @@ export type Database = {
           city: string | null
           created_at: string
           id: string
+          notes: string | null
           playlist_id: string | null
           store_name: string
           tv_format: string
@@ -495,6 +496,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           id?: string
+          notes?: string | null
           playlist_id?: string | null
           store_name: string
           tv_format?: string
@@ -508,6 +510,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           id?: string
+          notes?: string | null
           playlist_id?: string | null
           store_name?: string
           tv_format?: string

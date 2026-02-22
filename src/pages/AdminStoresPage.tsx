@@ -7,8 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin, Search, Download, FileSpreadsheet, FileText, StickyNote } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { exportToXLSX, exportToPDF } from "@/lib/exportUtils";
+import type { ExportColumn } from "@/lib/exportUtils";
 
 type PlaylistOption = { id: string; name: string };
 
@@ -22,6 +26,7 @@ type StoreTv = {
   playlist_id: string | null;
   city: string | null;
   address: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,7 +40,20 @@ const emptyForm = {
   playlist_id: "__none__",
   city: "",
   address: "",
+  notes: "",
 };
+
+const STORE_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: "store_name", label: "Loja" },
+  { key: "city", label: "Cidade" },
+  { key: "address", label: "Endereço" },
+  { key: "tv_quantity", label: "Qtd TVs", format: "number" },
+  { key: "tv_format", label: "Formato" },
+  { key: "tv_model", label: "Modelo" },
+  { key: "tv_inches", label: "Polegadas" },
+  { key: "playlist_name", label: "Playlist" },
+  { key: "notes", label: "Observações" },
+];
 
 const AdminStoresPage = () => {
   const { toast } = useToast();
@@ -82,6 +100,7 @@ const AdminStoresPage = () => {
       playlist_id: s.playlist_id || "__none__",
       city: s.city || "",
       address: s.address || "",
+      notes: s.notes || "",
     });
     setDialogOpen(true);
   };
@@ -105,6 +124,7 @@ const AdminStoresPage = () => {
       playlist_id: form.playlist_id === "__none__" ? null : form.playlist_id,
       city: form.city.trim() || null,
       address: form.address.trim() || null,
+      notes: form.notes.trim() || null,
     };
 
     if (editingId) {
@@ -137,6 +157,27 @@ const AdminStoresPage = () => {
     loadData();
   };
 
+  const handleExport = (format: "xlsx" | "pdf") => {
+    const exportData = filteredStores.map(s => ({
+      ...s,
+      playlist_name: getPlaylistName(s.playlist_id) || "—",
+      tv_format: s.tv_format === "horizontal" ? "Horizontal" : "Vertical",
+      tv_model: s.tv_model || "—",
+      tv_inches: s.tv_inches || "—",
+      city: s.city || "—",
+      address: s.address || "—",
+      notes: s.notes || "—",
+    }));
+
+    if (format === "xlsx") {
+      exportToXLSX(exportData, STORE_EXPORT_COLUMNS, "lojas-tvs");
+      toast({ title: "Exportado em Excel" });
+    } else {
+      exportToPDF(exportData, STORE_EXPORT_COLUMNS, "lojas-tvs", "Relatório de Lojas & TVs");
+      toast({ title: "Exportado em PDF" });
+    }
+  };
+
   const cities = [...new Set(stores.map(s => s.city).filter(Boolean))] as string[];
   const filteredStores = stores
     .filter(s => selectedCity === "__all__" || s.city === selectedCity)
@@ -152,107 +193,135 @@ const AdminStoresPage = () => {
           <h1 className="text-2xl font-bold text-foreground">Lojas & TVs</h1>
           <p className="text-sm text-muted-foreground">Gerencie as lojas e seus equipamentos de mídia</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openNew}>
-              <Plus className="mr-2 h-4 w-4" /> Nova Loja
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Editar Loja" : "Nova Loja"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div>
-                <Label>Nome da Loja *</Label>
-                <Input
-                  value={form.store_name}
-                  onChange={(e) => setForm({ ...form, store_name: e.target.value })}
-                  placeholder="Ex: Nutricar Centro"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="flex items-center gap-2">
+          {stores.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport("xlsx")}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                  <FileText className="mr-2 h-4 w-4" /> PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew}>
+                <Plus className="mr-2 h-4 w-4" /> Nova Loja
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Editar Loja" : "Nova Loja"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
                 <div>
-                  <Label>Cidade</Label>
+                  <Label>Nome da Loja *</Label>
                   <Input
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="Ex: São Paulo"
+                    value={form.store_name}
+                    onChange={(e) => setForm({ ...form, store_name: e.target.value })}
+                    placeholder="Ex: Nutricar Centro"
                   />
                 </div>
-                <div>
-                  <Label>Endereço</Label>
-                  <Input
-                    value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    placeholder="Ex: Rua das Flores, 123"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Cidade</Label>
+                    <Input
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                      placeholder="Ex: São Paulo"
+                    />
+                  </div>
+                  <div>
+                    <Label>Endereço</Label>
+                    <Input
+                      value={form.address}
+                      onChange={(e) => setForm({ ...form, address: e.target.value })}
+                      placeholder="Ex: Rua das Flores, 123"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Quantidade de TVs *</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={form.tv_quantity}
-                    onChange={(e) => setForm({ ...form, tv_quantity: parseInt(e.target.value) || 1 })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Quantidade de TVs *</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={form.tv_quantity}
+                      onChange={(e) => setForm({ ...form, tv_quantity: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Formato *</Label>
+                    <Select value={form.tv_format} onValueChange={(v) => setForm({ ...form, tv_format: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="horizontal">Horizontal</SelectItem>
+                        <SelectItem value="vertical">Vertical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Modelo</Label>
+                    <Input
+                      value={form.tv_model}
+                      onChange={(e) => setForm({ ...form, tv_model: e.target.value })}
+                      placeholder="Ex: Samsung QN55Q60"
+                    />
+                  </div>
+                  <div>
+                    <Label>Polegadas</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={form.tv_inches}
+                      onChange={(e) => setForm({ ...form, tv_inches: e.target.value })}
+                      placeholder="Ex: 55"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label>Formato *</Label>
-                  <Select value={form.tv_format} onValueChange={(v) => setForm({ ...form, tv_format: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Label>Playlist vinculada</Label>
+                  <Select value={form.playlist_id} onValueChange={(v) => setForm({ ...form, playlist_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="horizontal">Horizontal</SelectItem>
-                      <SelectItem value="vertical">Vertical</SelectItem>
+                      <SelectItem value="__none__">Nenhuma</SelectItem>
+                      {playlists.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Modelo</Label>
-                  <Input
-                    value={form.tv_model}
-                    onChange={(e) => setForm({ ...form, tv_model: e.target.value })}
-                    placeholder="Ex: Samsung QN55Q60"
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    placeholder="Ex: Responsável: João, Horário: 8h-22h, TV montada na parede"
+                    rows={3}
                   />
                 </div>
-                <div>
-                  <Label>Polegadas</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={form.tv_inches}
-                    onChange={(e) => setForm({ ...form, tv_inches: e.target.value })}
-                    placeholder="Ex: 55"
-                  />
+                <div className="flex justify-end gap-2 pt-2">
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <Button onClick={handleSave}>
+                    {editingId ? "Salvar Alterações" : "Cadastrar"}
+                  </Button>
                 </div>
               </div>
-              <div>
-                <Label>Playlist vinculada</Label>
-                <Select value={form.playlist_id} onValueChange={(v) => setForm({ ...form, playlist_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Nenhuma</SelectItem>
-                    {playlists.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <DialogClose asChild>
-                  <Button variant="outline">Cancelar</Button>
-                </DialogClose>
-                <Button onClick={handleSave}>
-                  {editingId ? "Salvar Alterações" : "Cadastrar"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -292,7 +361,7 @@ const AdminStoresPage = () => {
         </Card>
       </div>
 
-      {/* City filter */}
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -372,6 +441,12 @@ const AdminStoresPage = () => {
                         </Badge>
                       )}
                     </div>
+                    {s.notes && (
+                      <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1">
+                        <StickyNote className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{s.notes}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
