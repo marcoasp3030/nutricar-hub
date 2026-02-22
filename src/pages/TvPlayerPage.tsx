@@ -102,6 +102,27 @@ const TvPlayerPage = () => {
     return playlist;
   }, [playlistId]);
 
+  // Heartbeat — sends every 30s to mark TV units as online
+  useEffect(() => {
+    if (!playlistId) return;
+
+    const sendHeartbeat = async () => {
+      try {
+        await supabase.functions.invoke("tv-heartbeat", {
+          body: { playlist_id: playlistId },
+        });
+      } catch (e) {
+        console.warn("Heartbeat failed:", e);
+      }
+    };
+
+    // Send immediately then every 30 seconds
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 30_000);
+
+    return () => clearInterval(interval);
+  }, [playlistId]);
+
   // Initial load
   useEffect(() => {
     if (!playlistId) return;
