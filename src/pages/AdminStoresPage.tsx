@@ -12,7 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin, Search,
   Download, FileSpreadsheet, FileText, StickyNote, ChevronDown, ChevronUp, Tv, Wifi, WifiOff,
+  Activity, Clock,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { exportToXLSX, exportToPDF } from "@/lib/exportUtils";
 import type { ExportColumn } from "@/lib/exportUtils";
@@ -101,6 +104,8 @@ const AdminStoresPage = () => {
 
   const [onlineCount, setOnlineCount] = useState({ online: 0, total: 0 });
   const prevStatusRef = useRef<Record<string, boolean>>({});
+  const [connectivityLog, setConnectivityLog] = useState<{ id: string; unit_label: string; status: string; created_at: string }[]>([]);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
   const loadData = async () => {
     const [storesRes, playlistsRes, unitsRes] = await Promise.all([
@@ -126,6 +131,29 @@ const AdminStoresPage = () => {
       .eq("store_id", storeId)
       .order("label");
     if (data) setUnits(prev => ({ ...prev, [storeId]: data as TvUnit[] }));
+  };
+
+  const loadConnectivityLog = async () => {
+    const { data } = await supabase
+      .from("tv_connectivity_log")
+      .select("id, unit_id, status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (!data) return;
+    // Enrich with unit labels
+    const unitIds = [...new Set(data.map(d => d.unit_id))];
+    const { data: unitsData } = await supabase
+      .from("store_tv_units")
+      .select("id, label")
+      .in("id", unitIds);
+    const labelMap: Record<string, string> = {};
+    unitsData?.forEach(u => { labelMap[u.id] = u.label; });
+    setConnectivityLog(data.map(d => ({
+      id: d.id,
+      unit_label: labelMap[d.unit_id] || "TV desconhecida",
+      status: d.status,
+      created_at: d.created_at,
+    })));
   };
 
   // Refresh online status + toast on changes
@@ -158,15 +186,22 @@ const AdminStoresPage = () => {
       const storeUnits = data.filter(u => u.store_id === expandedStore);
       if (storeUnits.length > 0) loadUnits(expandedStore);
     }
+
+    if (timelineOpen) loadConnectivityLog();
   };
 
   useEffect(() => { loadData(); }, []);
+
+  // Load timeline when opened
+  useEffect(() => {
+    if (timelineOpen) loadConnectivityLog();
+  }, [timelineOpen]);
 
   // Auto-refresh online status every 30s
   useEffect(() => {
     const interval = setInterval(refreshOnlineStatus, 30_000);
     return () => clearInterval(interval);
-  }, [expandedStore]);
+  }, [expandedStore, timelineOpen]);
 
   const toggleExpand = (storeId: string) => {
     if (expandedStore === storeId) {
@@ -387,7 +422,102 @@ const AdminStoresPage = () => {
         <Card><CardContent className="flex items-center gap-3 p-4"><div className={`rounded-lg p-2.5 ${onlineCount.online > 0 ? "bg-green-500/10" : "bg-muted"}`}><Wifi className={`h-5 w-5 ${onlineCount.online > 0 ? "text-green-600" : "text-muted-foreground"}`} /></div><div><p className="text-2xl font-bold">{onlineCount.online}<span className="text-sm font-normal text-muted-foreground">/{onlineCount.total}</span></p><p className="text-xs text-muted-foreground">TVs online agora</p></div></CardContent></Card>
       </div>
 
-      {/* Filters */}
+      {/* Connectivity Timeline */}
+      <Collapsible open={timelineOpen} onOpenChange={setTimelineOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardContent className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Histórico de Conectividade</span>
+                {connectivityLog.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">{connectivityLog.length}</Badge>
+                )}
+              </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${timelineOpen ? "rotate-180" : ""}`} />
+            </CardContent>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-t px-4 pb-4">
+              {connectivityLog.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Nenhum evento registrado ainda.</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Os eventos aparecerão quando as TVs forem ligadas/desligadas.</p>
+                </div>
+              ) : (
+                <ScrollArea className="max-h-[320px] mt-3">
+                  <div className="relative pl-6">
+                    {/* Timeline line */}
+                    <div className="absolute left-[9px] top-1 bottom-1 w-px bg-border" />
+                    <div className="space-y-0">
+                      {connectivityLog.map((log, i) => {
+                        const isOnline = log.status === "online";
+                        const date = new Date(log.created_at);
+                        const now = new Date();
+                        const diffMs = now.getTime() - date.getTime();
+                        const diffMin = Math.floor(diffMs / 60000);
+                        const diffHrs = Math.floor(diffMin / 60);
+                        let timeAgo = "";
+                        if (diffMin < 1) timeAgo = "agora";
+                        else if (diffMin < 60) timeAgo = `${diffMin}min atrás`;
+                        else if (diffHrs < 24) timeAgo = `${diffHrs}h atrás`;
+                        else timeAgo = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+
+                        // Group separator for date changes
+                        const prevDate = i > 0 ? new Date(connectivityLog[i - 1].created_at) : null;
+                        const showDateSep = i === 0 || (prevDate && date.toDateString() !== prevDate.toDateString());
+
+                        return (
+                          <div key={log.id}>
+                            {showDateSep && (
+                              <div className="flex items-center gap-2 py-2 -ml-6">
+                                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                                  {date.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}
+                                </span>
+                                <div className="flex-1 h-px bg-border" />
+                              </div>
+                            )}
+                            <div className="relative flex items-start gap-3 py-1.5">
+                              {/* Dot */}
+                              <div
+                                className={`absolute -left-6 top-2.5 h-[10px] w-[10px] rounded-full border-2 border-background ${
+                                  isOnline ? "bg-green-500" : "bg-red-400"
+                                }`}
+                                style={{ boxShadow: isOnline ? "0 0 6px rgba(34,197,94,0.4)" : "0 0 6px rgba(248,113,113,0.3)" }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium truncate">{log.unit_label}</span>
+                                  <Badge
+                                    variant={isOnline ? "secondary" : "outline"}
+                                    className={`text-[10px] gap-0.5 ${isOnline ? "text-green-700 bg-green-500/10" : "text-red-600"}`}
+                                  >
+                                    {isOnline ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
+                                    {isOnline ? "Online" : "Offline"}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <Clock className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground/60">• {timeAgo}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
