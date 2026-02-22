@@ -26,8 +26,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Get units linked to this playlist that were offline (to log them going online)
+    const { data: unitsGoingOnline } = await supabase
+      .from("store_tv_units")
+      .select("id")
+      .eq("playlist_id", playlist_id)
+      .eq("is_online", false);
+
     // Update all tv units linked to this playlist
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("store_tv_units")
       .update({ is_online: true, last_seen_at: new Date().toISOString() })
       .eq("playlist_id", playlist_id);
@@ -39,13 +46,35 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Mark units as offline if last_seen_at > 2 minutes ago (for ALL units, not just this playlist)
+    // Log online events
+    if (unitsGoingOnline && unitsGoingOnline.length > 0) {
+      await supabase.from("tv_connectivity_log").insert(
+        unitsGoingOnline.map((u) => ({ unit_id: u.id, status: "online" }))
+      );
+    }
+
+    // Mark units as offline if last_seen_at > 2 minutes ago
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+
+    // First get units that will go offline (to log them)
+    const { data: unitsGoingOffline } = await supabase
+      .from("store_tv_units")
+      .select("id")
+      .eq("is_online", true)
+      .lt("last_seen_at", twoMinutesAgo);
+
     await supabase
       .from("store_tv_units")
       .update({ is_online: false })
       .eq("is_online", true)
       .lt("last_seen_at", twoMinutesAgo);
+
+    // Log offline events
+    if (unitsGoingOffline && unitsGoingOffline.length > 0) {
+      await supabase.from("tv_connectivity_log").insert(
+        unitsGoingOffline.map((u) => ({ unit_id: u.id, status: "offline" }))
+      );
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
