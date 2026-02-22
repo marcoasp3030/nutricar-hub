@@ -672,164 +672,6 @@ const AdminUsersPage = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Create User Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Novo Usuário</DialogTitle>
-            <DialogDescription>Criar uma nova conta de acesso ao portal.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>CNPJ</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={formCnpj}
-                  onChange={e => setFormCnpj(formatCnpj(e.target.value))}
-                  placeholder="00.000.000/0000-00"
-                  maxLength={18}
-                  onBlur={() => lookupCnpj(formCnpj)}
-                />
-                {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Ao preencher o CNPJ, a razão social é buscada automaticamente.</p>
-            </div>
-            <div>
-              <Label>Nome completo / Razão Social *</Label>
-              <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Nome do usuário" />
-            </div>
-            <div>
-              <Label>E-mail *</Label>
-              <Input type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder="usuario@email.com" />
-            </div>
-            <div>
-              <Label>Senha *</Label>
-              <Input type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
-            </div>
-            <div>
-              <Label>Telefone</Label>
-              <Input type="tel" value={formPhone} onChange={e => setFormPhone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" maxLength={15} />
-            </div>
-            <div>
-              <Label>E-mail financeiro <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-              <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@empresa.com" />
-            </div>
-            <div>
-              <Label>Papel</Label>
-              <Select value={formRole} onValueChange={setFormRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fornecedor">Fornecedor</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <FornecedorInput />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Criar Usuário
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit User Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
-            <DialogDescription>{selectedUser?.email}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>CNPJ</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={formCnpj}
-                  onChange={e => setFormCnpj(formatCnpj(e.target.value))}
-                  placeholder="00.000.000/0000-00"
-                  maxLength={18}
-                  onBlur={() => lookupCnpj(formCnpj)}
-                />
-                {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
-              </div>
-            </div>
-            <div>
-              <Label>Nome completo / Razão Social</Label>
-              <Input value={formName} onChange={e => setFormName(e.target.value)} />
-            </div>
-            <div>
-              <Label>Telefone</Label>
-              <Input type="tel" value={formPhone} onChange={e => setFormPhone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" maxLength={15} />
-            </div>
-            <div>
-              <Label>E-mail financeiro <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-              <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@empresa.com" />
-            </div>
-            <div>
-              <Label>Papel</Label>
-              <Select value={formRole} onValueChange={setFormRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fornecedor">Fornecedor</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <FornecedorInput />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
-            <Button onClick={handleEdit} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Password Dialog */}
-      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Resetar Senha</DialogTitle>
-            <DialogDescription>Definir nova senha para {selectedUser?.email}</DialogDescription>
-          </DialogHeader>
-          <div>
-            <Label>Nova senha</Label>
-            <Input type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setResetOpen(false)}>Cancelar</Button>
-            <Button onClick={handleResetPassword} disabled={submitting || formPassword.length < 6}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Redefinir Senha
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{selectedUser?.full_name}</strong> ({selectedUser?.email})? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
         </TabsContent>
 
         <TabsContent value="bases" className="space-y-4">
@@ -878,7 +720,164 @@ const AdminUsersPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Table Access Dialog */}
+      {/* Create User Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo Usuário</DialogTitle>
+            <DialogDescription>Criar uma nova conta de acesso ao portal.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>CNPJ</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={formCnpj}
+                  onChange={e => setFormCnpj(formatCnpj(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  maxLength={18}
+                  onBlur={() => lookupCnpj(formCnpj)}
+                />
+                {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Ao preencher o CNPJ, a razão social é buscada automaticamente.</p>
+            </div>
+            <div>
+              <Label>Nome completo / Razão Social *</Label>
+              <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Nome do usuário" />
+            </div>
+            <div>
+              <Label>E-mail *</Label>
+              <Input type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} placeholder="usuario@email.com" />
+            </div>
+            <div>
+              <Label>Senha *</Label>
+              <Input type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input value={formPhone} onChange={e => setFormPhone(formatPhone(e.target.value))} placeholder="(11) 99999-9999" maxLength={15} />
+            </div>
+            <div>
+              <Label>E-mail financeiro</Label>
+              <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@email.com" />
+            </div>
+            <div>
+              <Label>Tipo</Label>
+              <Select value={formRole} onValueChange={setFormRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fornecedor">Fornecedor</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <FornecedorInput />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Criar Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>{selectedUser?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>CNPJ</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={formCnpj}
+                  onChange={e => setFormCnpj(formatCnpj(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  maxLength={18}
+                  onBlur={() => lookupCnpj(formCnpj)}
+                />
+                {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
+              </div>
+            </div>
+            <div>
+              <Label>Nome completo / Razão Social</Label>
+              <Input value={formName} onChange={e => setFormName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input value={formPhone} onChange={e => setFormPhone(formatPhone(e.target.value))} placeholder="(11) 99999-9999" maxLength={15} />
+            </div>
+            <div>
+              <Label>E-mail financeiro</Label>
+              <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@email.com" />
+            </div>
+            <div>
+              <Label>Tipo</Label>
+              <Select value={formRole} onValueChange={setFormRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fornecedor">Fornecedor</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <FornecedorInput />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleEdit} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Resetar Senha</DialogTitle>
+            <DialogDescription>Definir nova senha para {selectedUser?.email}</DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label>Nova senha</Label>
+            <Input type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setResetOpen(false)}>Cancelar</Button>
+            <Button onClick={handleResetPassword} disabled={submitting || formPassword.length < 6}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Redefinir Senha
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete/Reject Confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rejeitar / Excluir usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{selectedUser?.full_name}</strong> ({selectedUser?.email})? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={tableAccessOpen} onOpenChange={setTableAccessOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
