@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,17 +100,21 @@ const AdminStoresPage = () => {
   const [unitForm, setUnitForm] = useState(emptyUnitForm);
 
   const [onlineCount, setOnlineCount] = useState({ online: 0, total: 0 });
+  const prevStatusRef = useRef<Record<string, boolean>>({});
 
   const loadData = async () => {
     const [storesRes, playlistsRes, unitsRes] = await Promise.all([
       supabase.from("store_tvs").select("*").order("store_name"),
       supabase.from("playlists").select("id, name").order("name"),
-      supabase.from("store_tv_units").select("id, is_online"),
+      supabase.from("store_tv_units").select("id, is_online, label, store_id"),
     ]);
     if (storesRes.data) setStores(storesRes.data as StoreTv[]);
     if (playlistsRes.data) setPlaylists(playlistsRes.data as PlaylistOption[]);
     if (unitsRes.data) {
       setOnlineCount({ online: unitsRes.data.filter(u => u.is_online).length, total: unitsRes.data.length });
+      const statusMap: Record<string, boolean> = {};
+      unitsRes.data.forEach(u => { statusMap[u.id] = u.is_online; });
+      prevStatusRef.current = statusMap;
     }
     setLoading(false);
   };
@@ -124,12 +128,32 @@ const AdminStoresPage = () => {
     if (data) setUnits(prev => ({ ...prev, [storeId]: data as TvUnit[] }));
   };
 
-  // Refresh only online status (lightweight)
+  // Refresh online status + toast on changes
   const refreshOnlineStatus = async () => {
-    const { data } = await supabase.from("store_tv_units").select("id, is_online, store_id");
+    const { data } = await supabase.from("store_tv_units").select("id, is_online, label, store_id");
     if (!data) return;
     setOnlineCount({ online: data.filter(u => u.is_online).length, total: data.length });
-    // Also refresh expanded store units if any
+
+    const prev = prevStatusRef.current;
+    const wentOffline: string[] = [];
+    const wentOnline: string[] = [];
+    data.forEach(u => {
+      if (prev[u.id] !== undefined) {
+        if (prev[u.id] && !u.is_online) wentOffline.push(u.label);
+        if (!prev[u.id] && u.is_online) wentOnline.push(u.label);
+      }
+    });
+    if (wentOffline.length > 0) {
+      toast({ title: "📴 TV ficou offline", description: wentOffline.join(", "), variant: "destructive" });
+    }
+    if (wentOnline.length > 0) {
+      toast({ title: "📡 TV ficou online", description: wentOnline.join(", ") });
+    }
+
+    const statusMap: Record<string, boolean> = {};
+    data.forEach(u => { statusMap[u.id] = u.is_online; });
+    prevStatusRef.current = statusMap;
+
     if (expandedStore) {
       const storeUnits = data.filter(u => u.store_id === expandedStore);
       if (storeUnits.length > 0) loadUnits(expandedStore);
