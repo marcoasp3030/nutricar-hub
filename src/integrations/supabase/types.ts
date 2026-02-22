@@ -476,6 +476,39 @@ export type Database = {
         }
         Relationships: []
       }
+      store_tvs: {
+        Row: {
+          created_at: string
+          id: string
+          store_name: string
+          tv_format: string
+          tv_inches: number | null
+          tv_model: string | null
+          tv_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          store_name: string
+          tv_format?: string
+          tv_inches?: number | null
+          tv_model?: string | null
+          tv_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          store_name?: string
+          tv_format?: string
+          tv_inches?: number | null
+          tv_model?: string | null
+          tv_quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_fornecedores: {
         Row: {
           created_at: string
