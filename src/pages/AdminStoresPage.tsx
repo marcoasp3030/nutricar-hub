@@ -9,7 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin, Search, Download, FileSpreadsheet, FileText, StickyNote } from "lucide-react";
+import {
+  Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay, MapPin, Search,
+  Download, FileSpreadsheet, FileText, StickyNote, ChevronDown, ChevronUp, Tv, Wifi, WifiOff,
+} from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { exportToXLSX, exportToPDF } from "@/lib/exportUtils";
 import type { ExportColumn } from "@/lib/exportUtils";
@@ -31,7 +34,20 @@ type StoreTv = {
   updated_at: string;
 };
 
-const emptyForm = {
+type TvUnit = {
+  id: string;
+  store_id: string;
+  label: string;
+  tv_format: string;
+  tv_model: string | null;
+  tv_inches: number | null;
+  playlist_id: string | null;
+  is_online: boolean;
+  last_seen_at: string | null;
+  notes: string | null;
+};
+
+const emptyStoreForm = {
   store_name: "",
   tv_quantity: 1,
   tv_format: "horizontal",
@@ -40,6 +56,15 @@ const emptyForm = {
   playlist_id: "__none__",
   city: "",
   address: "",
+  notes: "",
+};
+
+const emptyUnitForm = {
+  label: "",
+  tv_format: "horizontal",
+  tv_model: "",
+  tv_inches: "",
+  playlist_id: "__none__",
   notes: "",
 };
 
@@ -64,7 +89,15 @@ const AdminStoresPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(emptyStoreForm);
+
+  // TV Units state
+  const [expandedStore, setExpandedStore] = useState<string | null>(null);
+  const [units, setUnits] = useState<Record<string, TvUnit[]>>({});
+  const [unitDialogOpen, setUnitDialogOpen] = useState(false);
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [unitStoreId, setUnitStoreId] = useState<string | null>(null);
+  const [unitForm, setUnitForm] = useState(emptyUnitForm);
 
   const loadData = async () => {
     const [storesRes, playlistsRes] = await Promise.all([
@@ -76,99 +109,134 @@ const AdminStoresPage = () => {
     setLoading(false);
   };
 
+  const loadUnits = async (storeId: string) => {
+    const { data } = await supabase
+      .from("store_tv_units")
+      .select("*")
+      .eq("store_id", storeId)
+      .order("label");
+    if (data) setUnits(prev => ({ ...prev, [storeId]: data as TvUnit[] }));
+  };
+
   useEffect(() => { loadData(); }, []);
+
+  const toggleExpand = (storeId: string) => {
+    if (expandedStore === storeId) {
+      setExpandedStore(null);
+    } else {
+      setExpandedStore(storeId);
+      if (!units[storeId]) loadUnits(storeId);
+    }
+  };
 
   const getPlaylistName = (id: string | null) => {
     if (!id) return null;
     return playlists.find(p => p.id === id)?.name || null;
   };
 
-  const openNew = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
-  };
-
+  // Store CRUD
+  const openNew = () => { setEditingId(null); setForm(emptyStoreForm); setDialogOpen(true); };
   const openEdit = (s: StoreTv) => {
     setEditingId(s.id);
     setForm({
-      store_name: s.store_name,
-      tv_quantity: s.tv_quantity,
-      tv_format: s.tv_format,
-      tv_model: s.tv_model || "",
-      tv_inches: s.tv_inches?.toString() || "",
-      playlist_id: s.playlist_id || "__none__",
-      city: s.city || "",
-      address: s.address || "",
+      store_name: s.store_name, tv_quantity: s.tv_quantity, tv_format: s.tv_format,
+      tv_model: s.tv_model || "", tv_inches: s.tv_inches?.toString() || "",
+      playlist_id: s.playlist_id || "__none__", city: s.city || "", address: s.address || "",
       notes: s.notes || "",
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.store_name.trim()) {
-      toast({ title: "Nome da loja é obrigatório", variant: "destructive" });
-      return;
-    }
-    if (form.tv_quantity < 1) {
-      toast({ title: "Quantidade deve ser pelo menos 1", variant: "destructive" });
-      return;
-    }
-
+    if (!form.store_name.trim()) { toast({ title: "Nome da loja é obrigatório", variant: "destructive" }); return; }
+    if (form.tv_quantity < 1) { toast({ title: "Quantidade deve ser pelo menos 1", variant: "destructive" }); return; }
     const payload = {
-      store_name: form.store_name.trim(),
-      tv_quantity: form.tv_quantity,
-      tv_format: form.tv_format,
-      tv_model: form.tv_model.trim() || null,
-      tv_inches: form.tv_inches ? parseInt(form.tv_inches) : null,
+      store_name: form.store_name.trim(), tv_quantity: form.tv_quantity, tv_format: form.tv_format,
+      tv_model: form.tv_model.trim() || null, tv_inches: form.tv_inches ? parseInt(form.tv_inches) : null,
       playlist_id: form.playlist_id === "__none__" ? null : form.playlist_id,
-      city: form.city.trim() || null,
-      address: form.address.trim() || null,
-      notes: form.notes.trim() || null,
+      city: form.city.trim() || null, address: form.address.trim() || null, notes: form.notes.trim() || null,
     };
-
     if (editingId) {
       const { error } = await supabase.from("store_tvs").update(payload).eq("id", editingId);
-      if (error) {
-        toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
-        return;
-      }
+      if (error) { toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Loja atualizada com sucesso" });
     } else {
       const { error } = await supabase.from("store_tvs").insert(payload);
-      if (error) {
-        toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
-        return;
-      }
+      if (error) { toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Loja cadastrada com sucesso" });
     }
-
     setDialogOpen(false);
     loadData();
   };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("store_tvs").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Loja removida" });
+    if (expandedStore === id) setExpandedStore(null);
     loadData();
   };
 
+  // TV Unit CRUD
+  const openNewUnit = (storeId: string) => {
+    const storeUnits = units[storeId] || [];
+    setUnitStoreId(storeId);
+    setEditingUnitId(null);
+    setUnitForm({ ...emptyUnitForm, label: `TV ${storeUnits.length + 1}` });
+    setUnitDialogOpen(true);
+  };
+
+  const openEditUnit = (u: TvUnit) => {
+    setUnitStoreId(u.store_id);
+    setEditingUnitId(u.id);
+    setUnitForm({
+      label: u.label, tv_format: u.tv_format, tv_model: u.tv_model || "",
+      tv_inches: u.tv_inches?.toString() || "", playlist_id: u.playlist_id || "__none__",
+      notes: u.notes || "",
+    });
+    setUnitDialogOpen(true);
+  };
+
+  const handleSaveUnit = async () => {
+    if (!unitStoreId || !unitForm.label.trim()) {
+      toast({ title: "Nome da TV é obrigatório", variant: "destructive" }); return;
+    }
+    const payload = {
+      store_id: unitStoreId,
+      label: unitForm.label.trim(), tv_format: unitForm.tv_format,
+      tv_model: unitForm.tv_model.trim() || null, tv_inches: unitForm.tv_inches ? parseInt(unitForm.tv_inches) : null,
+      playlist_id: unitForm.playlist_id === "__none__" ? null : unitForm.playlist_id,
+      notes: unitForm.notes.trim() || null,
+    };
+    if (editingUnitId) {
+      const { error } = await supabase.from("store_tv_units").update(payload).eq("id", editingUnitId);
+      if (error) { toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "TV atualizada" });
+    } else {
+      const { error } = await supabase.from("store_tv_units").insert(payload);
+      if (error) { toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "TV cadastrada" });
+    }
+    setUnitDialogOpen(false);
+    loadUnits(unitStoreId);
+  };
+
+  const handleDeleteUnit = async (unitId: string, storeId: string) => {
+    const { error } = await supabase.from("store_tv_units").delete().eq("id", unitId);
+    if (error) { toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "TV removida" });
+    loadUnits(storeId);
+  };
+
+  // Export
   const handleExport = (format: "xlsx" | "pdf") => {
     const exportData = filteredStores.map(s => ({
       ...s,
       playlist_name: getPlaylistName(s.playlist_id) || "—",
       tv_format: s.tv_format === "horizontal" ? "Horizontal" : "Vertical",
-      tv_model: s.tv_model || "—",
-      tv_inches: s.tv_inches || "—",
-      city: s.city || "—",
-      address: s.address || "—",
-      notes: s.notes || "—",
+      tv_model: s.tv_model || "—", tv_inches: s.tv_inches || "—",
+      city: s.city || "—", address: s.address || "—", notes: s.notes || "—",
     }));
-
     if (format === "xlsx") {
       exportToXLSX(exportData, STORE_EXPORT_COLUMNS, "lojas-tvs");
       toast({ title: "Exportado em Excel" });
@@ -213,9 +281,7 @@ const AdminStoresPage = () => {
           )}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openNew}>
-                <Plus className="mr-2 h-4 w-4" /> Nova Loja
-              </Button>
+              <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Nova Loja</Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
@@ -224,99 +290,40 @@ const AdminStoresPage = () => {
               <div className="space-y-4 pt-2">
                 <div>
                   <Label>Nome da Loja *</Label>
-                  <Input
-                    value={form.store_name}
-                    onChange={(e) => setForm({ ...form, store_name: e.target.value })}
-                    placeholder="Ex: Nutricar Centro"
-                  />
+                  <Input value={form.store_name} onChange={(e) => setForm({ ...form, store_name: e.target.value })} placeholder="Ex: Nutricar Centro" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Cidade</Label>
-                    <Input
-                      value={form.city}
-                      onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      placeholder="Ex: São Paulo"
-                    />
-                  </div>
-                  <div>
-                    <Label>Endereço</Label>
-                    <Input
-                      value={form.address}
-                      onChange={(e) => setForm({ ...form, address: e.target.value })}
-                      placeholder="Ex: Rua das Flores, 123"
-                    />
-                  </div>
+                  <div><Label>Cidade</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Ex: São Paulo" /></div>
+                  <div><Label>Endereço</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Ex: Rua das Flores, 123" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Quantidade de TVs *</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={form.tv_quantity}
-                      onChange={(e) => setForm({ ...form, tv_quantity: parseInt(e.target.value) || 1 })}
-                    />
-                  </div>
+                  <div><Label>Quantidade de TVs *</Label><Input type="number" min={1} value={form.tv_quantity} onChange={(e) => setForm({ ...form, tv_quantity: parseInt(e.target.value) || 1 })} /></div>
                   <div>
                     <Label>Formato *</Label>
                     <Select value={form.tv_format} onValueChange={(v) => setForm({ ...form, tv_format: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="horizontal">Horizontal</SelectItem>
-                        <SelectItem value="vertical">Vertical</SelectItem>
-                      </SelectContent>
+                      <SelectContent><SelectItem value="horizontal">Horizontal</SelectItem><SelectItem value="vertical">Vertical</SelectItem></SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Modelo</Label>
-                    <Input
-                      value={form.tv_model}
-                      onChange={(e) => setForm({ ...form, tv_model: e.target.value })}
-                      placeholder="Ex: Samsung QN55Q60"
-                    />
-                  </div>
-                  <div>
-                    <Label>Polegadas</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={form.tv_inches}
-                      onChange={(e) => setForm({ ...form, tv_inches: e.target.value })}
-                      placeholder="Ex: 55"
-                    />
-                  </div>
+                  <div><Label>Modelo</Label><Input value={form.tv_model} onChange={(e) => setForm({ ...form, tv_model: e.target.value })} placeholder="Ex: Samsung QN55Q60" /></div>
+                  <div><Label>Polegadas</Label><Input type="number" min={1} value={form.tv_inches} onChange={(e) => setForm({ ...form, tv_inches: e.target.value })} placeholder="Ex: 55" /></div>
                 </div>
                 <div>
                   <Label>Playlist vinculada</Label>
                   <Select value={form.playlist_id} onValueChange={(v) => setForm({ ...form, playlist_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nenhuma</SelectItem>
-                      {playlists.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectContent><SelectItem value="__none__">Nenhuma</SelectItem>{playlists.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Observações</Label>
-                  <Textarea
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Ex: Responsável: João, Horário: 8h-22h, TV montada na parede"
-                    rows={3}
-                  />
+                  <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Ex: Responsável: João, Horário: 8h-22h" rows={3} />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <DialogClose asChild>
-                    <Button variant="outline">Cancelar</Button>
-                  </DialogClose>
-                  <Button onClick={handleSave}>
-                    {editingId ? "Salvar Alterações" : "Cadastrar"}
-                  </Button>
+                  <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                  <Button onClick={handleSave}>{editingId ? "Salvar Alterações" : "Cadastrar"}</Button>
                 </div>
               </div>
             </DialogContent>
@@ -326,63 +333,23 @@ const AdminStoresPage = () => {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-primary/10 p-2.5">
-              <Store className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{stores.length}</p>
-              <p className="text-xs text-muted-foreground">Lojas cadastradas</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-primary/10 p-2.5">
-              <Monitor className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totalTvs}</p>
-              <p className="text-xs text-muted-foreground">TVs no total</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-primary/10 p-2.5">
-              <MonitorSmartphone className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{horizontalCount}H / {verticalCount}V</p>
-              <p className="text-xs text-muted-foreground">Horizontal / Vertical</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-lg bg-primary/10 p-2.5"><Store className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{stores.length}</p><p className="text-xs text-muted-foreground">Lojas cadastradas</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-lg bg-primary/10 p-2.5"><Monitor className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{totalTvs}</p><p className="text-xs text-muted-foreground">TVs no total</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-3 p-4"><div className="rounded-lg bg-primary/10 p-2.5"><MonitorSmartphone className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{horizontalCount}H / {verticalCount}V</p><p className="text-xs text-muted-foreground">Horizontal / Vertical</p></div></CardContent></Card>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por nome..."
-            className="pl-9"
-          />
+          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar por nome..." className="pl-9" />
         </div>
         {cities.length > 0 && (
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <Select value={selectedCity} onValueChange={setSelectedCity}>
               <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por cidade" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todas as cidades</SelectItem>
-                {cities.sort().map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
+              <SelectContent><SelectItem value="__all__">Todas as cidades</SelectItem>{cities.sort().map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         )}
@@ -393,80 +360,166 @@ const AdminStoresPage = () => {
 
       {/* Store list */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        </div>
+        <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
       ) : stores.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Store className="h-12 w-12 text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Nenhuma loja cadastrada</p>
-            <p className="text-xs text-muted-foreground/60">Clique em "Nova Loja" para começar</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="flex flex-col items-center justify-center py-12 text-center"><Store className="h-12 w-12 text-muted-foreground/30 mb-3" /><p className="text-muted-foreground">Nenhuma loja cadastrada</p><p className="text-xs text-muted-foreground/60">Clique em "Nova Loja" para começar</p></CardContent></Card>
       ) : (
         <div className="grid gap-3">
           {filteredStores.map((s) => {
             const plName = getPlaylistName(s.playlist_id);
+            const isExpanded = expandedStore === s.id;
+            const storeUnits = units[s.id] || [];
             return (
-              <Card key={s.id}>
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="rounded-lg bg-muted p-2.5">
-                    <Store className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{s.store_name}</p>
-                    {(s.city || s.address) && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                        <MapPin className="h-3 w-3 flex-shrink-0" />
-                        {[s.city, s.address].filter(Boolean).join(" — ")}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {s.tv_quantity} TV{s.tv_quantity > 1 ? "s" : ""}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs capitalize">
-                        {s.tv_format}
-                      </Badge>
-                      {s.tv_model && (
-                        <Badge variant="outline" className="text-xs">{s.tv_model}</Badge>
+              <Card key={s.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-center gap-4 p-4">
+                    <div className="rounded-lg bg-muted p-2.5">
+                      <Store className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{s.store_name}</p>
+                      {(s.city || s.address) && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          {[s.city, s.address].filter(Boolean).join(" — ")}
+                        </p>
                       )}
-                      {s.tv_inches && (
-                        <Badge variant="outline" className="text-xs">{s.tv_inches}"</Badge>
-                      )}
-                      {plName && (
-                        <Badge variant="default" className="text-xs gap-1">
-                          <MonitorPlay className="h-3 w-3" /> {plName}
-                        </Badge>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="text-xs">{s.tv_quantity} TV{s.tv_quantity > 1 ? "s" : ""}</Badge>
+                        <Badge variant="outline" className="text-xs capitalize">{s.tv_format}</Badge>
+                        {s.tv_model && <Badge variant="outline" className="text-xs">{s.tv_model}</Badge>}
+                        {s.tv_inches && <Badge variant="outline" className="text-xs">{s.tv_inches}"</Badge>}
+                        {plName && <Badge variant="default" className="text-xs gap-1"><MonitorPlay className="h-3 w-3" /> {plName}</Badge>}
+                        {storeUnits.length > 0 && (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Tv className="h-3 w-3" /> {storeUnits.filter(u => u.is_online).length}/{storeUnits.length} online
+                          </Badge>
+                        )}
+                      </div>
+                      {s.notes && (
+                        <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1">
+                          <StickyNote className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                          <span className="line-clamp-2">{s.notes}</span>
+                        </p>
                       )}
                     </div>
-                    {s.notes && (
-                      <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1">
-                        <StickyNote className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">{s.notes}</span>
-                      </p>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleExpand(s.id)} title="TVs individuais">
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(s.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+
+                  {/* Expanded TV units */}
+                  {isExpanded && (
+                    <div className="border-t bg-muted/30 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-foreground">TVs Individuais</p>
+                        <Button size="sm" variant="outline" onClick={() => openNewUnit(s.id)}>
+                          <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar TV
+                        </Button>
+                      </div>
+                      {storeUnits.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          Nenhuma TV individual cadastrada. Use "Adicionar TV" para controle granular.
+                        </p>
+                      ) : (
+                        <div className="grid gap-2">
+                          {storeUnits.map((u) => {
+                            const uPlName = getPlaylistName(u.playlist_id);
+                            return (
+                              <div key={u.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
+                                <div className="relative">
+                                  <Tv className="h-4 w-4 text-muted-foreground" />
+                                  <div
+                                    className={`absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ${u.is_online ? "bg-green-500" : "bg-red-400"}`}
+                                    style={{ boxShadow: u.is_online ? "0 0 4px rgba(34,197,94,0.5)" : undefined }}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{u.label}</p>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                    <Badge variant="outline" className="text-[10px] capitalize">{u.tv_format}</Badge>
+                                    {u.tv_model && <Badge variant="outline" className="text-[10px]">{u.tv_model}</Badge>}
+                                    {u.tv_inches && <Badge variant="outline" className="text-[10px]">{u.tv_inches}"</Badge>}
+                                    {uPlName && <Badge variant="default" className="text-[10px] gap-0.5"><MonitorPlay className="h-2.5 w-2.5" /> {uPlName}</Badge>}
+                                    <Badge variant={u.is_online ? "secondary" : "outline"} className="text-[10px] gap-0.5">
+                                      {u.is_online ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
+                                      {u.is_online ? "Online" : "Offline"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditUnit(u)}>
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteUnit(u.id, u.store_id)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+
+      {/* TV Unit Dialog */}
+      <Dialog open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingUnitId ? "Editar TV" : "Nova TV"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Nome / Identificação *</Label>
+              <Input value={unitForm.label} onChange={(e) => setUnitForm({ ...unitForm, label: e.target.value })} placeholder="Ex: TV 1 - Entrada" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Formato</Label>
+                <Select value={unitForm.tv_format} onValueChange={(v) => setUnitForm({ ...unitForm, tv_format: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="horizontal">Horizontal</SelectItem><SelectItem value="vertical">Vertical</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div><Label>Polegadas</Label><Input type="number" min={1} value={unitForm.tv_inches} onChange={(e) => setUnitForm({ ...unitForm, tv_inches: e.target.value })} placeholder="Ex: 55" /></div>
+            </div>
+            <div>
+              <Label>Modelo</Label>
+              <Input value={unitForm.tv_model} onChange={(e) => setUnitForm({ ...unitForm, tv_model: e.target.value })} placeholder="Ex: Samsung QN55Q60" />
+            </div>
+            <div>
+              <Label>Playlist vinculada</Label>
+              <Select value={unitForm.playlist_id} onValueChange={(v) => setUnitForm({ ...unitForm, playlist_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectContent><SelectItem value="__none__">Nenhuma</SelectItem>{playlists.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={unitForm.notes} onChange={(e) => setUnitForm({ ...unitForm, notes: e.target.value })} placeholder="Ex: TV montada na parede da entrada" rows={2} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+              <Button onClick={handleSaveUnit}>{editingUnitId ? "Salvar" : "Cadastrar"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

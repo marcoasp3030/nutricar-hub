@@ -476,6 +476,73 @@ export type Database = {
         }
         Relationships: []
       }
+      store_tv_units: {
+        Row: {
+          created_at: string
+          id: string
+          is_online: boolean
+          label: string
+          last_seen_at: string | null
+          notes: string | null
+          playlist_id: string | null
+          store_id: string
+          tv_format: string
+          tv_inches: number | null
+          tv_model: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_online?: boolean
+          label?: string
+          last_seen_at?: string | null
+          notes?: string | null
+          playlist_id?: string | null
+          store_id: string
+          tv_format?: string
+          tv_inches?: number | null
+          tv_model?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_online?: boolean
+          label?: string
+          last_seen_at?: string | null
+          notes?: string | null
+          playlist_id?: string | null
+          store_id?: string
+          tv_format?: string
+          tv_inches?: number | null
+          tv_model?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_tv_units_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_tv_units_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "public_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_tv_units_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "store_tvs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_tvs: {
         Row: {
           address: string | null
