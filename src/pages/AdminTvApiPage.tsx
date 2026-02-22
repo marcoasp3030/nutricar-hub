@@ -121,6 +121,9 @@ const AdminTvApiPage = () => {
   const [otaChannelFilter, setOtaChannelFilter] = useState("all");
   const [deleteOtaOpen, setDeleteOtaOpen] = useState(false);
   const [selectedOta, setSelectedOta] = useState<OtaRelease | null>(null);
+  const [otaUploading, setOtaUploading] = useState(false);
+  const [otaUploadProgress, setOtaUploadProgress] = useState(0);
+  const [otaFileName, setOtaFileName] = useState("");
 
   const fetchApiKeys = useCallback(async () => {
     const { data } = await supabase.from('tv_api_keys').select('*').order('created_at', { ascending: false });
@@ -264,6 +267,58 @@ const AdminTvApiPage = () => {
     });
   };
 
+  const handleOtaFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    if (file.size > maxSize) {
+      toast.error("Arquivo muito grande (máx. 500MB)");
+      return;
+    }
+
+    setOtaUploading(true);
+    setOtaUploadProgress(0);
+    setOtaFileName(file.name);
+
+    try {
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `releases/${timestamp}_${safeName}`;
+
+      const { data, error } = await supabase.storage
+        .from('tv-ota')
+        .upload(path, file, { upsert: true });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage.from('tv-ota').getPublicUrl(data.path);
+
+      setOtaFileUrl(urlData.publicUrl);
+      setOtaFileSize(file.size.toString());
+
+      // Compute SHA-256
+      try {
+        const buffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        setOtaChecksum(hashHex);
+      } catch {
+        // SHA-256 computation optional
+      }
+
+      setOtaUploadProgress(100);
+      toast.success("Arquivo enviado com sucesso!");
+    } catch (err: any) {
+      toast.error("Erro no upload: " + err.message);
+      setOtaFileName("");
+    } finally {
+      setOtaUploading(false);
+    }
+  };
+
   const handleCreateOta = async () => {
     if (!otaVersion.trim() || !otaVersionCode.trim()) {
       toast.error("Versão e código são obrigatórios");
@@ -300,6 +355,7 @@ const AdminTvApiPage = () => {
     setOtaVersion(""); setOtaVersionCode(""); setOtaChannel("stable");
     setOtaReleaseNotes(""); setOtaFileUrl(""); setOtaFileSize("");
     setOtaChecksum(""); setOtaIsMandatory(false); setOtaMinVersionCode("");
+    setOtaFileName(""); setOtaUploadProgress(0);
   };
 
   const handleToggleOta = async (release: OtaRelease) => {
@@ -997,23 +1053,61 @@ x-unit-id: <id_da_unidade_tv>`}
               </Select>
             </div>
             <div>
-              <Label>URL do arquivo (APK/bundle)</Label>
-              <Input value={otaFileUrl} onChange={e => setOtaFileUrl(e.target.value)} placeholder="https://..." />
-              <p className="text-xs text-muted-foreground mt-1">URL pública do arquivo de atualização.</p>
+              <Label>Arquivo APK / Bundle</Label>
+              <div className="mt-1.5 space-y-2">
+                {otaFileName ? (
+                  <div className="flex items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-2">
+                    <Package className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs font-mono truncate flex-1">{otaFileName}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{formatBytes(parseInt(otaFileSize || '0', 10))}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => { setOtaFileName(""); setOtaFileUrl(""); setOtaFileSize(""); setOtaChecksum(""); }}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/25 bg-muted/30 px-4 py-6 transition-colors hover:border-primary/50 hover:bg-muted/50">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Clique para enviar arquivo</span>
+                    <input
+                      type="file"
+                      accept=".apk,.aab,.zip,.bin"
+                      className="hidden"
+                      onChange={handleOtaFileUpload}
+                      disabled={otaUploading}
+                    />
+                  </label>
+                )}
+                {otaUploading && (
+                  <div className="space-y-1">
+                    <Progress value={otaUploadProgress} className="h-1.5" />
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Enviando...
+                    </p>
+                  </div>
+                )}
+                {!otaFileName && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Ou insira a URL manualmente:</p>
+                    <Input value={otaFileUrl} onChange={e => setOtaFileUrl(e.target.value)} placeholder="https://..." className="text-xs" />
+                  </div>
+                )}
+              </div>
             </div>
+            {otaChecksum && (
+              <div>
+                <Label>Checksum SHA-256 <Badge variant="outline" className="text-[9px] ml-1">auto</Badge></Label>
+                <Input value={otaChecksum} readOnly className="font-mono text-xs bg-muted/50" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Tamanho (bytes)</Label>
-                <Input type="number" value={otaFileSize} onChange={e => setOtaFileSize(e.target.value)} placeholder="15000000" />
+                <Label>Tamanho</Label>
+                <Input value={otaFileSize ? formatBytes(parseInt(otaFileSize, 10)) : ''} readOnly={!!otaFileName} onChange={!otaFileName ? (e => setOtaFileSize(e.target.value)) : undefined} placeholder="Automático via upload" className="text-xs bg-muted/50" />
               </div>
               <div>
                 <Label>Versão mínima (código)</Label>
                 <Input type="number" value={otaMinVersionCode} onChange={e => setOtaMinVersionCode(e.target.value)} placeholder="0" />
               </div>
-            </div>
-            <div>
-              <Label>Checksum SHA-256</Label>
-              <Input value={otaChecksum} onChange={e => setOtaChecksum(e.target.value)} placeholder="abc123..." className="font-mono text-xs" />
             </div>
             <div>
               <Label>Notas da versão</Label>
