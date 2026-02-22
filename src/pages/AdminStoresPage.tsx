@@ -453,6 +453,11 @@ const AdminStoresPage = () => {
                                       {u.is_online ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
                                       {u.is_online ? "Online" : "Offline"}
                                     </Badge>
+                                    {u.last_seen_at && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Visto: {new Date(u.last_seen_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1">
