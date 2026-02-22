@@ -480,6 +480,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          playlist_id: string | null
           store_name: string
           tv_format: string
           tv_inches: number | null
@@ -490,6 +491,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          playlist_id?: string | null
           store_name: string
           tv_format?: string
           tv_inches?: number | null
@@ -500,6 +502,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          playlist_id?: string | null
           store_name?: string
           tv_format?: string
           tv_inches?: number | null
@@ -507,7 +510,22 @@ export type Database = {
           tv_quantity?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_tvs_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_tvs_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "public_playlists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_fornecedores: {
         Row: {

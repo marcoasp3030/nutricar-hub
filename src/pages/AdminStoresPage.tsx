@@ -3,12 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone } from "lucide-react";
+import { Plus, Pencil, Trash2, Store, Monitor, MonitorSmartphone, MonitorPlay } from "lucide-react";
+
+type PlaylistOption = { id: string; name: string };
 
 type StoreTv = {
   id: string;
@@ -17,6 +19,7 @@ type StoreTv = {
   tv_format: string;
   tv_model: string | null;
   tv_inches: number | null;
+  playlist_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -27,26 +30,34 @@ const emptyForm = {
   tv_format: "horizontal",
   tv_model: "",
   tv_inches: "",
+  playlist_id: "__none__",
 };
 
 const AdminStoresPage = () => {
   const { toast } = useToast();
   const [stores, setStores] = useState<StoreTv[]>([]);
+  const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  const loadStores = async () => {
-    const { data, error } = await supabase
-      .from("store_tvs")
-      .select("*")
-      .order("store_name");
-    if (!error && data) setStores(data as StoreTv[]);
+  const loadData = async () => {
+    const [storesRes, playlistsRes] = await Promise.all([
+      supabase.from("store_tvs").select("*").order("store_name"),
+      supabase.from("playlists").select("id, name").order("name"),
+    ]);
+    if (storesRes.data) setStores(storesRes.data as StoreTv[]);
+    if (playlistsRes.data) setPlaylists(playlistsRes.data as PlaylistOption[]);
     setLoading(false);
   };
 
-  useEffect(() => { loadStores(); }, []);
+  useEffect(() => { loadData(); }, []);
+
+  const getPlaylistName = (id: string | null) => {
+    if (!id) return null;
+    return playlists.find(p => p.id === id)?.name || null;
+  };
 
   const openNew = () => {
     setEditingId(null);
@@ -62,6 +73,7 @@ const AdminStoresPage = () => {
       tv_format: s.tv_format,
       tv_model: s.tv_model || "",
       tv_inches: s.tv_inches?.toString() || "",
+      playlist_id: s.playlist_id || "__none__",
     });
     setDialogOpen(true);
   };
@@ -82,6 +94,7 @@ const AdminStoresPage = () => {
       tv_format: form.tv_format,
       tv_model: form.tv_model.trim() || null,
       tv_inches: form.tv_inches ? parseInt(form.tv_inches) : null,
+      playlist_id: form.playlist_id === "__none__" ? null : form.playlist_id,
     };
 
     if (editingId) {
@@ -101,7 +114,7 @@ const AdminStoresPage = () => {
     }
 
     setDialogOpen(false);
-    loadStores();
+    loadData();
   };
 
   const handleDelete = async (id: string) => {
@@ -111,7 +124,7 @@ const AdminStoresPage = () => {
       return;
     }
     toast({ title: "Loja removida" });
-    loadStores();
+    loadData();
   };
 
   const totalTvs = stores.reduce((sum, s) => sum + s.tv_quantity, 0);
@@ -185,6 +198,18 @@ const AdminStoresPage = () => {
                   />
                 </div>
               </div>
+              <div>
+                <Label>Playlist vinculada</Label>
+                <Select value={form.playlist_id} onValueChange={(v) => setForm({ ...form, playlist_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Nenhuma</SelectItem>
+                    {playlists.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <DialogClose asChild>
                   <Button variant="outline">Cancelar</Button>
@@ -250,45 +275,53 @@ const AdminStoresPage = () => {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {stores.map((s) => (
-            <Card key={s.id}>
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="rounded-lg bg-muted p-2.5">
-                  <Store className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{s.store_name}</p>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {s.tv_quantity} TV{s.tv_quantity > 1 ? "s" : ""}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs capitalize">
-                      {s.tv_format}
-                    </Badge>
-                    {s.tv_model && (
-                      <Badge variant="outline" className="text-xs">{s.tv_model}</Badge>
-                    )}
-                    {s.tv_inches && (
-                      <Badge variant="outline" className="text-xs">{s.tv_inches}"</Badge>
-                    )}
+          {stores.map((s) => {
+            const plName = getPlaylistName(s.playlist_id);
+            return (
+              <Card key={s.id}>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="rounded-lg bg-muted p-2.5">
+                    <Store className="h-5 w-5 text-muted-foreground" />
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(s.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">{s.store_name}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {s.tv_quantity} TV{s.tv_quantity > 1 ? "s" : ""}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {s.tv_format}
+                      </Badge>
+                      {s.tv_model && (
+                        <Badge variant="outline" className="text-xs">{s.tv_model}</Badge>
+                      )}
+                      {s.tv_inches && (
+                        <Badge variant="outline" className="text-xs">{s.tv_inches}"</Badge>
+                      )}
+                      {plName && (
+                        <Badge variant="default" className="text-xs gap-1">
+                          <MonitorPlay className="h-3 w-3" /> {plName}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(s.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
