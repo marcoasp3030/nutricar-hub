@@ -31,6 +31,7 @@ interface UserData {
   fornecedores: string[];
   roles: string[];
   is_active: boolean;
+  registration_status: string;
   created_at: string;
   last_sign_in: string | null;
 }
@@ -45,6 +46,7 @@ const AdminUsersPage = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
 
   const [formName, setFormName] = useState("");
@@ -329,6 +331,29 @@ const AdminUsersPage = () => {
     setDeleteOpen(true);
   };
 
+  const openReject = (user: UserData) => {
+    setSelectedUser(user);
+    setRejectOpen(true);
+  };
+
+  const handleReject = async () => {
+    if (!selectedUser) return;
+    setSubmitting(true);
+    try {
+      await callAdmin({
+        action: 'reject',
+        target_user_id: selectedUser.user_id,
+      });
+      toast.success("Cadastro rejeitado");
+      setRejectOpen(false);
+      fetchUsers();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Fornecedor input component reused in create/edit
   const FornecedorInput = () => (
     <div>
@@ -394,9 +419,18 @@ const AdminUsersPage = () => {
           <TabsTrigger value="pendentes" className="gap-1.5">
             <UserCheck className="h-3.5 w-3.5" />
             Pendentes
-            {users.filter(u => !u.is_active && !u.roles.includes('admin')).length > 0 && (
+            {users.filter(u => (u.registration_status || 'pending') === 'pending' && !u.roles.includes('admin')).length > 0 && (
               <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
-                {users.filter(u => !u.is_active && !u.roles.includes('admin')).length}
+                {users.filter(u => (u.registration_status || 'pending') === 'pending' && !u.roles.includes('admin')).length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="rejeitados" className="gap-1.5">
+            <UserX className="h-3.5 w-3.5" />
+            Rejeitados
+            {users.filter(u => u.registration_status === 'rejected').length > 0 && (
+              <Badge variant="outline" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
+                {users.filter(u => u.registration_status === 'rejected').length}
               </Badge>
             )}
           </TabsTrigger>
@@ -421,7 +455,7 @@ const AdminUsersPage = () => {
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : (() => {
-                const pendingUsers = users.filter(u => !u.is_active && !u.roles.includes('admin'));
+                const pendingUsers = users.filter(u => (u.registration_status || 'pending') === 'pending' && !u.roles.includes('admin'));
                 return pendingUsers.length === 0 ? (
                   <div className="py-12 text-center text-muted-foreground">
                     <UserCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -473,9 +507,84 @@ const AdminUsersPage = () => {
                                   variant="ghost"
                                   size="sm"
                                   className="gap-1.5 h-8 hover:text-destructive"
+                                  onClick={() => openReject(u)}
+                                >
+                                  <UserX className="h-3.5 w-3.5" /> Rejeitar
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Rejeitados Tab */}
+        <TabsContent value="rejeitados" className="space-y-4">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <UserX className="h-5 w-5 text-destructive" />
+                <h2 className="text-lg font-semibold text-foreground">Cadastros Rejeitados</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Usuários cujo cadastro foi rejeitado. Você pode aprovar caso mude de ideia.
+              </p>
+              {loading ? (
+                <div className="flex h-32 items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (() => {
+                const rejectedUsers = users.filter(u => u.registration_status === 'rejected');
+                return rejectedUsers.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <UserX className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Nenhum cadastro rejeitado.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs">Nome</TableHead>
+                          <TableHead className="text-xs">E-mail</TableHead>
+                          <TableHead className="text-xs">CNPJ</TableHead>
+                          <TableHead className="text-xs">Cadastrado em</TableHead>
+                          <TableHead className="text-xs w-48">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rejectedUsers.map(u => (
+                          <TableRow key={u.user_id} className="text-sm">
+                            <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground tabular-nums">
+                              {u.cnpj ? u.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '—'}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {new Date(u.created_at).toLocaleDateString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1.5">
+                                <Button
+                                  size="sm"
+                                  className="gap-1.5 h-8"
+                                  onClick={() => handleToggleActive(u)}
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Aprovar
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 h-8 hover:text-destructive"
                                   onClick={() => openDelete(u)}
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" /> Rejeitar
+                                  <Trash2 className="h-3.5 w-3.5" /> Excluir
                                 </Button>
                               </div>
                             </TableCell>
@@ -860,19 +969,37 @@ const AdminUsersPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete/Reject Confirmation */}
+      {/* Delete Confirmation */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Rejeitar / Excluir usuário?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{selectedUser?.full_name}</strong> ({selectedUser?.email})? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir permanentemente <strong>{selectedUser?.full_name}</strong> ({selectedUser?.email})? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject Confirmation */}
+      <AlertDialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rejeitar cadastro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O cadastro de <strong>{selectedUser?.full_name}</strong> ({selectedUser?.email}) será marcado como rejeitado. O usuário não será excluído e poderá ser aprovado posteriormente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Rejeitar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
