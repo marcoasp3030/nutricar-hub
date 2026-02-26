@@ -503,6 +503,144 @@ export type Database = {
         }
         Relationships: []
       }
+      event_jobs: {
+        Row: {
+          address: string | null
+          attachment_urls: string[] | null
+          cache_type: Database["public"]["Enums"]["cache_type"]
+          cache_value: number
+          checklist_template_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string
+          end_time: string | null
+          event_type_id: string | null
+          has_meals: boolean | null
+          has_transport: boolean | null
+          id: string
+          map_link: string | null
+          photo_urls: string[] | null
+          promoter_slots: number
+          requirements: string | null
+          response_deadline_hours: number | null
+          start_date: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          store_unit: string | null
+          title: string
+          travel_allowance: number | null
+          uniform_notes: string | null
+          updated_at: string
+          visibility: Database["public"]["Enums"]["job_visibility"]
+        }
+        Insert: {
+          address?: string | null
+          attachment_urls?: string[] | null
+          cache_type?: Database["public"]["Enums"]["cache_type"]
+          cache_value?: number
+          checklist_template_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date: string
+          end_time?: string | null
+          event_type_id?: string | null
+          has_meals?: boolean | null
+          has_transport?: boolean | null
+          id?: string
+          map_link?: string | null
+          photo_urls?: string[] | null
+          promoter_slots?: number
+          requirements?: string | null
+          response_deadline_hours?: number | null
+          start_date: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          store_unit?: string | null
+          title: string
+          travel_allowance?: number | null
+          uniform_notes?: string | null
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["job_visibility"]
+        }
+        Update: {
+          address?: string | null
+          attachment_urls?: string[] | null
+          cache_type?: Database["public"]["Enums"]["cache_type"]
+          cache_value?: number
+          checklist_template_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string
+          end_time?: string | null
+          event_type_id?: string | null
+          has_meals?: boolean | null
+          has_transport?: boolean | null
+          id?: string
+          map_link?: string | null
+          photo_urls?: string[] | null
+          promoter_slots?: number
+          requirements?: string | null
+          response_deadline_hours?: number | null
+          start_date?: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          store_unit?: string | null
+          title?: string
+          travel_allowance?: number | null
+          uniform_notes?: string | null
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["job_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_jobs_checklist_template_id_fkey"
+            columns: ["checklist_template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_jobs_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "event_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_types: {
+        Row: {
+          created_at: string
+          default_requirements: Json
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_requirements?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_requirements?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fornecedor_tables: {
         Row: {
           created_at: string
@@ -523,6 +661,214 @@ export type Database = {
           table_name?: string
         }
         Relationships: []
+      }
+      job_assignments: {
+        Row: {
+          admin_comment: string | null
+          admin_rating: number | null
+          checkin_at: string | null
+          checkin_photo_url: string | null
+          checkout_at: string | null
+          checkout_photo_url: string | null
+          created_at: string
+          evidence_urls: string[] | null
+          execution_notes: string | null
+          id: string
+          job_id: string
+          promoter_comment: string | null
+          promoter_id: string
+          promoter_rating: number | null
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string
+        }
+        Insert: {
+          admin_comment?: string | null
+          admin_rating?: number | null
+          checkin_at?: string | null
+          checkin_photo_url?: string | null
+          checkout_at?: string | null
+          checkout_photo_url?: string | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          execution_notes?: string | null
+          id?: string
+          job_id: string
+          promoter_comment?: string | null
+          promoter_id: string
+          promoter_rating?: number | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Update: {
+          admin_comment?: string | null
+          admin_rating?: number | null
+          checkin_at?: string | null
+          checkin_photo_url?: string | null
+          checkout_at?: string | null
+          checkout_photo_url?: string | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          execution_notes?: string | null
+          id?: string
+          job_id?: string
+          promoter_comment?: string | null
+          promoter_id?: string
+          promoter_rating?: number | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "event_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignments_promoter_id_fkey"
+            columns: ["promoter_id"]
+            isOneToOne: false
+            referencedRelation: "promoter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          details: Json | null
+          id: string
+          job_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          details?: Json | null
+          id?: string
+          job_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          details?: Json | null
+          id?: string
+          job_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_audit_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "event_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          job_id: string
+          promoter_id: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          response: Database["public"]["Enums"]["invite_response"]
+          type: Database["public"]["Enums"]["invite_type"]
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          job_id: string
+          promoter_id: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          response?: Database["public"]["Enums"]["invite_response"]
+          type?: Database["public"]["Enums"]["invite_type"]
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          job_id?: string
+          promoter_id?: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          response?: Database["public"]["Enums"]["invite_response"]
+          type?: Database["public"]["Enums"]["invite_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_invites_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "event_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_invites_promoter_id_fkey"
+            columns: ["promoter_id"]
+            isOneToOne: false
+            referencedRelation: "promoter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_payments: {
+        Row: {
+          amount: number
+          assignment_id: string
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"] | null
+          notes: string | null
+          paid_at: string | null
+          receipt_url: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          assignment_id: string
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          paid_at?: string | null
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          paid_at?: string | null
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_payments_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "job_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lgpd_consents: {
         Row: {
@@ -789,6 +1135,57 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           registration_status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      promoter_profiles: {
+        Row: {
+          avg_rating: number | null
+          bio: string | null
+          city: string | null
+          created_at: string
+          doc_urls: string[] | null
+          id: string
+          portfolio_urls: string[] | null
+          service_radius_km: number | null
+          stage_name: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["promoter_status"]
+          total_jobs: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_rating?: number | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          doc_urls?: string[] | null
+          id?: string
+          portfolio_urls?: string[] | null
+          service_radius_km?: number | null
+          stage_name?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["promoter_status"]
+          total_jobs?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avg_rating?: number | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          doc_urls?: string[] | null
+          id?: string
+          portfolio_urls?: string[] | null
+          service_radius_km?: number | null
+          stage_name?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["promoter_status"]
+          total_jobs?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -1269,6 +1666,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "fornecedor" | "gerente" | "funcionario"
+      assignment_status:
+        | "reservado"
+        | "confirmado"
+        | "substituicao"
+        | "cancelado"
+      cache_type: "por_hora" | "por_dia" | "fechado"
       checklist_item_status:
         | "pendente"
         | "em_execucao"
@@ -1291,6 +1694,25 @@ export type Database = {
         | "aprovado"
         | "reprovado"
         | "arquivado"
+      invite_response:
+        | "pendente"
+        | "aceito"
+        | "recusado"
+        | "expirado"
+        | "cancelado"
+      invite_type: "convite" | "candidatura"
+      job_status:
+        | "rascunho"
+        | "publicado"
+        | "em_negociacao"
+        | "confirmado"
+        | "em_execucao"
+        | "concluido"
+        | "cancelado"
+      job_visibility: "aberto" | "convidadas" | "atribuido_direto"
+      payment_method: "pix" | "transferencia" | "outro"
+      payment_status: "pendente" | "aprovado" | "pago" | "contestado"
+      promoter_status: "pendente" | "aprovado" | "bloqueado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1419,6 +1841,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "fornecedor", "gerente", "funcionario"],
+      assignment_status: [
+        "reservado",
+        "confirmado",
+        "substituicao",
+        "cancelado",
+      ],
+      cache_type: ["por_hora", "por_dia", "fechado"],
       checklist_item_status: [
         "pendente",
         "em_execucao",
@@ -1444,6 +1873,27 @@ export const Constants = {
         "reprovado",
         "arquivado",
       ],
+      invite_response: [
+        "pendente",
+        "aceito",
+        "recusado",
+        "expirado",
+        "cancelado",
+      ],
+      invite_type: ["convite", "candidatura"],
+      job_status: [
+        "rascunho",
+        "publicado",
+        "em_negociacao",
+        "confirmado",
+        "em_execucao",
+        "concluido",
+        "cancelado",
+      ],
+      job_visibility: ["aberto", "convidadas", "atribuido_direto"],
+      payment_method: ["pix", "transferencia", "outro"],
+      payment_status: ["pendente", "aprovado", "pago", "contestado"],
+      promoter_status: ["pendente", "aprovado", "bloqueado"],
     },
   },
 } as const
