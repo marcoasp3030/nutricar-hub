@@ -65,7 +65,7 @@ const AdminJobsPage = () => {
     },
     onSuccess: (job) => {
       qc.invalidateQueries({ queryKey: ["event_jobs"] });
-      toast({ title: "Job salvo!" });
+      toast({ title: "Evento salvo!" });
       setFormOpen(false);
       logJobAudit(job.id, form.id ? "job_updated" : "job_created");
     },
@@ -151,14 +151,14 @@ const AdminJobsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Jobs / Eventos</h1>
+          <h1 className="text-2xl font-bold text-foreground">Eventos</h1>
           <p className="text-sm text-muted-foreground">Publique e gerencie oportunidades para promotoras</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/admin/jobs/calendario")}>
             <CalendarDays className="h-4 w-4 mr-2" /> Calendário
           </Button>
-          <Button onClick={openNewJob}><Plus className="h-4 w-4 mr-2" /> Novo Job</Button>
+          <Button onClick={openNewJob}><Plus className="h-4 w-4 mr-2" /> Novo Evento</Button>
         </div>
       </div>
 
@@ -176,7 +176,7 @@ const AdminJobsPage = () => {
       ) : filteredJobs.length === 0 ? (
         <div className="text-center py-12">
           <Briefcase className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-          <p className="text-muted-foreground">Nenhum job encontrado</p>
+          <p className="text-muted-foreground">Nenhum evento encontrado</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -219,7 +219,7 @@ const AdminJobsPage = () => {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{form.id ? "Editar" : "Novo"} Job</DialogTitle>
+            <DialogTitle>{form.id ? "Editar" : "Novo"} Evento</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -245,7 +245,7 @@ const AdminJobsPage = () => {
                     {checklistTemplates.map((ct) => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">Checklist será criado automaticamente ao confirmar o job</p>
+                <p className="text-xs text-muted-foreground mt-1">Checklist será criado automaticamente ao confirmar o evento</p>
               </div>
               <div>
                 <Label>Visibilidade</Label>
