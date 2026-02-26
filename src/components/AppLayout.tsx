@@ -34,6 +34,7 @@ const allNavItems = [
   { to: "/admin/lojas", label: "Lojas & TVs", icon: Store, permission: "admin_lojas" },
   { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone, permission: "admin_publicidade" },
   { to: "/admin/checklists", label: "Checklists", icon: ClipboardList, permission: "admin_checklists" },
+  { to: "/admin/checklists/dashboard", label: "Métricas Checklists", icon: BarChart3, permission: "admin_checklists" },
   { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
   { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api" },
   { to: "/admin/jobs", label: "Jobs", icon: Briefcase, permission: "admin_jobs" },

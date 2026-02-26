@@ -45,6 +45,8 @@ export default function AdminChecklistsManagerPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [storeFilter, setStoreFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
 
   const { data: instances = [], isLoading } = useQuery({
@@ -57,9 +59,14 @@ export default function AdminChecklistsManagerPage() {
     queryFn: fetchTemplates,
   });
 
+  // Extract unique stores for filter
+  const uniqueStores = [...new Set(instances.map(i => i.store).filter(Boolean))] as string[];
+
   const filtered = instances.filter(i => {
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
-    if (search && !i.name.toLowerCase().includes(search.toLowerCase()) && !i.store?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (priorityFilter !== "all" && i.priority !== priorityFilter) return false;
+    if (storeFilter !== "all" && (i.store || "") !== storeFilter) return false;
+    if (search && !i.name.toLowerCase().includes(search.toLowerCase()) && !i.store?.toLowerCase().includes(search.toLowerCase()) && !i.location?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -100,20 +107,40 @@ export default function AdminChecklistsManagerPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar por nome ou loja..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Buscar por nome, loja ou local..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Todos Status</SelectItem>
             {Object.entries(statusLabels).map(([k, v]) => (
               <SelectItem key={k} value={k}>{v}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Prioridade" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas Prioridades</SelectItem>
+            {Object.entries(priorityLabels).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {uniqueStores.length > 0 && (
+          <Select value={storeFilter} onValueChange={setStoreFilter}>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Loja" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Lojas</SelectItem>
+              {uniqueStores.map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {isLoading ? (
