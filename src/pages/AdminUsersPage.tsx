@@ -41,14 +41,18 @@ const AVAILABLE_PERMISSIONS = [
   { key: 'produtos', label: 'Produtos', group: 'Fornecedor' },
   { key: 'relatorios', label: 'Relatórios', group: 'Fornecedor' },
   { key: 'contratos', label: 'Mídia TV (Contratos)', group: 'Fornecedor' },
+  { key: 'checklists', label: 'Checklists', group: 'Fornecedor' },
   { key: 'meus_dados', label: 'Meus Dados', group: 'Fornecedor' },
+  { key: 'portal_promotora', label: 'Portal Promotora', group: 'Fornecedor' },
   { key: 'admin_dashboard', label: 'Dashboard Admin', group: 'Administração' },
   { key: 'admin_usuarios', label: 'Gestão de Usuários', group: 'Administração' },
   { key: 'admin_midia', label: 'Mídia TV (Gestão)', group: 'Administração' },
   { key: 'admin_lojas', label: 'Lojas & TVs', group: 'Administração' },
   { key: 'admin_publicidade', label: 'Publicidade', group: 'Administração' },
+  { key: 'admin_checklists', label: 'Checklists (Gestão)', group: 'Administração' },
   { key: 'admin_lgpd', label: 'LGPD', group: 'Administração' },
   { key: 'admin_tv_api', label: 'API TV', group: 'Administração' },
+  { key: 'admin_jobs', label: 'Jobs & Promotoras', group: 'Administração' },
 ];
 
 const PERMISSION_TEMPLATES = [
