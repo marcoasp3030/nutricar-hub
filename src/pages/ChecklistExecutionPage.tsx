@@ -222,7 +222,7 @@ export default function ChecklistExecutionPage() {
         <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="gap-1 ml-auto"><History className="h-3 w-3" />Histórico</Button>
       </div>
 
-      {/* Public link toggle */}
+      {/* Access & Assignment card */}
       <Card>
         <CardContent className="py-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -266,6 +266,14 @@ export default function ChecklistExecutionPage() {
               >
                 <Copy className="h-3 w-3" />Copiar
               </Button>
+            </div>
+          )}
+          {instance.assigned_to && (
+            <div className="flex items-center gap-2 pt-1 border-t border-border">
+              <Badge variant="outline" className="text-xs gap-1">
+                <Lock className="h-3 w-3" />
+                Atribuído a um responsável
+              </Badge>
             </div>
           )}
         </CardContent>

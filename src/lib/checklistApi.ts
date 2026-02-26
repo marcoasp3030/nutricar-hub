@@ -60,6 +60,7 @@ export interface ChecklistInstance {
   created_at: string;
   updated_at: string;
   is_public: boolean;
+  assigned_to: string | null;
 }
 
 export interface ChecklistResponseItem {
