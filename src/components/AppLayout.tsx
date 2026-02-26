@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-nutricar.webp";
 import {
-  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi,
+  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,19 +26,21 @@ const allNavItems = [
   { to: "/produtos", label: "Produtos", icon: ShoppingBasket, permission: "produtos" },
   { to: "/relatorios", label: "Relatórios", icon: FileText, permission: "relatorios" },
   { to: "/contratos", label: "Mídia TV", icon: Megaphone, permission: "contratos" },
+  { to: "/checklists", label: "Checklists", icon: ClipboardList, permission: "checklists" },
   { to: "/meus-dados", label: "Meus Dados", icon: Shield, permission: "meus_dados" },
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "admin_dashboard" },
   { to: "/admin/usuarios", label: "Usuários", icon: Users, permission: "admin_usuarios" },
   { to: "/admin/midia", label: "Mídia TV", icon: MonitorPlay, permission: "admin_midia" },
   { to: "/admin/lojas", label: "Lojas & TVs", icon: Store, permission: "admin_lojas" },
   { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone, permission: "admin_publicidade" },
+  { to: "/admin/checklists/templates", label: "Checklists", icon: ClipboardList, permission: "admin_checklists" },
   { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
   { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api" },
 ];
 
 const defaultNavItems = {
-  fornecedor: ["dashboard", "produtos", "relatorios", "contratos", "meus_dados"],
-  admin: ["admin_dashboard", "admin_usuarios", "admin_midia", "admin_lojas", "admin_publicidade", "admin_lgpd", "admin_tv_api"],
+  fornecedor: ["dashboard", "produtos", "relatorios", "contratos", "checklists", "meus_dados"],
+  admin: ["admin_dashboard", "admin_usuarios", "admin_midia", "admin_lojas", "admin_publicidade", "admin_checklists", "admin_lgpd", "admin_tv_api"],
 };
 
 const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChange, onLogout, tableName, onTableChange, permissions }: AppLayoutProps) => {

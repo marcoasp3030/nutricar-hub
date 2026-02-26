@@ -20,6 +20,10 @@ import AdminLgpdPage from "./pages/AdminLgpdPage";
 import AdminStoresPage from "./pages/AdminStoresPage";
 import LgpdPage from "./pages/LgpdPage";
 import AdminTvApiPage from "./pages/AdminTvApiPage";
+import ChecklistsPage from "./pages/ChecklistsPage";
+import ChecklistExecutionPage from "./pages/ChecklistExecutionPage";
+import ChecklistTemplatesPage from "./pages/ChecklistTemplatesPage";
+import ChecklistTemplateEditorPage from "./pages/ChecklistTemplateEditorPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
 import NotFound from "./pages/NotFound";
@@ -138,7 +142,7 @@ const AppContent = () => {
     if (isAdmin) return true; // Admin has all permissions
     if (!isGerente && !isFuncionario) {
       // Regular fornecedor has default fornecedor permissions
-      return ['dashboard', 'produtos', 'relatorios', 'contratos', 'meus_dados'].includes(perm);
+      return ['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados'].includes(perm);
     }
     return userPermissions.includes(perm);
   };
@@ -176,6 +180,12 @@ const AppContent = () => {
         {hasPermission('meus_dados') && (
           <Route path="/meus-dados" element={<LgpdPage />} />
         )}
+        {hasPermission('checklists') && (
+          <Route path="/checklists" element={<ChecklistsPage />} />
+        )}
+        {hasPermission('checklists') && (
+          <Route path="/checklists/:id" element={<ChecklistExecutionPage />} />
+        )}
 
         {/* Admin pages - permission gated */}
         {hasPermission('admin_dashboard') && (
@@ -198,6 +208,12 @@ const AppContent = () => {
         )}
         {hasPermission('admin_tv_api') && (
           <Route path="/admin/tv-api" element={<AdminTvApiPage />} />
+        )}
+        {hasPermission('admin_checklists') && (
+          <Route path="/admin/checklists/templates" element={<ChecklistTemplatesPage />} />
+        )}
+        {hasPermission('admin_checklists') && (
+          <Route path="/admin/checklists/templates/:id" element={<ChecklistTemplateEditorPage />} />
         )}
 
         <Route path="*" element={<Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />} />
