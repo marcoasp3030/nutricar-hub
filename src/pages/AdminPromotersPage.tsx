@@ -161,7 +161,7 @@ const AdminPromotersPage = () => {
       { key: "city", label: "Cidade" },
       { key: "state", label: "UF" },
       { key: "avg_rating", label: "Nota Média", format: "number" },
-      { key: "total_jobs", label: "Total Jobs", format: "number" },
+      { key: "total_jobs", label: "Total Eventos", format: "number" },
       { key: "status", label: "Status" },
     ];
     const data = rankedPromoters.map((p, i) => ({
@@ -333,7 +333,7 @@ const AdminPromotersPage = () => {
                     <Tooltip />
                     <Legend />
                     <Bar yAxisId="left" dataKey="nota" fill="hsl(var(--primary))" name="Nota Média" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="right" dataKey="jobs" fill="hsl(var(--chart-2))" name="Total Jobs" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="jobs" fill="hsl(var(--chart-2))" name="Total Eventos" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
