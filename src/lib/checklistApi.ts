@@ -59,6 +59,7 @@ export interface ChecklistInstance {
   problem_count: number;
   created_at: string;
   updated_at: string;
+  is_public: boolean;
 }
 
 export interface ChecklistResponseItem {
