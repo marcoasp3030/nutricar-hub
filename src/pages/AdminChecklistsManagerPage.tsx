@@ -56,19 +56,15 @@ export default function AdminChecklistsManagerPage() {
     queryFn: () => fetchInstances(),
   });
 
-  // Fetch staff/promoters for assignment
-  const { data: staffUsers = [] } = useQuery({
-    queryKey: ["staff-users-for-assignment"],
+  // Fetch all users for assignment
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["all-users-for-assignment"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("admin-users", {
         body: { action: "list" },
       });
       if (error) throw error;
-      const users = data?.data || [];
-      // Filter to funcionario/gerente roles (includes promoters)
-      return users.filter((u: any) =>
-        u.roles?.some((r: string) => ["funcionario", "gerente"].includes(r))
-      );
+      return (data?.data || []).filter((u: any) => u.is_active);
     },
   });
 
@@ -187,7 +183,7 @@ export default function AdminChecklistsManagerPage() {
             </TableHeader>
             <TableBody>
               {filtered.map(inst => {
-                const assignedUser = staffUsers.find((u: any) => u.user_id === inst.assigned_to);
+                const assignedUser = allUsers.find((u: any) => u.user_id === inst.assigned_to);
                 return (
                   <TableRow key={inst.id}>
                     <TableCell className="font-medium">{inst.name}</TableCell>
@@ -242,7 +238,7 @@ export default function AdminChecklistsManagerPage() {
         open={showCreate}
         onOpenChange={setShowCreate}
         templates={templates}
-        staffUsers={staffUsers}
+        allUsers={allUsers}
         onCreated={() => {
           queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
         }}
@@ -251,7 +247,7 @@ export default function AdminChecklistsManagerPage() {
       <AssignChecklistDialog
         instance={assignDialog}
         onOpenChange={(open) => { if (!open) setAssignDialog(null); }}
-        staffUsers={staffUsers}
+        allUsers={allUsers}
         onAssigned={() => {
           queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
           setAssignDialog(null);
@@ -261,11 +257,99 @@ export default function AdminChecklistsManagerPage() {
   );
 }
 
-function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCreated }: {
+const roleFilterOptions = [
+  { value: "all", label: "Todos" },
+  { value: "promotor", label: "Promotores" },
+  { value: "funcionario", label: "Funcionários" },
+  { value: "gerente", label: "Gerentes" },
+  { value: "fornecedor", label: "Fornecedores" },
+];
+
+function getUserRoleLabel(user: any): string {
+  if (user.roles?.includes("admin")) return "Admin";
+  if (user.roles?.includes("gerente")) return "Gerente";
+  if (user.roles?.includes("funcionario")) {
+    // Check if promoter
+    return "Funcionário";
+  }
+  return "Fornecedor";
+}
+
+function isPromoter(user: any): boolean {
+  // Promoters have portal_promotora permission or funcionario role with promoter profile indicator
+  return user.roles?.includes("funcionario") && !user.roles?.includes("gerente");
+}
+
+function filterUsersByRole(users: any[], roleFilter: string): any[] {
+  if (roleFilter === "all") return users;
+  if (roleFilter === "promotor") return users.filter((u: any) => isPromoter(u));
+  if (roleFilter === "funcionario") return users.filter((u: any) => u.roles?.includes("funcionario") || u.roles?.includes("gerente"));
+  if (roleFilter === "gerente") return users.filter((u: any) => u.roles?.includes("gerente"));
+  if (roleFilter === "fornecedor") return users.filter((u: any) => u.roles?.includes("fornecedor") || (!u.roles?.length));
+  return users;
+}
+
+function UserSelector({ users, value, onChange, roleFilter, onRoleFilterChange, searchTerm, onSearchChange }: {
+  users: any[];
+  value: string;
+  onChange: (v: string) => void;
+  roleFilter: string;
+  onRoleFilterChange: (v: string) => void;
+  searchTerm: string;
+  onSearchChange: (v: string) => void;
+}) {
+  const filtered = filterUsersByRole(users, roleFilter).filter((u: any) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return u.full_name?.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term);
+  });
+
+  return (
+    <div className="space-y-2">
+      <Label>Responsável</Label>
+      <div className="flex flex-wrap gap-1">
+        {roleFilterOptions.map(opt => (
+          <Button
+            key={opt.value}
+            type="button"
+            size="sm"
+            variant={roleFilter === opt.value ? "default" : "outline"}
+            className="h-7 px-2 text-xs"
+            onClick={() => onRoleFilterChange(opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+      <Input
+        placeholder="Buscar por nome ou email..."
+        value={searchTerm}
+        onChange={e => onSearchChange(e.target.value)}
+        className="h-8 text-sm"
+      />
+      <Select value={value || "none"} onValueChange={onChange}>
+        <SelectTrigger><SelectValue placeholder="Sem responsável" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Sem responsável</SelectItem>
+          {filtered.map((u: any) => (
+            <SelectItem key={u.user_id} value={u.user_id}>
+              {u.full_name} · {getUserRoleLabel(u)} · {u.email}
+            </SelectItem>
+          ))}
+          {filtered.length === 0 && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum usuário encontrado</div>
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function CreateChecklistDialog({ open, onOpenChange, templates, allUsers, onCreated }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   templates: ChecklistTemplate[];
-  staffUsers: any[];
+  allUsers: any[];
   onCreated: () => void;
 }) {
   const [name, setName] = useState("");
@@ -275,6 +359,8 @@ function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCr
   const [priority, setPriority] = useState<ChecklistPriority>("media");
   const [isPublic, setIsPublic] = useState(false);
   const [assignedTo, setAssignedTo] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [userSearch, setUserSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -284,10 +370,9 @@ function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCr
     try {
       const meta = { name, store: store || undefined, location: location || undefined, priority };
       const instance = await createInstanceFromTemplate(templateId, meta);
-      // Update is_public and assigned_to
       const updates: any = {};
       if (isPublic) updates.is_public = true;
-      if (assignedTo) updates.assigned_to = assignedTo;
+      if (assignedTo && assignedTo !== "none") updates.assigned_to = assignedTo;
       if (Object.keys(updates).length) {
         await updateInstance(instance.id, updates);
       }
@@ -297,7 +382,7 @@ function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCr
       navigator.clipboard.writeText(url);
       toast({ title: "Checklist criado! Link copiado para a área de transferência." });
       onOpenChange(false);
-      setName(""); setStore(""); setLocation(""); setTemplateId(""); setPriority("media"); setIsPublic(false); setAssignedTo("");
+      setName(""); setStore(""); setLocation(""); setTemplateId(""); setPriority("media"); setIsPublic(false); setAssignedTo(""); setRoleFilter("all"); setUserSearch("");
       onCreated();
     } catch (e: any) {
       toast({ title: "Erro ao criar", description: e.message, variant: "destructive" });
@@ -306,7 +391,7 @@ function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>Novo Checklist</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
@@ -337,20 +422,15 @@ function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCr
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Responsável</Label>
-            <Select value={assignedTo} onValueChange={setAssignedTo}>
-              <SelectTrigger><SelectValue placeholder="Sem responsável (admin)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sem responsável</SelectItem>
-                {staffUsers.map((u: any) => (
-                  <SelectItem key={u.user_id} value={u.user_id}>
-                    {u.full_name} ({u.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <UserSelector
+            users={allUsers}
+            value={assignedTo}
+            onChange={setAssignedTo}
+            roleFilter={roleFilter}
+            onRoleFilterChange={setRoleFilter}
+            searchTerm={userSearch}
+            onSearchChange={setUserSearch}
+          />
           <div className="flex items-center gap-3 rounded-lg border p-3">
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
             <div>
@@ -368,19 +448,16 @@ function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCr
   );
 }
 
-function AssignChecklistDialog({ instance, onOpenChange, staffUsers, onAssigned }: {
+function AssignChecklistDialog({ instance, onOpenChange, allUsers, onAssigned }: {
   instance: ChecklistInstance | null;
   onOpenChange: (o: boolean) => void;
-  staffUsers: any[];
+  allUsers: any[];
   onAssigned: () => void;
 }) {
   const [selectedUser, setSelectedUser] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [userSearch, setUserSearch] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Reset when instance changes
-  useState(() => {
-    if (instance) setSelectedUser(instance.assigned_to || "");
-  });
 
   const handleAssign = async () => {
     if (!instance) return;
@@ -397,27 +474,22 @@ function AssignChecklistDialog({ instance, onOpenChange, staffUsers, onAssigned 
 
   return (
     <Dialog open={!!instance} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>Atribuir Responsável</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">Checklist: <strong>{instance?.name}</strong></p>
-          <div>
-            <Label>Responsável</Label>
-            <Select value={selectedUser || "none"} onValueChange={setSelectedUser}>
-              <SelectTrigger><SelectValue placeholder="Selecione um responsável" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhum (apenas admin)</SelectItem>
-                {staffUsers.map((u: any) => (
-                  <SelectItem key={u.user_id} value={u.user_id}>
-                    {u.full_name} ({u.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              O responsável precisará fazer login para acessar o checklist.
-            </p>
-          </div>
+          <UserSelector
+            users={allUsers}
+            value={selectedUser}
+            onChange={setSelectedUser}
+            roleFilter={roleFilter}
+            onRoleFilterChange={setRoleFilter}
+            searchTerm={userSearch}
+            onSearchChange={setUserSearch}
+          />
+          <p className="text-xs text-muted-foreground">
+            O responsável precisará fazer login para acessar o checklist.
+          </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
