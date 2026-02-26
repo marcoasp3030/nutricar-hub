@@ -292,7 +292,7 @@ const AdminPromotersPage = () => {
                             <div className="flex items-center gap-2 mt-1">
                               <RatingStars value={Math.round(Number(p.avg_rating))} />
                               <span className="text-xs text-muted-foreground">{Number(p.avg_rating).toFixed(1)}</span>
-                              <span className="text-xs text-muted-foreground">• {p.total_jobs} jobs</span>
+                              <span className="text-xs text-muted-foreground">• {p.total_jobs} eventos</span>
                             </div>
                           </div>
                           <Badge className={statusColors[p.status]}>{p.status}</Badge>
@@ -361,7 +361,7 @@ const AdminPromotersPage = () => {
                       <RatingStars value={Math.round(Number(p.avg_rating))} />
                       <span className="text-sm font-semibold ml-1">{Number(p.avg_rating).toFixed(1)}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{p.total_jobs} jobs</p>
+                    <p className="text-xs text-muted-foreground">{p.total_jobs} eventos</p>
                   </div>
                 </CardContent>
               </Card>
@@ -538,7 +538,7 @@ const AdminPromotersPage = () => {
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="bg-muted rounded-lg p-2">
                   <p className="text-lg font-bold">{selected.total_jobs}</p>
-                  <p className="text-xs text-muted-foreground">Jobs</p>
+                  <p className="text-xs text-muted-foreground">Eventos</p>
                 </div>
                 <div className="bg-muted rounded-lg p-2">
                   <p className="text-lg font-bold">{Number(selected.avg_rating).toFixed(1)}</p>
