@@ -29,6 +29,7 @@ import PublicChecklistPage from "./pages/PublicChecklistPage";
 import AdminEventTypesPage from "./pages/AdminEventTypesPage";
 import AdminPromotersPage from "./pages/AdminPromotersPage";
 import AdminJobsPage from "./pages/AdminJobsPage";
+import AdminJobsDashboardPage from "./pages/AdminJobsDashboardPage";
 import PromoterPortalPage from "./pages/PromoterPortalPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
@@ -226,6 +227,9 @@ const AppContent = () => {
         )}
         {hasPermission('admin_jobs') && (
           <Route path="/admin/jobs" element={<AdminJobsPage />} />
+        )}
+        {hasPermission('admin_jobs') && (
+          <Route path="/admin/jobs/dashboard" element={<AdminJobsDashboardPage />} />
         )}
         {hasPermission('admin_jobs') && (
           <Route path="/admin/event-types" element={<AdminEventTypesPage />} />
