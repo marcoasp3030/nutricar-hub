@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-nutricar.webp";
 import {
-  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi, ClipboardList, Briefcase, Tag, UserCheck,
+  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi, ClipboardList, Briefcase, Tag, UserCheck, BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,6 +37,7 @@ const allNavItems = [
   { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
   { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api" },
   { to: "/admin/jobs", label: "Jobs", icon: Briefcase, permission: "admin_jobs" },
+  { to: "/admin/jobs/dashboard", label: "Métricas Jobs", icon: BarChart3, permission: "admin_jobs" },
   { to: "/admin/event-types", label: "Tipos Evento", icon: Tag, permission: "admin_jobs" },
   { to: "/admin/promotoras", label: "Promotoras", icon: UserCheck, permission: "admin_jobs" },
   { to: "/promotora", label: "Portal Promotora", icon: Briefcase, permission: "portal_promotora" },
