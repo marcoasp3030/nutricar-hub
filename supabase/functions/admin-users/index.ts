@@ -109,9 +109,25 @@ Deno.serve(async (req) => {
           .insert(fornecedores.map((f: string) => ({ user_id: newUserId, fornecedor: f })));
       }
 
+      // Handle 'promotor' pseudo-role: store as funcionario + create promoter_profile + set permission
+      const actualRole = role === 'promotor' ? 'funcionario' : role;
+
       // Set role
-      if (role) {
-        await supabaseAdmin.from('user_roles').insert({ user_id: newUserId, role });
+      if (actualRole) {
+        await supabaseAdmin.from('user_roles').insert({ user_id: newUserId, role: actualRole });
+      }
+
+      // If promotor, create promoter_profile and set portal_promotora permission
+      if (role === 'promotor') {
+        await supabaseAdmin.from('promoter_profiles').insert({
+          user_id: newUserId,
+          stage_name: full_name,
+          status: 'aprovado',
+        });
+        await supabaseAdmin.from('user_permissions').insert({
+          user_id: newUserId,
+          permission: 'portal_promotora',
+        });
       }
 
       return new Response(JSON.stringify({ success: true, user_id: newUserId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
