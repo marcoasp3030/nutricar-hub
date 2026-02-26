@@ -239,6 +239,7 @@ export type Database = {
           created_by: string
           due_date: string | null
           id: string
+          is_public: boolean
           location: string | null
           name: string
           ok_count: number
@@ -258,6 +259,7 @@ export type Database = {
           created_by: string
           due_date?: string | null
           id?: string
+          is_public?: boolean
           location?: string | null
           name: string
           ok_count?: number
@@ -277,6 +279,7 @@ export type Database = {
           created_by?: string
           due_date?: string | null
           id?: string
+          is_public?: boolean
           location?: string | null
           name?: string
           ok_count?: number

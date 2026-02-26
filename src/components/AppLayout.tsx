@@ -33,7 +33,7 @@ const allNavItems = [
   { to: "/admin/midia", label: "Mídia TV", icon: MonitorPlay, permission: "admin_midia" },
   { to: "/admin/lojas", label: "Lojas & TVs", icon: Store, permission: "admin_lojas" },
   { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone, permission: "admin_publicidade" },
-  { to: "/admin/checklists/templates", label: "Checklists", icon: ClipboardList, permission: "admin_checklists" },
+  { to: "/admin/checklists", label: "Checklists", icon: ClipboardList, permission: "admin_checklists" },
   { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
   { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api" },
 ];

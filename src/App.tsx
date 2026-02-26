@@ -24,6 +24,8 @@ import ChecklistsPage from "./pages/ChecklistsPage";
 import ChecklistExecutionPage from "./pages/ChecklistExecutionPage";
 import ChecklistTemplatesPage from "./pages/ChecklistTemplatesPage";
 import ChecklistTemplateEditorPage from "./pages/ChecklistTemplateEditorPage";
+import AdminChecklistsManagerPage from "./pages/AdminChecklistsManagerPage";
+import PublicChecklistPage from "./pages/PublicChecklistPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
 import NotFound from "./pages/NotFound";
@@ -215,6 +217,9 @@ const AppContent = () => {
         {hasPermission('admin_checklists') && (
           <Route path="/admin/checklists/templates/:id" element={<ChecklistTemplateEditorPage />} />
         )}
+        {hasPermission('admin_checklists') && (
+          <Route path="/admin/checklists" element={<AdminChecklistsManagerPage />} />
+        )}
 
         <Route path="*" element={<Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />} />
       </Routes>
@@ -230,6 +235,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/tv/:playlistId" element={<TvPlayerPage />} />
+          <Route path="/checklist-publico/:id" element={<PublicChecklistPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </BrowserRouter>

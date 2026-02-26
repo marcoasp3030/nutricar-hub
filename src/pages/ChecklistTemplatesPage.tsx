@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit, Trash2, Copy, FileText, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Copy, FileText, Search, ClipboardList } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function ChecklistTemplatesPage() {
@@ -66,7 +66,10 @@ export default function ChecklistTemplatesPage() {
           <h1 className="text-2xl font-bold">Templates de Checklist</h1>
           <p className="text-sm text-muted-foreground">Crie e gerencie modelos reutilizáveis</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="h-4 w-4" />Novo Template</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/admin/checklists")} className="gap-2"><ClipboardList className="h-4 w-4" />Gestão</Button>
+          <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="h-4 w-4" />Novo Template</Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
