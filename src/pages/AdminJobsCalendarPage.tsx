@@ -292,7 +292,7 @@ export default function AdminJobsCalendarPage() {
 
     try {
       await upsertEventJob({ id: job.id, start_date: newStart, end_date: newEnd, title: job.title, created_by: job.created_by });
-      toast({ title: "Job reagendado", description: `${job.title} → ${format(parseISO(newStart), "dd/MM")} a ${format(parseISO(newEnd), "dd/MM")}` });
+      toast({ title: "Evento reagendado", description: `${job.title} → ${format(parseISO(newStart), "dd/MM")} a ${format(parseISO(newEnd), "dd/MM")}` });
     } catch (e: any) {
       // Rollback
       queryClient.invalidateQueries({ queryKey: ["event_jobs_calendar"] });
@@ -305,9 +305,9 @@ export default function AdminJobsCalendarPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Calendário de Jobs</h1>
+          <h1 className="text-2xl font-bold">Calendário de Eventos</h1>
           <p className="text-sm text-muted-foreground">
-            {totalJobsThisPeriod} job(s) no período · Arraste para reagendar
+            {totalJobsThisPeriod} evento(s) no período · Arraste para reagendar
           </p>
         </div>
         <div className="flex gap-2">
@@ -422,7 +422,7 @@ export default function AdminJobsCalendarPage() {
           </DialogHeader>
           <div className="space-y-3">
             {selectedDayJobs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum job neste dia.</p>
+              <p className="text-sm text-muted-foreground">Nenhum evento neste dia.</p>
             ) : (
               selectedDayJobs.map(job => (
                 <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/admin/jobs")}>

@@ -121,7 +121,7 @@ const AdminJobsDashboardPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard de Jobs</h1>
+        <h1 className="text-2xl font-bold text-foreground">Dashboard de Eventos</h1>
         <p className="text-muted-foreground text-sm">Visão geral do módulo de contratação de promotoras</p>
       </div>
 
@@ -134,8 +134,8 @@ const AdminJobsDashboardPage = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard icon={CheckCircle} label="Jobs Confirmados" value={confirmedJobs} />
-        <MetricCard icon={TrendingUp} label="Jobs Concluídos" value={completedJobs} />
+        <MetricCard icon={CheckCircle} label="Eventos Confirmados" value={confirmedJobs} />
+        <MetricCard icon={TrendingUp} label="Eventos Concluídos" value={completedJobs} />
         <MetricCard icon={Clock} label="Em Negociação" value={statusCounts["em_negociacao"] || 0} />
         <MetricCard icon={DollarSign} label="Assignments" value={assignments.length} />
       </div>
@@ -145,7 +145,7 @@ const AdminJobsDashboardPage = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Distribuição por Status</CardTitle>
-            <CardDescription>Jobs por status atual</CardDescription>
+            <CardDescription>Eventos por status atual</CardDescription>
           </CardHeader>
           <CardContent>
             {statusData.length > 0 ? (
@@ -162,7 +162,7 @@ const AdminJobsDashboardPage = () => {
                 </BarChart>
               </ChartContainer>
             ) : (
-              <p className="text-muted-foreground text-sm text-center py-10">Nenhum job cadastrado</p>
+              <p className="text-muted-foreground text-sm text-center py-10">Nenhum evento cadastrado</p>
             )}
           </CardContent>
         </Card>
