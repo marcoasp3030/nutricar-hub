@@ -31,6 +31,7 @@ import AdminEventTypesPage from "./pages/AdminEventTypesPage";
 import AdminPromotersPage from "./pages/AdminPromotersPage";
 import AdminJobsPage from "./pages/AdminJobsPage";
 import AdminJobsDashboardPage from "./pages/AdminJobsDashboardPage";
+import AdminJobsCalendarPage from "./pages/AdminJobsCalendarPage";
 import PromoterPortalPage from "./pages/PromoterPortalPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
@@ -234,6 +235,9 @@ const AppContent = () => {
         )}
         {hasPermission('admin_jobs') && (
           <Route path="/admin/jobs/dashboard" element={<AdminJobsDashboardPage />} />
+        )}
+        {hasPermission('admin_jobs') && (
+          <Route path="/admin/jobs/calendario" element={<AdminJobsCalendarPage />} />
         )}
         {hasPermission('admin_jobs') && (
           <Route path="/admin/event-types" element={<AdminEventTypesPage />} />

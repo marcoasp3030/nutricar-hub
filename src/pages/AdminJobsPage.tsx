@@ -15,7 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Plus, Calendar, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase, Star, Image, ClipboardList } from "lucide-react";
+import { Plus, Calendar, CalendarDays, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase, Star, Image, ClipboardList } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -40,6 +41,7 @@ const statusColors: Record<string, string> = {
 };
 
 const AdminJobsPage = () => {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
@@ -152,7 +154,12 @@ const AdminJobsPage = () => {
           <h1 className="text-2xl font-bold text-foreground">Jobs / Eventos</h1>
           <p className="text-sm text-muted-foreground">Publique e gerencie oportunidades para promotoras</p>
         </div>
-        <Button onClick={openNewJob}><Plus className="h-4 w-4 mr-2" /> Novo Job</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/admin/jobs/calendario")}>
+            <CalendarDays className="h-4 w-4 mr-2" /> Calendário
+          </Button>
+          <Button onClick={openNewJob}><Plus className="h-4 w-4 mr-2" /> Novo Job</Button>
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
