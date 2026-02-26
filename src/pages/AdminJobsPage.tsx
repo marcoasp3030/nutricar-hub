@@ -238,10 +238,10 @@ const AdminJobsPage = () => {
               </div>
               <div>
                 <Label>Checklist Template</Label>
-                <Select value={form.checklist_template_id || ""} onValueChange={(v) => setForm({ ...form, checklist_template_id: v || null })}>
+                <Select value={form.checklist_template_id || "none"} onValueChange={(v) => setForm({ ...form, checklist_template_id: v === "none" ? null : v })}>
                   <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {checklistTemplates.map((ct) => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
