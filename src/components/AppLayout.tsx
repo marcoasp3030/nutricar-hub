@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-nutricar.webp";
 import {
-  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi, ClipboardList, Briefcase, Tag, UserCheck, BarChart3,
+  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi, ClipboardList, Briefcase, Tag, UserCheck, BarChart3, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,7 +43,7 @@ const allNavItems: NavItem[] = [
   { to: "/admin/checklists/dashboard", label: "Métricas", icon: BarChart3, permission: "admin_checklists", group: "Checklists" },
   { to: "/admin/jobs", label: "Eventos", icon: Briefcase, permission: "admin_jobs", group: "Eventos" },
   { to: "/admin/jobs/dashboard", label: "Métricas", icon: BarChart3, permission: "admin_jobs", group: "Eventos" },
-  { to: "/admin/jobs/calendar", label: "Calendário", icon: ClipboardList, permission: "admin_jobs", group: "Eventos" },
+  { to: "/admin/jobs/calendario", label: "Calendário", icon: CalendarDays, permission: "admin_jobs", group: "Eventos" },
   { to: "/admin/event-types", label: "Tipos Evento", icon: Tag, permission: "admin_jobs", group: "Eventos" },
   { to: "/admin/promotoras", label: "Promotoras", icon: UserCheck, permission: "admin_jobs", group: "Eventos" },
   // Promotora

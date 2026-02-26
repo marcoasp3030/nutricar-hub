@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fetchEventJobs, EventJob, upsertEventJob } from "@/lib/jobsApi";
@@ -83,7 +84,7 @@ function DraggableJob({ job, id, typeColor }: { job: EventJob; id: string; typeC
       {...listeners}
       {...attributes}
       style={{ borderLeftColor: bgColor, borderLeftWidth: 3 }}
-      className={`flex items-center gap-1 px-1 py-0.5 rounded-r text-[10px] leading-tight bg-accent/50 truncate cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? "opacity-30" : ""}`}
+      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-tight bg-accent/60 truncate cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? "opacity-30" : ""}`}
       title={`${job.title} — ${statusLabels[job.status]} (arraste para reagendar)`}
     >
       <GripVertical className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60" />
@@ -107,7 +108,7 @@ function DroppableDay({
   const key = format(day, "yyyy-MM-dd");
   const today = isToday(day);
   const { setNodeRef, isOver } = useDroppable({ id: `day-${key}`, data: { date: key } });
-  const maxVisible = viewMode === "week" ? 6 : 3;
+  const maxVisible = viewMode === "week" ? 10 : 4;
 
   // Deduplicate jobs by id (a multi-day job appears once per cell)
   const uniqueJobs = useMemo(() => {
@@ -122,25 +123,32 @@ function DroppableDay({
   return (
     <div
       ref={setNodeRef}
-      className={`
-        border-b border-r p-1 min-h-[90px] transition-colors
-        ${!isCurrentMonth && viewMode === "month" ? "bg-muted/30" : ""}
-        ${today ? "bg-primary/5" : ""}
-        ${isOver ? "bg-primary/10 ring-2 ring-inset ring-primary/40" : ""}
-      `}
+      className={cn(
+        "border-b border-r p-1.5 transition-colors flex flex-col",
+        viewMode === "week" ? "min-h-[280px]" : "min-h-[110px]",
+        !isCurrentMonth && viewMode === "month" ? "bg-muted/30" : "",
+        today ? "bg-primary/5 ring-1 ring-inset ring-primary/20" : "",
+        isOver ? "bg-primary/10 ring-2 ring-inset ring-primary/40" : "",
+      )}
       onClick={() => uniqueJobs.length > 0 && onDayClick(day)}
     >
-      <div className={`text-xs font-medium mb-1 px-1 ${today ? "text-primary font-bold" : !isCurrentMonth && viewMode === "month" ? "text-muted-foreground/50" : "text-foreground"}`}>
-        {format(day, "d")}
+      <div className={cn(
+        "text-xs font-medium mb-1 px-0.5 flex items-center justify-between",
+        today ? "text-primary font-bold" : !isCurrentMonth && viewMode === "month" ? "text-muted-foreground/50" : "text-foreground"
+      )}>
+        <span>{format(day, "d")}</span>
+        {uniqueJobs.length > 0 && (
+          <span className="text-[9px] text-muted-foreground font-normal">{uniqueJobs.length}</span>
+        )}
       </div>
-      <div className="space-y-0.5">
+      <div className="space-y-0.5 flex-1 overflow-y-auto">
         {uniqueJobs.slice(0, maxVisible).map(job => (
           <DraggableJob key={`${key}-${job.id}`} job={job} id={`${key}::${job.id}`} typeColor={job.event_type_id ? colorMap.get(job.event_type_id)?.color : undefined} />
         ))}
         {uniqueJobs.length > maxVisible && (
-          <div className="text-[10px] text-muted-foreground px-1">
+          <button className="text-[10px] text-primary hover:underline px-1 w-full text-left" onClick={(e) => { e.stopPropagation(); onDayClick(day); }}>
             +{uniqueJobs.length - maxVisible} mais
-          </div>
+          </button>
         )}
       </div>
     </div>
@@ -301,48 +309,57 @@ export default function AdminJobsCalendarPage() {
   }, [queryClient]);
 
   return (
-    <div className="space-y-4">
+    <div className="-m-4 lg:-m-6 flex flex-col" style={{ height: "calc(100vh - 64px)" }}>
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 lg:px-6 pt-4 lg:pt-5 pb-3">
         <div>
-          <h1 className="text-2xl font-bold">Calendário de Eventos</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold">Calendário de Eventos</h1>
+          <p className="text-xs text-muted-foreground">
             {totalJobsThisPeriod} evento(s) no período · Arraste para reagendar
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate("/admin/jobs")}>
-            <List className="h-4 w-4 mr-1" /> Lista
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/admin/jobs")}>
+          <List className="h-4 w-4 mr-1" /> Lista
+        </Button>
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => nav("prev")}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 lg:px-6 pb-2">
+        <div className="flex items-center gap-1.5">
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => nav("prev")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())} className="text-sm font-medium">
+          <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())} className="text-xs h-7 px-2">
             Hoje
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => nav("next")}>
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => nav("next")}>
             <ChevronRight className="h-4 w-4" />
           </Button>
           <span className="text-sm font-semibold capitalize ml-2">{headerLabel}</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Legend inline */}
+          {eventTypeColorMap.size > 0 && (
+            <div className="hidden md:flex items-center gap-2 text-[10px] text-muted-foreground mr-2">
+              {Array.from(eventTypeColorMap.entries()).map(([id, { color, name }]) => (
+                <span key={id} className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+                  {name}
+                </span>
+              ))}
+            </div>
+          )}
           <Select value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
-            <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="month">Mês</SelectItem>
               <SelectItem value="week">Semana</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[120px] h-7 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos Status</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {Object.entries(statusLabels).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v}</SelectItem>
               ))}
@@ -352,23 +369,26 @@ export default function AdminJobsCalendarPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
+        <div className="flex-1 flex justify-center items-center">
           <Clock className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="rounded-lg border bg-card overflow-hidden">
+          <div className="flex-1 flex flex-col border-t bg-card overflow-hidden">
             {/* Day names header */}
-            <div className="grid grid-cols-7 border-b bg-muted/50">
+            <div className="grid grid-cols-7 border-b bg-muted/40">
               {dayNames.map(d => (
-                <div key={d} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground">
+                <div key={d} className="px-2 py-1.5 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                   {d}
                 </div>
               ))}
             </div>
 
-            {/* Calendar grid */}
-            <div className={`grid grid-cols-7 ${viewMode === "week" ? "min-h-[200px]" : ""}`}>
+            {/* Calendar grid — fills remaining height */}
+            <div className={cn(
+              "grid grid-cols-7 flex-1",
+              viewMode === "week" ? "" : "",
+            )}>
               {calendarDays.map(day => {
                 const key = format(day, "yyyy-MM-dd");
                 const dayJobs = jobsByDate.get(key) || [];
@@ -393,23 +413,6 @@ export default function AdminJobsCalendarPage() {
             {activeJob ? <JobDragOverlay job={activeJob} typeColor={activeJob.event_type_id ? eventTypeColorMap.get(activeJob.event_type_id)?.color : undefined} /> : null}
           </DragOverlay>
         </DndContext>
-      )}
-
-      {/* Legend */}
-      {eventTypeColorMap.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Tipos:</span>
-          {Array.from(eventTypeColorMap.entries()).map(([id, { color, name }]) => (
-            <span key={id} className="flex items-center gap-1.5">
-              <span className="inline-block w-3 h-2 rounded-sm" style={{ backgroundColor: color }} />
-              {name}
-            </span>
-          ))}
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-2 rounded-sm" style={{ backgroundColor: NO_TYPE_COLOR }} />
-            Sem tipo
-          </span>
-        </div>
       )}
 
       {/* Day detail dialog */}
