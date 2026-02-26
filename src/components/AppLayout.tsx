@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-nutricar.webp";
 import {
-  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi, ClipboardList,
+  LayoutDashboard, FileText, Users, LogOut, Menu, ChevronRight, Database, ShoppingBasket, MonitorPlay, Megaphone, Shield, Store, Wifi, ClipboardList, Briefcase, Tag, UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,11 +36,15 @@ const allNavItems = [
   { to: "/admin/checklists", label: "Checklists", icon: ClipboardList, permission: "admin_checklists" },
   { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
   { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api" },
+  { to: "/admin/jobs", label: "Jobs", icon: Briefcase, permission: "admin_jobs" },
+  { to: "/admin/event-types", label: "Tipos Evento", icon: Tag, permission: "admin_jobs" },
+  { to: "/admin/promotoras", label: "Promotoras", icon: UserCheck, permission: "admin_jobs" },
+  { to: "/promotora", label: "Portal Promotora", icon: Briefcase, permission: "portal_promotora" },
 ];
 
 const defaultNavItems = {
-  fornecedor: ["dashboard", "produtos", "relatorios", "contratos", "checklists", "meus_dados"],
-  admin: ["admin_dashboard", "admin_usuarios", "admin_midia", "admin_lojas", "admin_publicidade", "admin_checklists", "admin_lgpd", "admin_tv_api"],
+  fornecedor: ["dashboard", "produtos", "relatorios", "contratos", "checklists", "meus_dados", "portal_promotora"],
+  admin: ["admin_dashboard", "admin_usuarios", "admin_midia", "admin_lojas", "admin_publicidade", "admin_checklists", "admin_lgpd", "admin_tv_api", "admin_jobs"],
 };
 
 const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChange, onLogout, tableName, onTableChange, permissions }: AppLayoutProps) => {

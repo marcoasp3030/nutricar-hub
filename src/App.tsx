@@ -26,6 +26,10 @@ import ChecklistTemplatesPage from "./pages/ChecklistTemplatesPage";
 import ChecklistTemplateEditorPage from "./pages/ChecklistTemplateEditorPage";
 import AdminChecklistsManagerPage from "./pages/AdminChecklistsManagerPage";
 import PublicChecklistPage from "./pages/PublicChecklistPage";
+import AdminEventTypesPage from "./pages/AdminEventTypesPage";
+import AdminPromotersPage from "./pages/AdminPromotersPage";
+import AdminJobsPage from "./pages/AdminJobsPage";
+import PromoterPortalPage from "./pages/PromoterPortalPage";
 import AppLayout from "./components/AppLayout";
 import TvPlayerPage from "./pages/TvPlayerPage";
 import NotFound from "./pages/NotFound";
@@ -219,6 +223,18 @@ const AppContent = () => {
         )}
         {hasPermission('admin_checklists') && (
           <Route path="/admin/checklists" element={<AdminChecklistsManagerPage />} />
+        )}
+        {hasPermission('admin_jobs') && (
+          <Route path="/admin/jobs" element={<AdminJobsPage />} />
+        )}
+        {hasPermission('admin_jobs') && (
+          <Route path="/admin/event-types" element={<AdminEventTypesPage />} />
+        )}
+        {hasPermission('admin_jobs') && (
+          <Route path="/admin/promotoras" element={<AdminPromotersPage />} />
+        )}
+        {hasPermission('portal_promotora') && (
+          <Route path="/promotora" element={<PromoterPortalPage />} />
         )}
 
         <Route path="*" element={<Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />} />
