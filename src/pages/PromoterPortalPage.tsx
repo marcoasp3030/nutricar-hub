@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Textarea as TextareaUI } from "@/components/ui/textarea";
 import { Calendar, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -192,34 +193,13 @@ const PromoterPortalPage = () => {
           {assignments.length === 0 ? (
             <p className="text-muted-foreground text-center py-8 text-sm">Nenhum job atribuído</p>
           ) : assignments.map((a) => (
-            <Card key={a.id}>
-              <CardContent className="pt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{(a.job as any)?.title || "Job"}</h3>
-                  <Badge>{assignmentStatusLabels[a.status]}</Badge>
-                </div>
-                {a.job && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date((a.job as any).start_date), "dd/MM/yyyy")}</div>
-                    <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {(a.job as any).address || "—"}</div>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  {!a.checkin_at && (a.status === "confirmado" || a.status === "reservado") && (
-                    <Button size="sm" variant="outline" onClick={() => checkinMutation.mutate(a.id)}>
-                      <Camera className="h-3 w-3 mr-1" /> Check-in
-                    </Button>
-                  )}
-                  {a.checkin_at && !a.checkout_at && (
-                    <Button size="sm" variant="outline" onClick={() => checkoutMutation.mutate(a.id)}>
-                      <Camera className="h-3 w-3 mr-1" /> Check-out
-                    </Button>
-                  )}
-                </div>
-                {a.checkin_at && <p className="text-xs text-muted-foreground">Check-in: {format(new Date(a.checkin_at), "dd/MM HH:mm")}</p>}
-                {a.checkout_at && <p className="text-xs text-muted-foreground">Check-out: {format(new Date(a.checkout_at), "dd/MM HH:mm")}</p>}
-              </CardContent>
-            </Card>
+            <AssignmentCard
+              key={a.id}
+              assignment={a}
+              checkinMutation={checkinMutation}
+              checkoutMutation={checkoutMutation}
+              qc={qc}
+            />
           ))}
         </TabsContent>
       </Tabs>
@@ -276,6 +256,172 @@ const PromoterPortalPage = () => {
         saving={profileMutation.isPending}
       />
     </div>
+  );
+};
+
+// Assignment card with evidence upload and promoter rating
+const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }: any) => {
+  const [showEvidence, setShowEvidence] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [notes, setNotes] = useState(a.execution_notes || "");
+  const [uploading, setUploading] = useState(false);
+
+  const evidenceMutation = useMutation({
+    mutationFn: async (files: FileList) => {
+      setUploading(true);
+      try {
+        const urls = await Promise.all(Array.from(files).map(f => uploadJobFile(f, "evidences")));
+        const updated = [...(a.evidence_urls || []), ...urls];
+        await updateJobAssignment(a.id, { evidence_urls: updated } as any);
+        return updated;
+      } finally {
+        setUploading(false);
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_assignments"] }); toast({ title: "Evidências enviadas!" }); },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const notesMutation = useMutation({
+    mutationFn: () => updateJobAssignment(a.id, { execution_notes: notes } as any),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_assignments"] }); toast({ title: "Observações salvas!" }); },
+  });
+
+  const ratingMutation = useMutation({
+    mutationFn: () => updateJobAssignment(a.id, { promoter_rating: rating, promoter_comment: comment } as any),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_assignments"] }); toast({ title: "Avaliação enviada!" }); setShowRating(false); },
+  });
+
+  const jobData = a.job as any;
+
+  return (
+    <Card>
+      <CardContent className="pt-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">{jobData?.title || "Job"}</h3>
+          <Badge>{assignmentStatusLabels[a.status]}</Badge>
+        </div>
+        {jobData && (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")}</div>
+            <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {jobData.address || "—"}</div>
+          </div>
+        )}
+
+        {/* Check-in/out */}
+        <div className="flex gap-2">
+          {!a.checkin_at && (a.status === "confirmado" || a.status === "reservado") && (
+            <Button size="sm" variant="outline" onClick={() => checkinMutation.mutate(a.id)}>
+              <Camera className="h-3 w-3 mr-1" /> Check-in
+            </Button>
+          )}
+          {a.checkin_at && !a.checkout_at && (
+            <Button size="sm" variant="outline" onClick={() => checkoutMutation.mutate(a.id)}>
+              <Camera className="h-3 w-3 mr-1" /> Check-out
+            </Button>
+          )}
+        </div>
+        {a.checkin_at && <p className="text-xs text-muted-foreground">Check-in: {format(new Date(a.checkin_at), "dd/MM HH:mm")}</p>}
+        {a.checkout_at && <p className="text-xs text-muted-foreground">Check-out: {format(new Date(a.checkout_at), "dd/MM HH:mm")}</p>}
+
+        {/* Evidence photos */}
+        {a.evidence_urls && a.evidence_urls.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">📸 Evidências ({a.evidence_urls.length})</p>
+            <div className="grid grid-cols-4 gap-1">
+              {a.evidence_urls.map((url: string, i: number) => (
+                <img key={i} src={url} className="rounded aspect-square object-cover" alt={`evidência ${i + 1}`} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Upload evidences button */}
+        {a.checkout_at && (
+          <div className="space-y-2">
+            {!showEvidence ? (
+              <Button size="sm" variant="outline" className="w-full" onClick={() => setShowEvidence(true)}>
+                <Camera className="h-3 w-3 mr-1" /> Enviar Evidências / Fotos
+              </Button>
+            ) : (
+              <div className="bg-muted rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium">Enviar fotos do evento</p>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={uploading}
+                  onChange={(e) => e.target.files && evidenceMutation.mutate(e.target.files)}
+                />
+                {uploading && <p className="text-xs text-muted-foreground">Enviando...</p>}
+                <div className="space-y-1">
+                  <Label className="text-xs">Observações da execução</Label>
+                  <TextareaUI
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Descreva como foi o evento..."
+                    className="text-xs min-h-[60px]"
+                  />
+                  <Button size="sm" variant="outline" onClick={() => notesMutation.mutate()} disabled={notesMutation.isPending}>
+                    Salvar Observações
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Admin rating (read-only) */}
+        {a.admin_rating && (
+          <div className="flex items-center gap-2 text-xs bg-muted rounded-lg p-2">
+            <span className="text-muted-foreground">Avaliação do admin:</span>
+            <div className="flex">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < (a.admin_rating || 0) ? "text-primary fill-primary" : "text-muted-foreground/30"}`} />)}</div>
+            {a.admin_comment && <span className="italic text-muted-foreground">"{a.admin_comment}"</span>}
+          </div>
+        )}
+
+        {/* Promoter rating */}
+        {a.checkout_at && !a.promoter_rating && (
+          !showRating ? (
+            <Button size="sm" variant="outline" className="w-full" onClick={() => setShowRating(true)}>
+              <Star className="h-3 w-3 mr-1" /> Avaliar este Job
+            </Button>
+          ) : (
+            <div className="bg-muted rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium">Como foi trabalhar neste evento?</p>
+              <div className="flex gap-1 justify-center">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button key={n} onClick={() => setRating(n)} className="focus:outline-none">
+                    <Star className={`h-6 w-6 transition-colors ${n <= rating ? "text-primary fill-primary" : "text-muted-foreground/30 hover:text-primary/50"}`} />
+                  </button>
+                ))}
+              </div>
+              <TextareaUI
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Comentário (opcional)"
+                className="text-xs min-h-[60px]"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1" disabled={rating === 0 || ratingMutation.isPending} onClick={() => ratingMutation.mutate()}>
+                  {ratingMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowRating(false)}>Cancelar</Button>
+              </div>
+            </div>
+          )
+        )}
+
+        {a.promoter_rating && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Sua avaliação:</span>
+            <div className="flex">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < (a.promoter_rating || 0) ? "text-primary fill-primary" : "text-muted-foreground/30"}`} />)}</div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
