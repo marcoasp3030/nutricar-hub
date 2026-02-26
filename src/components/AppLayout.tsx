@@ -21,26 +21,32 @@ interface AppLayoutProps {
   permissions?: string[];
 }
 
-const allNavItems = [
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; permission: string; group?: string };
+
+const allNavItems: NavItem[] = [
+  // Fornecedor items
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard" },
   { to: "/produtos", label: "Produtos", icon: ShoppingBasket, permission: "produtos" },
   { to: "/relatorios", label: "Relatórios", icon: FileText, permission: "relatorios" },
   { to: "/contratos", label: "Mídia TV", icon: Megaphone, permission: "contratos" },
   { to: "/checklists", label: "Checklists", icon: ClipboardList, permission: "checklists" },
   { to: "/meus-dados", label: "Meus Dados", icon: Shield, permission: "meus_dados" },
-  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "admin_dashboard" },
-  { to: "/admin/usuarios", label: "Usuários", icon: Users, permission: "admin_usuarios" },
-  { to: "/admin/midia", label: "Mídia TV", icon: MonitorPlay, permission: "admin_midia" },
-  { to: "/admin/lojas", label: "Lojas & TVs", icon: Store, permission: "admin_lojas" },
-  { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone, permission: "admin_publicidade" },
-  { to: "/admin/checklists", label: "Checklists", icon: ClipboardList, permission: "admin_checklists" },
-  { to: "/admin/checklists/dashboard", label: "Métricas Checklists", icon: BarChart3, permission: "admin_checklists" },
-  { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd" },
-  { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api" },
-  { to: "/admin/jobs", label: "Eventos", icon: Briefcase, permission: "admin_jobs" },
-  { to: "/admin/jobs/dashboard", label: "Métricas Eventos", icon: BarChart3, permission: "admin_jobs" },
-  { to: "/admin/event-types", label: "Tipos Evento", icon: Tag, permission: "admin_jobs" },
-  { to: "/admin/promotoras", label: "Promotoras", icon: UserCheck, permission: "admin_jobs" },
+  // Admin items — grouped
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "admin_dashboard", group: "Geral" },
+  { to: "/admin/usuarios", label: "Usuários", icon: Users, permission: "admin_usuarios", group: "Geral" },
+  { to: "/admin/lgpd", label: "LGPD", icon: Shield, permission: "admin_lgpd", group: "Geral" },
+  { to: "/admin/midia", label: "Mídia TV", icon: MonitorPlay, permission: "admin_midia", group: "TV & Lojas" },
+  { to: "/admin/lojas", label: "Lojas & TVs", icon: Store, permission: "admin_lojas", group: "TV & Lojas" },
+  { to: "/admin/publicidade", label: "Publicidade", icon: Megaphone, permission: "admin_publicidade", group: "TV & Lojas" },
+  { to: "/admin/tv-api", label: "API TV", icon: Wifi, permission: "admin_tv_api", group: "TV & Lojas" },
+  { to: "/admin/checklists", label: "Checklists", icon: ClipboardList, permission: "admin_checklists", group: "Checklists" },
+  { to: "/admin/checklists/dashboard", label: "Métricas", icon: BarChart3, permission: "admin_checklists", group: "Checklists" },
+  { to: "/admin/jobs", label: "Eventos", icon: Briefcase, permission: "admin_jobs", group: "Eventos" },
+  { to: "/admin/jobs/dashboard", label: "Métricas", icon: BarChart3, permission: "admin_jobs", group: "Eventos" },
+  { to: "/admin/jobs/calendar", label: "Calendário", icon: ClipboardList, permission: "admin_jobs", group: "Eventos" },
+  { to: "/admin/event-types", label: "Tipos Evento", icon: Tag, permission: "admin_jobs", group: "Eventos" },
+  { to: "/admin/promotoras", label: "Promotoras", icon: UserCheck, permission: "admin_jobs", group: "Eventos" },
+  // Promotora
   { to: "/promotora", label: "Portal Promotora", icon: Briefcase, permission: "portal_promotora" },
 ];
 
@@ -112,21 +118,45 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
           </div>
         )}
 
-        <nav className="flex-1 space-y-1 p-3">
-          {items.map((item) => {
-            const active = location.pathname === item.to;
-            return (
-              <Link key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  active ? "bg-primary text-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"
-                )}>
-                <item.icon className="h-4 w-4" />
-                {item.label}
-                {active && <ChevronRight className="ml-auto h-4 w-4" />}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto p-3">
+          {(() => {
+            const groups: { label: string | null; items: NavItem[] }[] = [];
+            let currentGroup: string | null | undefined = undefined;
+            for (const item of items) {
+              const g = item.group ?? null;
+              if (g !== currentGroup) {
+                groups.push({ label: g, items: [item] });
+                currentGroup = g;
+              } else {
+                groups[groups.length - 1].items.push(item);
+              }
+            }
+            return groups.map((group, gi) => (
+              <div key={gi} className={cn(gi > 0 && "mt-3")}>
+                {group.label && (
+                  <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = location.pathname === item.to;
+                    return (
+                      <Link key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                          active ? "bg-primary text-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                        )}>
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                        {active && <ChevronRight className="ml-auto h-4 w-4" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ));
+          })()}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
