@@ -72,6 +72,11 @@ const PERMISSION_TEMPLATES = [
     permissions: ['admin_dashboard', 'admin_midia', 'admin_lojas', 'admin_publicidade'],
   },
   {
+    label: 'Gestão de Jobs',
+    description: 'Jobs, promotoras e checklists',
+    permissions: ['admin_jobs', 'admin_checklists'],
+  },
+  {
     label: 'Apenas Visualização',
     description: 'Somente dashboards',
     permissions: ['dashboard', 'admin_dashboard'],
