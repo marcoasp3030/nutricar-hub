@@ -145,7 +145,7 @@ const PromoterPortalPage = () => {
         <TabsList className="w-full">
           <TabsTrigger value="feed" className="flex-1">Oportunidades</TabsTrigger>
           <TabsTrigger value="pendentes" className="flex-1">Pendentes {pendingInvites.length > 0 && <Badge className="ml-1 h-5 w-5 p-0 text-xs">{pendingInvites.length}</Badge>}</TabsTrigger>
-          <TabsTrigger value="meus" className="flex-1">Meus Jobs</TabsTrigger>
+          <TabsTrigger value="meus" className="flex-1">Meus Eventos</TabsTrigger>
         </TabsList>
 
         {/* Feed de oportunidades */}
@@ -165,7 +165,7 @@ const PromoterPortalPage = () => {
             <Card key={inv.id}>
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{(inv.job as any)?.title || "Job"}</h3>
+                  <h3 className="font-semibold">{(inv.job as any)?.title || "Evento"}</h3>
                   <Badge variant="outline">{inv.type === "convite" ? "Convite" : "Candidatura"}</Badge>
                 </div>
                 {inv.job && (
@@ -191,7 +191,7 @@ const PromoterPortalPage = () => {
         {/* Meus jobs */}
         <TabsContent value="meus" className="mt-4 space-y-3">
           {assignments.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8 text-sm">Nenhum job atribuído</p>
+            <p className="text-muted-foreground text-center py-8 text-sm">Nenhum evento atribuído</p>
           ) : assignments.map((a) => (
             <AssignmentCard
               key={a.id}
@@ -300,7 +300,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
     <Card>
       <CardContent className="pt-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold">{jobData?.title || "Job"}</h3>
+          <h3 className="font-semibold">{jobData?.title || "Evento"}</h3>
           <Badge>{assignmentStatusLabels[a.status]}</Badge>
         </div>
         {jobData && (
@@ -386,7 +386,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
         {a.checkout_at && !a.promoter_rating && (
           !showRating ? (
             <Button size="sm" variant="outline" className="w-full" onClick={() => setShowRating(true)}>
-              <Star className="h-3 w-3 mr-1" /> Avaliar este Job
+              <Star className="h-3 w-3 mr-1" /> Avaliar este Evento
             </Button>
           ) : (
             <div className="bg-muted rounded-lg p-3 space-y-2">
