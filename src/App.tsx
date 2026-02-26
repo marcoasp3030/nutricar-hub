@@ -141,16 +141,22 @@ const AppContent = () => {
   const isFuncionario = profile?.isFuncionario;
   const userPermissions: string[] = profile?.permissions || [];
   
+  // Check if user is a promoter (has portal_promotora permission and is not admin/gerente/funcionario)
+  const isPromoter = !isAdmin && !isGerente && !isFuncionario && userPermissions.includes('portal_promotora');
+  
   // Determine effective role for layout
-  const role = isAdmin ? "admin" : (isGerente || isFuncionario) ? "staff" : "fornecedor";
+  const role = isAdmin ? "admin" : isPromoter ? "promotora" : (isGerente || isFuncionario) ? "staff" : "fornecedor";
   const fornecedores: string[] = profile?.fornecedores || [];
   const activeFornecedor = selectedFornecedor || fornecedores[0] || "Não vinculado";
 
   // Permission check helper
   const hasPermission = (perm: string) => {
-    if (isAdmin) return true; // Admin has all permissions
+    if (isAdmin) return true;
+    if (isPromoter) {
+      // Promoters can only access portal_promotora and checklists (if assigned)
+      return ['portal_promotora', 'checklists'].includes(perm) && userPermissions.includes(perm);
+    }
     if (!isGerente && !isFuncionario) {
-      // Regular fornecedor has default fornecedor permissions
       return ['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados'].includes(perm);
     }
     return userPermissions.includes(perm);
@@ -161,7 +167,7 @@ const AppContent = () => {
 
   return (
     <AppLayout
-      role={isAdmin ? "admin" : (staffRole || "fornecedor") as any}
+      role={isAdmin ? "admin" : isPromoter ? "promotora" : (staffRole || "fornecedor") as any}
       fornecedor={activeFornecedor}
       fornecedores={fornecedores}
       onFornecedorChange={setSelectedFornecedor}
@@ -171,7 +177,7 @@ const AppContent = () => {
       permissions={userPermissions}
     >
       <Routes>
-        <Route path="/" element={<Navigate to={isAdmin ? '/admin/dashboard' : hasPermission('dashboard') ? '/dashboard' : hasPermission('admin_dashboard') ? '/admin/dashboard' : '/dashboard'} replace />} />
+        <Route path="/" element={<Navigate to={isAdmin ? '/admin/dashboard' : isPromoter ? '/promotora' : hasPermission('dashboard') ? '/dashboard' : hasPermission('admin_dashboard') ? '/admin/dashboard' : '/dashboard'} replace />} />
         
         {/* Fornecedor / staff pages - permission gated */}
         {hasPermission('dashboard') && (
@@ -249,7 +255,7 @@ const AppContent = () => {
           <Route path="/promotora" element={<PromoterPortalPage />} />
         )}
 
-        <Route path="*" element={<Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />} />
+        <Route path="*" element={<Navigate to={isAdmin ? '/admin/dashboard' : isPromoter ? '/promotora' : '/dashboard'} replace />} />
       </Routes>
     </AppLayout>
   );
