@@ -18,9 +18,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Plus, Search, ClipboardList, AlertTriangle, CheckCircle2, Clock, Copy, Link2, ExternalLink,
-  Eye, Trash2, Play, FileText, Edit,
+  Eye, Trash2, Play, FileText, Edit, UserPlus,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const statusLabels: Record<string, string> = {
   rascunho: "Rascunho", em_andamento: "Em Andamento", concluido: "Concluído",
@@ -48,10 +49,27 @@ export default function AdminChecklistsManagerPage() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [storeFilter, setStoreFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
+  const [assignDialog, setAssignDialog] = useState<ChecklistInstance | null>(null);
 
   const { data: instances = [], isLoading } = useQuery({
     queryKey: ["checklist-instances-admin"],
     queryFn: () => fetchInstances(),
+  });
+
+  // Fetch staff/promoters for assignment
+  const { data: staffUsers = [] } = useQuery({
+    queryKey: ["staff-users-for-assignment"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "list" },
+      });
+      if (error) throw error;
+      const users = data?.data || [];
+      // Filter to funcionario/gerente roles (includes promoters)
+      return users.filter((u: any) =>
+        u.roles?.some((r: string) => ["funcionario", "gerente"].includes(r))
+      );
+    },
   });
 
   const { data: templates = [] } = useQuery({
@@ -155,11 +173,12 @@ export default function AdminChecklistsManagerPage() {
         </Card>
       ) : (
         <div className="rounded-lg border bg-card overflow-hidden">
-          <Table>
+           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Loja</TableHead>
+                <TableHead>Responsável</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Progresso</TableHead>
                 <TableHead>Acesso</TableHead>
@@ -167,39 +186,53 @@ export default function AdminChecklistsManagerPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(inst => (
-                <TableRow key={inst.id}>
-                  <TableCell className="font-medium">{inst.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{inst.store || "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={statusColors[inst.status]}>{statusLabels[inst.status]}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 min-w-[120px]">
-                      <Progress value={inst.progress} className="h-2 flex-1" />
-                      <span className="text-xs text-muted-foreground w-8">{inst.progress}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={inst.is_public ? "default" : "outline"} className="text-xs cursor-pointer" onClick={() => togglePublic(inst)}>
-                      {inst.is_public ? "Público" : "Privado"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyLink(inst)} title="Copiar link">
-                        <Link2 className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => window.open(getChecklistUrl(inst), "_blank")} title="Abrir">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => navigate(`/checklists/${inst.id}`)} title="Executar">
-                        <Play className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.map(inst => {
+                const assignedUser = staffUsers.find((u: any) => u.user_id === inst.assigned_to);
+                return (
+                  <TableRow key={inst.id}>
+                    <TableCell className="font-medium">{inst.name}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{inst.store || "—"}</TableCell>
+                    <TableCell>
+                      {assignedUser ? (
+                        <Badge variant="outline" className="text-xs cursor-pointer" onClick={() => setAssignDialog(inst)}>
+                          {assignedUser.full_name}
+                        </Badge>
+                      ) : (
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-muted-foreground" onClick={() => setAssignDialog(inst)}>
+                          <UserPlus className="h-3 w-3" />Atribuir
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={statusColors[inst.status]}>{statusLabels[inst.status]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-[120px]">
+                        <Progress value={inst.progress} className="h-2 flex-1" />
+                        <span className="text-xs text-muted-foreground w-8">{inst.progress}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={inst.is_public ? "default" : "outline"} className="text-xs cursor-pointer" onClick={() => togglePublic(inst)}>
+                        {inst.is_public ? "Público" : "Privado"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyLink(inst)} title="Copiar link">
+                          <Link2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => window.open(getChecklistUrl(inst), "_blank")} title="Abrir">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => navigate(`/checklists/${inst.id}`)} title="Executar">
+                          <Play className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -209,18 +242,30 @@ export default function AdminChecklistsManagerPage() {
         open={showCreate}
         onOpenChange={setShowCreate}
         templates={templates}
+        staffUsers={staffUsers}
         onCreated={() => {
           queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
+        }}
+      />
+
+      <AssignChecklistDialog
+        instance={assignDialog}
+        onOpenChange={(open) => { if (!open) setAssignDialog(null); }}
+        staffUsers={staffUsers}
+        onAssigned={() => {
+          queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
+          setAssignDialog(null);
         }}
       />
     </div>
   );
 }
 
-function CreateChecklistDialog({ open, onOpenChange, templates, onCreated }: {
+function CreateChecklistDialog({ open, onOpenChange, templates, staffUsers, onCreated }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   templates: ChecklistTemplate[];
+  staffUsers: any[];
   onCreated: () => void;
 }) {
   const [name, setName] = useState("");
@@ -229,6 +274,7 @@ function CreateChecklistDialog({ open, onOpenChange, templates, onCreated }: {
   const [templateId, setTemplateId] = useState("");
   const [priority, setPriority] = useState<ChecklistPriority>("media");
   const [isPublic, setIsPublic] = useState(false);
+  const [assignedTo, setAssignedTo] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -238,9 +284,12 @@ function CreateChecklistDialog({ open, onOpenChange, templates, onCreated }: {
     try {
       const meta = { name, store: store || undefined, location: location || undefined, priority };
       const instance = await createInstanceFromTemplate(templateId, meta);
-      // Update is_public
-      if (isPublic) {
-        await updateInstance(instance.id, { is_public: true } as any);
+      // Update is_public and assigned_to
+      const updates: any = {};
+      if (isPublic) updates.is_public = true;
+      if (assignedTo) updates.assigned_to = assignedTo;
+      if (Object.keys(updates).length) {
+        await updateInstance(instance.id, updates);
       }
       const url = isPublic
         ? `${window.location.origin}/checklist-publico/${instance.id}`
@@ -248,7 +297,7 @@ function CreateChecklistDialog({ open, onOpenChange, templates, onCreated }: {
       navigator.clipboard.writeText(url);
       toast({ title: "Checklist criado! Link copiado para a área de transferência." });
       onOpenChange(false);
-      setName(""); setStore(""); setLocation(""); setTemplateId(""); setPriority("media"); setIsPublic(false);
+      setName(""); setStore(""); setLocation(""); setTemplateId(""); setPriority("media"); setIsPublic(false); setAssignedTo("");
       onCreated();
     } catch (e: any) {
       toast({ title: "Erro ao criar", description: e.message, variant: "destructive" });
@@ -288,6 +337,20 @@ function CreateChecklistDialog({ open, onOpenChange, templates, onCreated }: {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label>Responsável</Label>
+            <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <SelectTrigger><SelectValue placeholder="Sem responsável (admin)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem responsável</SelectItem>
+                {staffUsers.map((u: any) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>
+                    {u.full_name} ({u.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-center gap-3 rounded-lg border p-3">
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
             <div>
@@ -299,6 +362,66 @@ function CreateChecklistDialog({ open, onOpenChange, templates, onCreated }: {
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleCreate} disabled={loading}>{loading ? "Criando..." : "Criar e Copiar Link"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AssignChecklistDialog({ instance, onOpenChange, staffUsers, onAssigned }: {
+  instance: ChecklistInstance | null;
+  onOpenChange: (o: boolean) => void;
+  staffUsers: any[];
+  onAssigned: () => void;
+}) {
+  const [selectedUser, setSelectedUser] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Reset when instance changes
+  useState(() => {
+    if (instance) setSelectedUser(instance.assigned_to || "");
+  });
+
+  const handleAssign = async () => {
+    if (!instance) return;
+    setLoading(true);
+    try {
+      const assignValue = selectedUser === "none" ? null : selectedUser || null;
+      await updateInstance(instance.id, { assigned_to: assignValue } as any);
+      toast({ title: assignValue ? "Responsável atribuído!" : "Responsável removido!" });
+      onAssigned();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <Dialog open={!!instance} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>Atribuir Responsável</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">Checklist: <strong>{instance?.name}</strong></p>
+          <div>
+            <Label>Responsável</Label>
+            <Select value={selectedUser || "none"} onValueChange={setSelectedUser}>
+              <SelectTrigger><SelectValue placeholder="Selecione um responsável" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum (apenas admin)</SelectItem>
+                {staffUsers.map((u: any) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>
+                    {u.full_name} ({u.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              O responsável precisará fazer login para acessar o checklist.
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleAssign} disabled={loading}>{loading ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
