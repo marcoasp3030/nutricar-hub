@@ -2,13 +2,15 @@ import { useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { fetchEventJobs, EventJob, upsertEventJob } from "@/lib/jobsApi";
+import { fetchEventJobs, EventJob, upsertEventJob, JobAssignment, PromoterProfile } from "@/lib/jobsApi";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  ChevronLeft, ChevronRight, List, Clock, MapPin, DollarSign, Users, GripVertical,
+  ChevronLeft, ChevronRight, List, Clock, MapPin, DollarSign, Users, GripVertical, UserCheck,
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
@@ -74,9 +76,10 @@ function getEventTypeColorMap(jobs: EventJob[]): Map<string, { color: string; na
 type ViewMode = "month" | "week";
 
 // ─── Draggable Job Chip ───
-function DraggableJob({ job, id, typeColor }: { job: EventJob; id: string; typeColor?: string }) {
+function DraggableJob({ job, id, typeColor, assignedPromoters }: { job: EventJob; id: string; typeColor?: string; assignedPromoters?: PromoterProfile[] }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: { job } });
   const bgColor = typeColor || NO_TYPE_COLOR;
+  const accepted = assignedPromoters || [];
 
   return (
     <div
@@ -85,18 +88,24 @@ function DraggableJob({ job, id, typeColor }: { job: EventJob; id: string; typeC
       {...attributes}
       style={{ borderLeftColor: bgColor, borderLeftWidth: 3 }}
       className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] leading-tight bg-accent/60 truncate cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? "opacity-30" : ""}`}
-      title={`${job.title} — ${statusLabels[job.status]} (arraste para reagendar)`}
+      title={`${job.title} — ${statusLabels[job.status]}${accepted.length > 0 ? ` · ${accepted.map(p => p.stage_name || 'Promotora').join(', ')}` : ''}`}
     >
       <GripVertical className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60" />
       <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${statusDotColors[job.status]}`} />
       <span className="truncate">{job.title}</span>
+      {accepted.length > 0 && (
+        <span className="ml-auto flex items-center gap-0.5 shrink-0">
+          <UserCheck className="h-2.5 w-2.5 text-green-600" />
+          <span className="text-[9px] text-green-700 font-medium">{accepted.length}</span>
+        </span>
+      )}
     </div>
   );
 }
 
 // ─── Droppable Day Cell ───
 function DroppableDay({
-  day, dayJobs, isCurrentMonth, viewMode, onDayClick, colorMap,
+  day, dayJobs, isCurrentMonth, viewMode, onDayClick, colorMap, assignmentsByJob,
 }: {
   day: Date;
   dayJobs: EventJob[];
@@ -104,6 +113,7 @@ function DroppableDay({
   viewMode: ViewMode;
   onDayClick: (day: Date) => void;
   colorMap: Map<string, { color: string; name: string }>;
+  assignmentsByJob: Map<string, PromoterProfile[]>;
 }) {
   const key = format(day, "yyyy-MM-dd");
   const today = isToday(day);
@@ -143,7 +153,7 @@ function DroppableDay({
       </div>
       <div className="space-y-0.5 flex-1 overflow-y-auto">
         {uniqueJobs.slice(0, maxVisible).map(job => (
-          <DraggableJob key={`${key}-${job.id}`} job={job} id={`${key}::${job.id}`} typeColor={job.event_type_id ? colorMap.get(job.event_type_id)?.color : undefined} />
+          <DraggableJob key={`${key}-${job.id}`} job={job} id={`${key}::${job.id}`} typeColor={job.event_type_id ? colorMap.get(job.event_type_id)?.color : undefined} assignedPromoters={assignmentsByJob.get(job.id)} />
         ))}
         {uniqueJobs.length > maxVisible && (
           <button className="text-[10px] text-primary hover:underline px-1 w-full text-left" onClick={(e) => { e.stopPropagation(); onDayClick(day); }}>
@@ -186,6 +196,31 @@ export default function AdminJobsCalendarPage() {
     queryKey: ["event_jobs_calendar"],
     queryFn: () => fetchEventJobs(),
   });
+
+  // Fetch all assignments with promoter info (accepted/confirmed)
+  const { data: allAssignments = [] } = useQuery({
+    queryKey: ["calendar_assignments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("job_assignments")
+        .select("id, job_id, status, promoter:promoter_profiles(id, stage_name, city, state)")
+        .in("status", ["reservado", "confirmado"]);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Map job_id -> PromoterProfile[]
+  const assignmentsByJob = useMemo(() => {
+    const map = new Map<string, PromoterProfile[]>();
+    allAssignments.forEach((a: any) => {
+      if (!a.promoter) return;
+      const list = map.get(a.job_id) || [];
+      list.push(a.promoter as PromoterProfile);
+      map.set(a.job_id, list);
+    });
+    return map;
+  }, [allAssignments]);
 
   const eventTypeColorMap = useMemo(() => getEventTypeColorMap(jobs), [jobs]);
 
@@ -403,6 +438,7 @@ export default function AdminJobsCalendarPage() {
                     viewMode={viewMode}
                     onDayClick={setSelectedDay}
                     colorMap={eventTypeColorMap}
+                    assignmentsByJob={assignmentsByJob}
                   />
                 );
               })}
@@ -461,6 +497,28 @@ export default function AdminJobsCalendarPage() {
                     </div>
                     {job.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2">{job.description}</p>
+                    )}
+                    {/* Promotoras aceitas */}
+                    {(assignmentsByJob.get(job.id) || []).length > 0 && (
+                      <div className="pt-1 border-t border-border/50">
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                          <UserCheck className="h-3 w-3 text-green-600" />
+                          Promotoras confirmadas ({assignmentsByJob.get(job.id)!.length}/{job.promoter_slots})
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {assignmentsByJob.get(job.id)!.map((p, i) => (
+                            <div key={p.id || i} className="flex items-center gap-1 bg-accent/80 rounded-full px-2 py-0.5">
+                              <Avatar className="h-4 w-4">
+                                <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+                                  {(p.stage_name || 'P').substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-[10px] font-medium">{p.stage_name || 'Promotora'}</span>
+                              {p.city && <span className="text-[9px] text-muted-foreground">· {p.city}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
