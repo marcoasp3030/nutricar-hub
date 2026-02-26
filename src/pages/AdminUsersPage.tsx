@@ -939,22 +939,37 @@ const AdminUsersPage = () => {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>CNPJ</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={formCnpj}
-                  onChange={e => setFormCnpj(formatCnpj(e.target.value))}
-                  placeholder="00.000.000/0000-00"
-                  maxLength={18}
-                  onBlur={() => lookupCnpj(formCnpj)}
-                />
-                {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Ao preencher o CNPJ, a razão social é buscada automaticamente.</p>
+              <Label>Tipo *</Label>
+              <Select value={formRole} onValueChange={setFormRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fornecedor">Fornecedor</SelectItem>
+                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="funcionario">Funcionário</SelectItem>
+                  <SelectItem value="promotor">Promotor(a)</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {(formRole === 'fornecedor' || formRole === 'gerente' || formRole === 'admin') && (
+              <div>
+                <Label>CNPJ</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={formCnpj}
+                    onChange={e => setFormCnpj(formatCnpj(e.target.value))}
+                    placeholder="00.000.000/0000-00"
+                    maxLength={18}
+                    onBlur={() => lookupCnpj(formCnpj)}
+                  />
+                  {cnpjLoading && <Loader2 className="h-5 w-5 animate-spin text-primary mt-2" />}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Ao preencher o CNPJ, a razão social é buscada automaticamente.</p>
+              </div>
+            )}
             <div>
-              <Label>Nome completo / Razão Social *</Label>
-              <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Nome do usuário" />
+              <Label>Nome completo {formRole === 'fornecedor' ? '/ Razão Social' : ''} *</Label>
+              <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder={formRole === 'promotor' || formRole === 'funcionario' ? 'Nome completo' : 'Nome do usuário'} />
             </div>
             <div>
               <Label>E-mail *</Label>
@@ -965,26 +980,18 @@ const AdminUsersPage = () => {
               <Input type="password" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
             </div>
             <div>
-              <Label>Telefone</Label>
+              <Label>Telefone {(formRole === 'promotor' || formRole === 'funcionario') ? '*' : ''}</Label>
               <Input value={formPhone} onChange={e => setFormPhone(formatPhone(e.target.value))} placeholder="(11) 99999-9999" maxLength={15} />
             </div>
-            <div>
-              <Label>E-mail financeiro</Label>
-              <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@email.com" />
-            </div>
-            <div>
-              <Label>Tipo</Label>
-              <Select value={formRole} onValueChange={setFormRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fornecedor">Fornecedor</SelectItem>
-                  <SelectItem value="gerente">Gerente</SelectItem>
-                  <SelectItem value="funcionario">Funcionário</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <FornecedorInput />
+            {(formRole === 'fornecedor' || formRole === 'gerente' || formRole === 'admin') && (
+              <div>
+                <Label>E-mail financeiro</Label>
+                <Input type="email" value={formFinancialEmail} onChange={e => setFormFinancialEmail(e.target.value)} placeholder="financeiro@email.com" />
+              </div>
+            )}
+            {(formRole === 'fornecedor' || formRole === 'gerente') && (
+              <FornecedorInput />
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -1037,6 +1044,7 @@ const AdminUsersPage = () => {
                   <SelectItem value="fornecedor">Fornecedor</SelectItem>
                   <SelectItem value="gerente">Gerente</SelectItem>
                   <SelectItem value="funcionario">Funcionário</SelectItem>
+                  <SelectItem value="promotor">Promotor(a)</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>
               </Select>
