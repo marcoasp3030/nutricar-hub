@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
+import { fetchTemplates, ChecklistTemplate } from "@/lib/checklistApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Plus, Calendar, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase, Star, Image } from "lucide-react";
+import { Plus, Calendar, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase, Star, Image, ClipboardList } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -53,6 +54,7 @@ const AdminJobsPage = () => {
 
   const { data: eventTypes = [] } = useQuery({ queryKey: ["event_types"], queryFn: fetchEventTypes });
   const { data: promoters = [] } = useQuery({ queryKey: ["promoter_profiles_approved"], queryFn: () => fetchPromoterProfiles({ status: "aprovado" }) });
+  const { data: checklistTemplates = [] } = useQuery({ queryKey: ["checklist_templates"], queryFn: fetchTemplates });
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -70,9 +72,10 @@ const AdminJobsPage = () => {
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: EventJob['status'] }) => updateJobStatus(id, status),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["event_jobs"] });
-      toast({ title: "Status atualizado!" });
+      const msg = vars.status === 'confirmado' ? "Status atualizado! Checklist criado automaticamente (se template vinculado)." : "Status atualizado!";
+      toast({ title: msg });
     },
   });
 
@@ -225,6 +228,17 @@ const AdminJobsPage = () => {
                     {eventTypes.map((et) => <SelectItem key={et.id} value={et.id}>{et.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label>Checklist Template</Label>
+                <Select value={form.checklist_template_id || ""} onValueChange={(v) => setForm({ ...form, checklist_template_id: v || null })}>
+                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {checklistTemplates.map((ct) => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Checklist será criado automaticamente ao confirmar o job</p>
               </div>
               <div>
                 <Label>Visibilidade</Label>

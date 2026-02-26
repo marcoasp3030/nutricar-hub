@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { createInstanceFromTemplate } from "@/lib/checklistApi";
 
 // ============ TYPES ============
 
@@ -212,6 +213,36 @@ export const updateJobStatus = async (id: string, status: EventJob['status']) =>
     .update({ status } as any)
     .eq('id', id as any);
   if (error) throw error;
+
+  // Auto-create checklist when job is confirmed
+  if (status === 'confirmado') {
+    await createChecklistForJob(id);
+  }
+};
+
+/** Creates a ChecklistInstance from the job's checklist_template_id (if set) */
+export const createChecklistForJob = async (jobId: string): Promise<string | null> => {
+  const job = await fetchEventJob(jobId);
+  if (!job.checklist_template_id) return null;
+
+  try {
+    const instance = await createInstanceFromTemplate(job.checklist_template_id, {
+      name: `Checklist – ${job.title}`,
+      store: job.store_unit || undefined,
+      location: job.address || undefined,
+      due_date: job.end_date,
+      priority: 'media',
+    });
+
+    // Update instance to em_andamento
+    await supabase.from('checklist_instances').update({ status: 'em_andamento' } as any).eq('id', instance.id);
+
+    await logJobAudit(jobId, 'checklist_created', { checklist_instance_id: instance.id });
+    return instance.id;
+  } catch (e) {
+    console.error('Error creating checklist for job:', e);
+    return null;
+  }
 };
 
 // ============ JOB INVITES ============
