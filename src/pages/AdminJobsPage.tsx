@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile } from "@/lib/jobsApi";
+import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Calendar, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Plus, Calendar, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase, Star, Image } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -356,75 +357,197 @@ const AdminJobsPage = () => {
             </DialogTitle>
           </DialogHeader>
           {detailJob && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-muted-foreground">Local:</span> {detailJob.address || "—"}</div>
-                <div><span className="text-muted-foreground">Datas:</span> {format(new Date(detailJob.start_date), "dd/MM/yyyy")} - {format(new Date(detailJob.end_date), "dd/MM/yyyy")}</div>
-                <div><span className="text-muted-foreground">Cachê:</span> R$ {Number(detailJob.cache_value).toFixed(2)}</div>
-                <div><span className="text-muted-foreground">Vagas:</span> {detailJob.promoter_slots}</div>
-              </div>
-
-              {detailJob.description && <p className="text-sm">{detailJob.description}</p>}
-
-              <Separator />
-              <h3 className="font-semibold text-sm">Ações</h3>
-              <div className="flex flex-wrap gap-2">
-                {detailJob.status === "rascunho" && (
-                  <Button size="sm" onClick={() => { statusMutation.mutate({ id: detailJob.id, status: "publicado" }); setDetailJob(null); }}>
-                    <Send className="h-3 w-3 mr-1" /> Publicar
-                  </Button>
-                )}
-                {detailJob.status === "publicado" && (
-                  <Button size="sm" onClick={() => { statusMutation.mutate({ id: detailJob.id, status: "confirmado" }); setDetailJob(null); }}>
-                    <CheckCircle className="h-3 w-3 mr-1" /> Confirmar
-                  </Button>
-                )}
-                {detailJob.status === "confirmado" && (
-                  <Button size="sm" onClick={() => { statusMutation.mutate({ id: detailJob.id, status: "em_execucao" }); setDetailJob(null); }}>
-                    Iniciar Execução
-                  </Button>
-                )}
-                {detailJob.status === "em_execucao" && (
-                  <Button size="sm" onClick={() => { statusMutation.mutate({ id: detailJob.id, status: "concluido" }); setDetailJob(null); }}>
-                    Concluir
-                  </Button>
-                )}
-                <Button size="sm" variant="outline" onClick={() => openEditJob(detailJob)}>
-                  Editar
-                </Button>
-                {detailJob.status !== "cancelado" && (
-                  <Button size="sm" variant="destructive" onClick={() => { statusMutation.mutate({ id: detailJob.id, status: "cancelado" }); setDetailJob(null); }}>
-                    Cancelar
-                  </Button>
-                )}
-              </div>
-
-              <Separator />
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">Convidar Promotoras</h3>
-              </div>
-              <div className="space-y-2">
-                {promoters.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2">
-                    <div>
-                      <span className="text-sm font-medium">{p.stage_name || "Sem nome"}</span>
-                      <span className="text-xs text-muted-foreground ml-2">{p.city}</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline" onClick={() => inviteMutation.mutate({ jobId: detailJob.id, promoterId: p.id })}>
-                        <Send className="h-3 w-3 mr-1" /> Convidar
-                      </Button>
-                      <Button size="sm" onClick={() => assignMutation.mutate({ jobId: detailJob.id, promoterId: p.id })}>
-                        <UserPlus className="h-3 w-3 mr-1" /> Atribuir
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <JobDetailContent
+              job={detailJob}
+              promoters={promoters}
+              statusMutation={statusMutation}
+              inviteMutation={inviteMutation}
+              assignMutation={assignMutation}
+              onEdit={openEditJob}
+              onClose={() => setDetailJob(null)}
+              qc={qc}
+            />
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+};
+
+// Job Detail with assignments, evidences, and admin rating
+const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assignMutation, onEdit, onClose, qc }: any) => {
+  const [adminRating, setAdminRating] = useState(0);
+  const [adminComment, setAdminComment] = useState("");
+  const [ratingAssignmentId, setRatingAssignmentId] = useState<string | null>(null);
+
+  const { data: jobAssignments = [], refetch: refetchAssignments } = useQuery({
+    queryKey: ["job_assignments", job.id],
+    queryFn: () => fetchJobAssignments(job.id),
+  });
+
+  const ratingMutation = useMutation({
+    mutationFn: ({ id, rating, comment }: { id: string; rating: number; comment: string }) =>
+      updateJobAssignment(id, { admin_rating: rating, admin_comment: comment } as any),
+    onSuccess: () => {
+      refetchAssignments();
+      toast({ title: "Avaliação salva!" });
+      setRatingAssignmentId(null);
+      setAdminRating(0);
+      setAdminComment("");
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div><span className="text-muted-foreground">Local:</span> {job.address || "—"}</div>
+        <div><span className="text-muted-foreground">Datas:</span> {format(new Date(job.start_date), "dd/MM/yyyy")} - {format(new Date(job.end_date), "dd/MM/yyyy")}</div>
+        <div><span className="text-muted-foreground">Cachê:</span> R$ {Number(job.cache_value).toFixed(2)}</div>
+        <div><span className="text-muted-foreground">Vagas:</span> {job.promoter_slots}</div>
+      </div>
+
+      {job.description && <p className="text-sm">{job.description}</p>}
+
+      <Separator />
+      <h3 className="font-semibold text-sm">Ações</h3>
+      <div className="flex flex-wrap gap-2">
+        {job.status === "rascunho" && (
+          <Button size="sm" onClick={() => { statusMutation.mutate({ id: job.id, status: "publicado" }); onClose(); }}>
+            <Send className="h-3 w-3 mr-1" /> Publicar
+          </Button>
+        )}
+        {job.status === "publicado" && (
+          <Button size="sm" onClick={() => { statusMutation.mutate({ id: job.id, status: "confirmado" }); onClose(); }}>
+            <CheckCircle className="h-3 w-3 mr-1" /> Confirmar
+          </Button>
+        )}
+        {job.status === "confirmado" && (
+          <Button size="sm" onClick={() => { statusMutation.mutate({ id: job.id, status: "em_execucao" }); onClose(); }}>
+            Iniciar Execução
+          </Button>
+        )}
+        {job.status === "em_execucao" && (
+          <Button size="sm" onClick={() => { statusMutation.mutate({ id: job.id, status: "concluido" }); onClose(); }}>
+            Concluir
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={() => onEdit(job)}>Editar</Button>
+        {job.status !== "cancelado" && (
+          <Button size="sm" variant="destructive" onClick={() => { statusMutation.mutate({ id: job.id, status: "cancelado" }); onClose(); }}>Cancelar</Button>
+        )}
+      </div>
+
+      {/* Assignments & Evidences */}
+      {jobAssignments.length > 0 && (
+        <>
+          <Separator />
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <Users className="h-4 w-4" /> Promotoras Atribuídas ({jobAssignments.length})
+          </h3>
+          <div className="space-y-3">
+            {jobAssignments.map((a: JobAssignment) => (
+              <Card key={a.id} className="border">
+                <CardContent className="pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{(a.promoter as any)?.stage_name || "Promotora"}</span>
+                    <Badge variant="outline">{a.status}</Badge>
+                  </div>
+
+                  {/* Check-in/out info */}
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    {a.checkin_at && <span>Check-in: {format(new Date(a.checkin_at), "dd/MM HH:mm")}</span>}
+                    {a.checkout_at && <span>Check-out: {format(new Date(a.checkout_at), "dd/MM HH:mm")}</span>}
+                  </div>
+
+                  {/* Evidence photos */}
+                  {a.evidence_urls && a.evidence_urls.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1"><Image className="h-3 w-3" /> Evidências ({a.evidence_urls.length})</p>
+                      <div className="grid grid-cols-4 gap-1">
+                        {a.evidence_urls.map((url: string, i: number) => (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                            <img src={url} className="rounded aspect-square object-cover hover:opacity-80 transition-opacity" alt={`evidência ${i + 1}`} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {a.execution_notes && <p className="text-xs text-muted-foreground bg-muted rounded p-2">📝 {a.execution_notes}</p>}
+
+                  {/* Promoter rating (read-only for admin) */}
+                  {a.promoter_rating && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Avaliação da promotora:</span>
+                      <div className="flex">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < (a.promoter_rating || 0) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`} />)}</div>
+                      {a.promoter_comment && <span className="italic">"{a.promoter_comment}"</span>}
+                    </div>
+                  )}
+
+                  {/* Admin rating */}
+                  {a.admin_rating ? (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Sua avaliação:</span>
+                      <div className="flex">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < (a.admin_rating || 0) ? "text-primary fill-primary" : "text-muted-foreground/30"}`} />)}</div>
+                      {a.admin_comment && <span className="italic">"{a.admin_comment}"</span>}
+                    </div>
+                  ) : (job.status === "concluido" || job.status === "em_execucao") && (
+                    ratingAssignmentId === a.id ? (
+                      <div className="space-y-2 bg-muted rounded-lg p-3">
+                        <p className="text-xs font-medium">Avaliar promotora</p>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <button key={n} onClick={() => setAdminRating(n)} className="focus:outline-none">
+                              <Star className={`h-5 w-5 transition-colors ${n <= adminRating ? "text-primary fill-primary" : "text-muted-foreground/30 hover:text-primary/50"}`} />
+                            </button>
+                          ))}
+                        </div>
+                        <Textarea
+                          value={adminComment}
+                          onChange={(e) => setAdminComment(e.target.value)}
+                          placeholder="Comentário (opcional)"
+                          className="text-xs min-h-[60px]"
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={adminRating === 0 || ratingMutation.isPending} onClick={() => ratingMutation.mutate({ id: a.id, rating: adminRating, comment: adminComment })}>
+                            {ratingMutation.isPending ? "Salvando..." : "Salvar Avaliação"}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setRatingAssignmentId(null)}>Cancelar</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => { setRatingAssignmentId(a.id); setAdminRating(0); setAdminComment(""); }}>
+                        <Star className="h-3 w-3 mr-1" /> Avaliar
+                      </Button>
+                    )
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      <Separator />
+      <h3 className="font-semibold text-sm">Convidar Promotoras</h3>
+      <div className="space-y-2">
+        {promoters.map((p: PromoterProfile) => (
+          <div key={p.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2">
+            <div>
+              <span className="text-sm font-medium">{p.stage_name || "Sem nome"}</span>
+              <span className="text-xs text-muted-foreground ml-2">{p.city}</span>
+            </div>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={() => inviteMutation.mutate({ jobId: job.id, promoterId: p.id })}>
+                <Send className="h-3 w-3 mr-1" /> Convidar
+              </Button>
+              <Button size="sm" onClick={() => assignMutation.mutate({ jobId: job.id, promoterId: p.id })}>
+                <UserPlus className="h-3 w-3 mr-1" /> Atribuir
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
