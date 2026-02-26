@@ -616,6 +616,7 @@ export type Database = {
       }
       event_types: {
         Row: {
+          color: string | null
           created_at: string
           default_requirements: Json
           description: string | null
@@ -625,6 +626,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           default_requirements?: Json
           description?: string | null
@@ -634,6 +636,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           default_requirements?: Json
           description?: string | null

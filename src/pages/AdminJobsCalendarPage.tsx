@@ -60,8 +60,10 @@ function getEventTypeColorMap(jobs: EventJob[]): Map<string, { color: string; na
   jobs.forEach(job => {
     const typeId = job.event_type_id;
     if (typeId && !map.has(typeId)) {
-      const typeName = (job.event_type as any)?.name || "Tipo desconhecido";
-      map.set(typeId, { color: EVENT_TYPE_COLORS[idx % EVENT_TYPE_COLORS.length], name: typeName });
+      const et = job.event_type as any;
+      const typeName = et?.name || "Tipo desconhecido";
+      const customColor = et?.color;
+      map.set(typeId, { color: customColor || EVENT_TYPE_COLORS[idx % EVENT_TYPE_COLORS.length], name: typeName });
       idx++;
     }
   });

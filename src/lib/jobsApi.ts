@@ -9,6 +9,7 @@ export interface EventType {
   description: string | null;
   is_active: boolean;
   default_requirements: Record<string, boolean>;
+  color: string | null;
   created_at: string;
   updated_at: string;
 }
