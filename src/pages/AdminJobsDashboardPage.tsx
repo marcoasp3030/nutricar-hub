@@ -137,7 +137,7 @@ const AdminJobsDashboardPage = () => {
         <MetricCard icon={CheckCircle} label="Eventos Confirmados" value={confirmedJobs} />
         <MetricCard icon={TrendingUp} label="Eventos Concluídos" value={completedJobs} />
         <MetricCard icon={Clock} label="Em Negociação" value={statusCounts["em_negociacao"] || 0} />
-        <MetricCard icon={DollarSign} label="Assignments" value={assignments.length} />
+        <MetricCard icon={DollarSign} label="Atribuições" value={assignments.length} />
       </div>
 
       {/* Charts */}

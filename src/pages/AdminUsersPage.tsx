@@ -52,7 +52,7 @@ const AVAILABLE_PERMISSIONS = [
   { key: 'admin_checklists', label: 'Checklists (Gestão)', group: 'Administração' },
   { key: 'admin_lgpd', label: 'LGPD', group: 'Administração' },
   { key: 'admin_tv_api', label: 'API TV', group: 'Administração' },
-  { key: 'admin_jobs', label: 'Jobs & Promotoras', group: 'Administração' },
+  { key: 'admin_jobs', label: 'Eventos & Promotoras', group: 'Administração' },
 ];
 
 const PERMISSION_TEMPLATES = [
@@ -72,8 +72,8 @@ const PERMISSION_TEMPLATES = [
     permissions: ['admin_dashboard', 'admin_midia', 'admin_lojas', 'admin_publicidade'],
   },
   {
-    label: 'Gestão de Jobs',
-    description: 'Jobs, promotoras e checklists',
+    label: 'Gestão de Eventos',
+    description: 'Eventos, promotoras e checklists',
     permissions: ['admin_jobs', 'admin_checklists'],
   },
   {
