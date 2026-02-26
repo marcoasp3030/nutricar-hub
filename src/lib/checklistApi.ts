@@ -156,6 +156,41 @@ export async function deleteTemplate(id: string) {
   if (error) throw error;
 }
 
+/** Deep-duplicate a template including all sections and items */
+export async function duplicateTemplate(sourceId: string): Promise<ChecklistTemplate> {
+  const source = await fetchTemplateWithDetails(sourceId);
+  const newTemplate = await createTemplate({
+    name: `${source.name} (cópia)`,
+    description: source.description || undefined,
+    tags: source.tags,
+  });
+
+  for (const section of source.sections || []) {
+    const newSection = await createSection({
+      template_id: newTemplate.id,
+      name: section.name,
+      sort_order: section.sort_order,
+      color: section.color,
+    });
+    for (const item of section.items || []) {
+      await createItem({
+        section_id: newSection.id,
+        name: item.name,
+        item_type: item.item_type,
+        sort_order: item.sort_order,
+        is_required: item.is_required,
+        requires_attachments: item.requires_attachments,
+        default_quantity: item.default_quantity,
+        unit: item.unit,
+        default_observation: item.default_observation,
+        default_responsible: item.default_responsible,
+      });
+    }
+  }
+
+  return newTemplate;
+}
+
 // ── Sections ──
 export async function createSection(data: { template_id: string; name: string; sort_order: number; color?: string }) {
   const { data: section, error } = await supabase

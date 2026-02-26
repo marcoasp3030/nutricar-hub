@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  fetchTemplates, createTemplate, deleteTemplate,
+  fetchTemplates, createTemplate, deleteTemplate, duplicateTemplate,
   type ChecklistTemplate,
 } from "@/lib/checklistApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,8 +50,8 @@ export default function ChecklistTemplatesPage() {
 
   const handleDuplicate = async (t: ChecklistTemplate) => {
     try {
-      const newT = await createTemplate({ name: `${t.name} (cópia)`, description: t.description || undefined, tags: t.tags });
-      toast({ title: "Template duplicado!" });
+      const newT = await duplicateTemplate(t.id);
+      toast({ title: "Template duplicado com todas as seções e itens!" });
       queryClient.invalidateQueries({ queryKey: ["checklist-templates"] });
       navigate(`/admin/checklists/templates/${newT.id}`);
     } catch (e: any) {

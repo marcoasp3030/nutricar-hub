@@ -25,6 +25,7 @@ import ChecklistExecutionPage from "./pages/ChecklistExecutionPage";
 import ChecklistTemplatesPage from "./pages/ChecklistTemplatesPage";
 import ChecklistTemplateEditorPage from "./pages/ChecklistTemplateEditorPage";
 import AdminChecklistsManagerPage from "./pages/AdminChecklistsManagerPage";
+import AdminChecklistsDashboardPage from "./pages/AdminChecklistsDashboardPage";
 import PublicChecklistPage from "./pages/PublicChecklistPage";
 import AdminEventTypesPage from "./pages/AdminEventTypesPage";
 import AdminPromotersPage from "./pages/AdminPromotersPage";
@@ -224,6 +225,9 @@ const AppContent = () => {
         )}
         {hasPermission('admin_checklists') && (
           <Route path="/admin/checklists" element={<AdminChecklistsManagerPage />} />
+        )}
+        {hasPermission('admin_checklists') && (
+          <Route path="/admin/checklists/dashboard" element={<AdminChecklistsDashboardPage />} />
         )}
         {hasPermission('admin_jobs') && (
           <Route path="/admin/jobs" element={<AdminJobsPage />} />
