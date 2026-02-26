@@ -222,6 +222,55 @@ export default function ChecklistExecutionPage() {
         <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="gap-1 ml-auto"><History className="h-3 w-3" />Histórico</Button>
       </div>
 
+      {/* Public link toggle */}
+      <Card>
+        <CardContent className="py-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {instance.is_public ? <Globe className="h-4 w-4 text-primary" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
+              <div>
+                <Label className="text-sm font-medium">Acesso público</Label>
+                <p className="text-xs text-muted-foreground">
+                  {instance.is_public ? "Qualquer pessoa com o link pode acessar" : "Requer login para acessar"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={instance.is_public}
+              onCheckedChange={async (checked) => {
+                try {
+                  await updateInstance(id!, { is_public: checked } as any);
+                  refetchInstance();
+                  toast({ title: checked ? "Checklist agora é público" : "Checklist agora requer login" });
+                } catch (e: any) {
+                  toast({ title: "Erro", description: e.message, variant: "destructive" });
+                }
+              }}
+            />
+          </div>
+          {instance.is_public && (
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={`${window.location.origin}/checklist-publico/${id}`}
+                className="text-xs h-8 bg-muted"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/checklist-publico/${id}`);
+                  toast({ title: "Link copiado!" });
+                }}
+              >
+                <Copy className="h-3 w-3" />Copiar
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Audit log */}
       {showHistory && auditLog.length > 0 && (
         <Card>
