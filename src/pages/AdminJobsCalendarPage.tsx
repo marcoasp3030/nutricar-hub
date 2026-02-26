@@ -1,24 +1,27 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { fetchEventJobs, EventJob } from "@/lib/jobsApi";
+import { fetchEventJobs, EventJob, upsertEventJob } from "@/lib/jobsApi";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, Clock,
-  MapPin, DollarSign, Users,
+  ChevronLeft, ChevronRight, List, Clock, MapPin, DollarSign, Users, GripVertical,
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
-  addMonths, subMonths, addWeeks, subWeeks, isSameMonth, isSameDay, isToday,
-  parseISO, getWeek,
+  addMonths, subMonths, addWeeks, subWeeks, isSameMonth, isToday,
+  parseISO, getWeek, differenceInCalendarDays, addDays,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  type DragStartEvent, type DragEndEvent,
+  useDroppable, useDraggable,
+} from "@dnd-kit/core";
+import { toast } from "@/hooks/use-toast";
 
 const statusLabels: Record<string, string> = {
   rascunho: "Rascunho", publicado: "Publicado", em_negociacao: "Em Negociação",
@@ -37,12 +40,101 @@ const statusDotColors: Record<string, string> = {
 
 type ViewMode = "month" | "week";
 
+// ─── Draggable Job Chip ───
+function DraggableJob({ job, id }: { job: EventJob; id: string }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: { job } });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`flex items-center gap-1 px-1 py-0.5 rounded text-[10px] leading-tight bg-accent/50 truncate cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? "opacity-30" : ""}`}
+      title={`${job.title} — ${statusLabels[job.status]} (arraste para reagendar)`}
+    >
+      <GripVertical className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60" />
+      <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${statusDotColors[job.status]}`} />
+      <span className="truncate">{job.title}</span>
+    </div>
+  );
+}
+
+// ─── Droppable Day Cell ───
+function DroppableDay({
+  day, dayJobs, isCurrentMonth, viewMode, onDayClick,
+}: {
+  day: Date;
+  dayJobs: EventJob[];
+  isCurrentMonth: boolean;
+  viewMode: ViewMode;
+  onDayClick: (day: Date) => void;
+}) {
+  const key = format(day, "yyyy-MM-dd");
+  const today = isToday(day);
+  const { setNodeRef, isOver } = useDroppable({ id: `day-${key}`, data: { date: key } });
+  const maxVisible = viewMode === "week" ? 6 : 3;
+
+  // Deduplicate jobs by id (a multi-day job appears once per cell)
+  const uniqueJobs = useMemo(() => {
+    const seen = new Set<string>();
+    return dayJobs.filter(j => {
+      if (seen.has(j.id)) return false;
+      seen.add(j.id);
+      return true;
+    });
+  }, [dayJobs]);
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`
+        border-b border-r p-1 min-h-[90px] transition-colors
+        ${!isCurrentMonth && viewMode === "month" ? "bg-muted/30" : ""}
+        ${today ? "bg-primary/5" : ""}
+        ${isOver ? "bg-primary/10 ring-2 ring-inset ring-primary/40" : ""}
+      `}
+      onClick={() => uniqueJobs.length > 0 && onDayClick(day)}
+    >
+      <div className={`text-xs font-medium mb-1 px-1 ${today ? "text-primary font-bold" : !isCurrentMonth && viewMode === "month" ? "text-muted-foreground/50" : "text-foreground"}`}>
+        {format(day, "d")}
+      </div>
+      <div className="space-y-0.5">
+        {uniqueJobs.slice(0, maxVisible).map(job => (
+          <DraggableJob key={`${key}-${job.id}`} job={job} id={`${key}::${job.id}`} />
+        ))}
+        {uniqueJobs.length > maxVisible && (
+          <div className="text-[10px] text-muted-foreground px-1">
+            +{uniqueJobs.length - maxVisible} mais
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Overlay shown while dragging ───
+function JobDragOverlay({ job }: { job: EventJob }) {
+  return (
+    <div className="flex items-center gap-1 px-2 py-1 rounded bg-card border shadow-lg text-xs font-medium max-w-[180px]">
+      <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${statusDotColors[job.status]}`} />
+      <span className="truncate">{job.title}</span>
+    </div>
+  );
+}
+
+// ─── Main Page ───
 export default function AdminJobsCalendarPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [activeJob, setActiveJob] = useState<EventJob | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["event_jobs_calendar"],
@@ -54,14 +146,12 @@ export default function AdminJobsCalendarPage() {
     return jobs.filter(j => j.status === statusFilter);
   }, [jobs, statusFilter]);
 
-  // Map jobs to dates
   const jobsByDate = useMemo(() => {
     const map = new Map<string, EventJob[]>();
     filtered.forEach(job => {
       const start = job.start_date?.split("T")[0];
       const end = job.end_date?.split("T")[0];
       if (!start) return;
-      // Add job to each day in range
       try {
         const startD = parseISO(start);
         const endD = end ? parseISO(end) : startD;
@@ -72,15 +162,13 @@ export default function AdminJobsCalendarPage() {
           map.get(key)!.push(job);
         });
       } catch {
-        const key = start;
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push(job);
+        if (!map.has(start)) map.set(start, []);
+        map.get(start)!.push(job);
       }
     });
     return map;
   }, [filtered]);
 
-  // Calendar grid days
   const calendarDays = useMemo(() => {
     if (viewMode === "month") {
       const monthStart = startOfMonth(currentDate);
@@ -95,15 +183,13 @@ export default function AdminJobsCalendarPage() {
     }
   }, [currentDate, viewMode]);
 
-  const navigate_ = (dir: "prev" | "next") => {
+  const nav = (dir: "prev" | "next") => {
     if (viewMode === "month") {
       setCurrentDate(dir === "prev" ? subMonths(currentDate, 1) : addMonths(currentDate, 1));
     } else {
       setCurrentDate(dir === "prev" ? subWeeks(currentDate, 1) : addWeeks(currentDate, 1));
     }
   };
-
-  const goToday = () => setCurrentDate(new Date());
 
   const headerLabel = viewMode === "month"
     ? format(currentDate, "MMMM yyyy", { locale: ptBR })
@@ -115,7 +201,6 @@ export default function AdminJobsCalendarPage() {
     ? jobsByDate.get(format(selectedDay, "yyyy-MM-dd")) || []
     : [];
 
-  // Stats
   const totalJobsThisPeriod = useMemo(() => {
     const uniqueIds = new Set<string>();
     calendarDays.forEach(day => {
@@ -125,6 +210,56 @@ export default function AdminJobsCalendarPage() {
     return uniqueIds.size;
   }, [calendarDays, jobsByDate]);
 
+  // ─── Drag handlers ───
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const job = event.active.data.current?.job as EventJob | undefined;
+    if (job) setActiveJob(job);
+  }, []);
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    setActiveJob(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const job = active.data.current?.job as EventJob | undefined;
+    if (!job) return;
+
+    // Extract source date from draggable id (format: "yyyy-MM-dd::jobId")
+    const sourceDateStr = (active.id as string).split("::")[0];
+    // Extract target date from droppable id (format: "day-yyyy-MM-dd")
+    const targetDateStr = (over.id as string).replace("day-", "");
+
+    if (sourceDateStr === targetDateStr) return;
+
+    // Calculate offset in days
+    const sourceDate = parseISO(sourceDateStr);
+    const targetDate = parseISO(targetDateStr);
+    const dayOffset = differenceInCalendarDays(targetDate, sourceDate);
+
+    const oldStart = job.start_date?.split("T")[0];
+    const oldEnd = job.end_date?.split("T")[0];
+    if (!oldStart || !oldEnd) return;
+
+    const newStart = format(addDays(parseISO(oldStart), dayOffset), "yyyy-MM-dd");
+    const newEnd = format(addDays(parseISO(oldEnd), dayOffset), "yyyy-MM-dd");
+
+    // Optimistic update
+    queryClient.setQueryData<EventJob[]>(["event_jobs_calendar"], (old) =>
+      (old || []).map(j =>
+        j.id === job.id ? { ...j, start_date: newStart, end_date: newEnd } : j
+      )
+    );
+
+    try {
+      await upsertEventJob({ id: job.id, start_date: newStart, end_date: newEnd, title: job.title, created_by: job.created_by });
+      toast({ title: "Job reagendado", description: `${job.title} → ${format(parseISO(newStart), "dd/MM")} a ${format(parseISO(newEnd), "dd/MM")}` });
+    } catch (e: any) {
+      // Rollback
+      queryClient.invalidateQueries({ queryKey: ["event_jobs_calendar"] });
+      toast({ title: "Erro ao reagendar", description: e.message, variant: "destructive" });
+    }
+  }, [queryClient]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -132,7 +267,7 @@ export default function AdminJobsCalendarPage() {
         <div>
           <h1 className="text-2xl font-bold">Calendário de Jobs</h1>
           <p className="text-sm text-muted-foreground">
-            {totalJobsThisPeriod} job(s) no período
+            {totalJobsThisPeriod} job(s) no período · Arraste para reagendar
           </p>
         </div>
         <div className="flex gap-2">
@@ -145,31 +280,27 @@ export default function AdminJobsCalendarPage() {
       {/* Controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate_("prev")}>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => nav("prev")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={goToday} className="text-sm font-medium">
+          <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())} className="text-sm font-medium">
             Hoje
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate_("next")}>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => nav("next")}>
             <ChevronRight className="h-4 w-4" />
           </Button>
           <span className="text-sm font-semibold capitalize ml-2">{headerLabel}</span>
         </div>
         <div className="flex gap-2">
           <Select value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="month">Mês</SelectItem>
               <SelectItem value="week">Semana</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
+            <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Status</SelectItem>
               {Object.entries(statusLabels).map(([k, v]) => (
@@ -185,59 +316,42 @@ export default function AdminJobsCalendarPage() {
           <Clock className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="rounded-lg border bg-card overflow-hidden">
-          {/* Day names header */}
-          <div className="grid grid-cols-7 border-b bg-muted/50">
-            {dayNames.map(d => (
-              <div key={d} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground">
-                {d}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
-          <div className={`grid grid-cols-7 ${viewMode === "week" ? "min-h-[200px]" : ""}`}>
-            {calendarDays.map((day, i) => {
-              const key = format(day, "yyyy-MM-dd");
-              const dayJobs = jobsByDate.get(key) || [];
-              const isCurrentMonth = isSameMonth(day, currentDate);
-              const today = isToday(day);
-
-              return (
-                <div
-                  key={key}
-                  className={`
-                    border-b border-r p-1 min-h-[90px] cursor-pointer transition-colors hover:bg-accent/30
-                    ${!isCurrentMonth && viewMode === "month" ? "bg-muted/30" : ""}
-                    ${today ? "bg-primary/5" : ""}
-                  `}
-                  onClick={() => dayJobs.length > 0 && setSelectedDay(day)}
-                >
-                  <div className={`text-xs font-medium mb-1 px-1 ${today ? "text-primary font-bold" : !isCurrentMonth && viewMode === "month" ? "text-muted-foreground/50" : "text-foreground"}`}>
-                    {format(day, "d")}
-                  </div>
-                  <div className="space-y-0.5">
-                    {dayJobs.slice(0, viewMode === "week" ? 6 : 3).map(job => (
-                      <div
-                        key={job.id}
-                        className="flex items-center gap-1 px-1 py-0.5 rounded text-[10px] leading-tight bg-accent/50 truncate"
-                        title={`${job.title} — ${statusLabels[job.status]}`}
-                      >
-                        <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${statusDotColors[job.status]}`} />
-                        <span className="truncate">{job.title}</span>
-                      </div>
-                    ))}
-                    {dayJobs.length > (viewMode === "week" ? 6 : 3) && (
-                      <div className="text-[10px] text-muted-foreground px-1">
-                        +{dayJobs.length - (viewMode === "week" ? 6 : 3)} mais
-                      </div>
-                    )}
-                  </div>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div className="rounded-lg border bg-card overflow-hidden">
+            {/* Day names header */}
+            <div className="grid grid-cols-7 border-b bg-muted/50">
+              {dayNames.map(d => (
+                <div key={d} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground">
+                  {d}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            {/* Calendar grid */}
+            <div className={`grid grid-cols-7 ${viewMode === "week" ? "min-h-[200px]" : ""}`}>
+              {calendarDays.map(day => {
+                const key = format(day, "yyyy-MM-dd");
+                const dayJobs = jobsByDate.get(key) || [];
+                const isCurrentMonth = isSameMonth(day, currentDate);
+
+                return (
+                  <DroppableDay
+                    key={key}
+                    day={day}
+                    dayJobs={dayJobs}
+                    isCurrentMonth={isCurrentMonth}
+                    viewMode={viewMode}
+                    onDayClick={setSelectedDay}
+                  />
+                );
+              })}
+            </div>
           </div>
-        </div>
+
+          <DragOverlay dropAnimation={null}>
+            {activeJob ? <JobDragOverlay job={activeJob} /> : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* Day detail dialog */}
