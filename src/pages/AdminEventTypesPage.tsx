@@ -23,7 +23,7 @@ const AdminEventTypesPage = () => {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EventType | null>(null);
-  const [form, setForm] = useState({ name: "", description: "", is_active: true, default_requirements: {} as Record<string, boolean> });
+  const [form, setForm] = useState({ name: "", description: "", is_active: true, default_requirements: {} as Record<string, boolean>, color: "" });
 
   const { data: types = [], isLoading } = useQuery({ queryKey: ["event_types"], queryFn: fetchEventTypes });
 
@@ -40,19 +40,19 @@ const AdminEventTypesPage = () => {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ name: "", description: "", is_active: true, default_requirements: {} });
+    setForm({ name: "", description: "", is_active: true, default_requirements: {}, color: "" });
     setOpen(true);
   };
 
   const openEdit = (et: EventType) => {
     setEditing(et);
-    setForm({ name: et.name, description: et.description || "", is_active: et.is_active, default_requirements: et.default_requirements || {} });
+    setForm({ name: et.name, description: et.description || "", is_active: et.is_active, default_requirements: et.default_requirements || {}, color: et.color || "" });
     setOpen(true);
   };
 
   const handleSave = () => {
     if (!form.name.trim()) return toast({ title: "Nome obrigatório", variant: "destructive" });
-    mutation.mutate({ ...(editing ? { id: editing.id } : {}), ...form });
+    mutation.mutate({ ...(editing ? { id: editing.id } : {}), ...form, color: form.color || null });
   };
 
   return (
@@ -74,7 +74,11 @@ const AdminEventTypesPage = () => {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-primary" />
+                    {et.color ? (
+                      <span className="inline-block w-4 h-4 rounded-full shrink-0 border" style={{ backgroundColor: et.color }} />
+                    ) : (
+                      <Tag className="h-4 w-4 text-primary" />
+                    )}
                     {et.name}
                   </CardTitle>
                   <Badge variant={et.is_active ? "default" : "secondary"}>{et.is_active ? "Ativo" : "Inativo"}</Badge>
@@ -106,6 +110,28 @@ const AdminEventTypesPage = () => {
             <div>
               <Label>Descrição</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descreva este tipo de evento" />
+            </div>
+            <div>
+              <Label>Cor no calendário</Label>
+              <div className="flex items-center gap-3 mt-1">
+                <input
+                  type="color"
+                  value={form.color || "#3b82f6"}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="w-10 h-10 rounded cursor-pointer border border-input p-0.5"
+                />
+                <Input
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  placeholder="#3b82f6"
+                  className="flex-1"
+                />
+                {form.color && (
+                  <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, color: "" })}>
+                    Limpar
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
