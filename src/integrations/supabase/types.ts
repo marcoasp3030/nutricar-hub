@@ -188,6 +188,318 @@ export type Database = {
           },
         ]
       }
+      checklist_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          details: Json | null
+          id: string
+          instance_id: string | null
+          template_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          details?: Json | null
+          id?: string
+          instance_id?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          details?: Json | null
+          id?: string
+          instance_id?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_audit_log_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_audit_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_instances: {
+        Row: {
+          created_at: string
+          created_by: string
+          due_date: string | null
+          id: string
+          location: string | null
+          name: string
+          ok_count: number
+          pending_count: number
+          priority: Database["public"]["Enums"]["checklist_priority"]
+          problem_count: number
+          progress: number
+          start_date: string | null
+          status: Database["public"]["Enums"]["checklist_status"]
+          store: string | null
+          team: string | null
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          due_date?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          ok_count?: number
+          pending_count?: number
+          priority?: Database["public"]["Enums"]["checklist_priority"]
+          problem_count?: number
+          progress?: number
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["checklist_status"]
+          store?: string | null
+          team?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          ok_count?: number
+          pending_count?: number
+          priority?: Database["public"]["Enums"]["checklist_priority"]
+          problem_count?: number
+          progress?: number
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["checklist_status"]
+          store?: string | null
+          team?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_response_items: {
+        Row: {
+          actual_quantity: number | null
+          created_at: string
+          evidence_urls: string[] | null
+          id: string
+          instance_id: string
+          is_blocking: boolean
+          is_required: boolean
+          item_name: string
+          item_type: Database["public"]["Enums"]["checklist_item_type"]
+          observation: string | null
+          requires_action: boolean
+          section_name: string | null
+          signed_by: string | null
+          sort_order: number
+          status: Database["public"]["Enums"]["checklist_item_status"]
+          template_item_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          actual_quantity?: number | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          id?: string
+          instance_id: string
+          is_blocking?: boolean
+          is_required?: boolean
+          item_name: string
+          item_type?: Database["public"]["Enums"]["checklist_item_type"]
+          observation?: string | null
+          requires_action?: boolean
+          section_name?: string | null
+          signed_by?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["checklist_item_status"]
+          template_item_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          actual_quantity?: number | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          id?: string
+          instance_id?: string
+          is_blocking?: boolean
+          is_required?: boolean
+          item_name?: string
+          item_type?: Database["public"]["Enums"]["checklist_item_type"]
+          observation?: string | null
+          requires_action?: boolean
+          section_name?: string | null
+          signed_by?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["checklist_item_status"]
+          template_item_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_response_items_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_response_items_template_item_id_fkey"
+            columns: ["template_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_items: {
+        Row: {
+          created_at: string
+          default_observation: string | null
+          default_quantity: number | null
+          default_responsible: string | null
+          id: string
+          is_required: boolean
+          item_type: Database["public"]["Enums"]["checklist_item_type"]
+          name: string
+          requires_attachments: boolean
+          section_id: string
+          sort_order: number
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_observation?: string | null
+          default_quantity?: number | null
+          default_responsible?: string | null
+          id?: string
+          is_required?: boolean
+          item_type?: Database["public"]["Enums"]["checklist_item_type"]
+          name: string
+          requires_attachments?: boolean
+          section_id: string
+          sort_order?: number
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_observation?: string | null
+          default_quantity?: number | null
+          default_responsible?: string | null
+          id?: string
+          is_required?: boolean
+          item_type?: Database["public"]["Enums"]["checklist_item_type"]
+          name?: string
+          requires_attachments?: boolean
+          section_id?: string
+          sort_order?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_items_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_sections: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          template_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          template_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_sections_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fornecedor_tables: {
         Row: {
           created_at: string
@@ -954,6 +1266,28 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "fornecedor" | "gerente" | "funcionario"
+      checklist_item_status:
+        | "pendente"
+        | "em_execucao"
+        | "ok"
+        | "nao_aplicavel"
+        | "problema"
+      checklist_item_type:
+        | "checkbox"
+        | "quantidade"
+        | "texto"
+        | "sim_nao"
+        | "data_hora"
+        | "foto"
+        | "assinatura"
+      checklist_priority: "baixa" | "media" | "alta" | "urgente"
+      checklist_status:
+        | "rascunho"
+        | "em_andamento"
+        | "concluido"
+        | "aprovado"
+        | "reprovado"
+        | "arquivado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1082,6 +1416,31 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "fornecedor", "gerente", "funcionario"],
+      checklist_item_status: [
+        "pendente",
+        "em_execucao",
+        "ok",
+        "nao_aplicavel",
+        "problema",
+      ],
+      checklist_item_type: [
+        "checkbox",
+        "quantidade",
+        "texto",
+        "sim_nao",
+        "data_hora",
+        "foto",
+        "assinatura",
+      ],
+      checklist_priority: ["baixa", "media", "alta", "urgente"],
+      checklist_status: [
+        "rascunho",
+        "em_andamento",
+        "concluido",
+        "aprovado",
+        "reprovado",
+        "arquivado",
+      ],
     },
   },
 } as const
