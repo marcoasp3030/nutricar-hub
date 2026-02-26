@@ -11,7 +11,7 @@ import { queryVendas } from "@/lib/api";
 
 interface AppLayoutProps {
   children: ReactNode;
-  role: "fornecedor" | "admin" | "gerente" | "funcionario";
+  role: "fornecedor" | "admin" | "gerente" | "funcionario" | "promotora";
   fornecedor: string;
   fornecedores: string[];
   onFornecedorChange: (f: string) => void;
@@ -65,6 +65,11 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
     if (role === 'admin') {
       return allNavItems.filter(item => defaultNavItems.admin.includes(item.permission));
     }
+    if (role === 'promotora') {
+      // Promoters only see portal_promotora and checklists (if permitted)
+      const promoterPerms = ['portal_promotora', ...(permissions || []).filter(p => p === 'checklists')];
+      return allNavItems.filter(item => promoterPerms.includes(item.permission));
+    }
     if (role === 'fornecedor') {
       return allNavItems.filter(item => defaultNavItems.fornecedor.includes(item.permission));
     }
@@ -77,7 +82,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
   
 
   useEffect(() => {
-    if (role === 'admin') return; // Admin doesn't need table data
+    if (role === 'admin' || role === 'promotora') return; // Admin/Promotora don't need table data
     queryVendas({ action: 'tables', filters: { fornecedor: fornecedor !== 'Não vinculado' ? fornecedor : undefined } })
       .then(res => {
         if (res.data?.length) {
@@ -104,7 +109,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
           <img src={logo} alt="Nutricar" className="h-8 object-contain" />
         </div>
 
-        {role !== 'admin' && tables.length > 1 && (
+        {role !== 'admin' && role !== 'promotora' && tables.length > 1 && (
           <div className="border-b border-sidebar-border p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
               <Database className="h-3 w-3" /> Base de dados
@@ -160,7 +165,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          {role !== 'admin' && fornecedores.length > 1 ? (
+          {role !== 'admin' && role !== 'promotora' && fornecedores.length > 1 ? (
             <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
               <p className="text-xs text-muted-foreground mb-1">Fornecedor</p>
               <Select value={fornecedor} onValueChange={onFornecedorChange}>
@@ -172,7 +177,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
                 </SelectContent>
               </Select>
             </div>
-          ) : role !== 'admin' ? (
+          ) : role !== 'admin' && role !== 'promotora' ? (
             <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
               <p className="text-xs text-muted-foreground">Fornecedor</p>
               <p className="truncate text-sm font-medium text-sidebar-foreground">{fornecedor}</p>
@@ -191,7 +196,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
           </Button>
           <div className="flex-1" />
           <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
-            {role === "admin" ? "Admin" : role === "gerente" ? "Gerente" : role === "funcionario" ? "Funcionário" : "Fornecedor"}
+            {role === "admin" ? "Admin" : role === "gerente" ? "Gerente" : role === "funcionario" ? "Funcionário" : role === "promotora" ? "Promotora" : "Fornecedor"}
           </span>
         </header>
         <main className="flex-1 p-4 lg:p-6">{children}</main>
