@@ -38,18 +38,50 @@ const statusDotColors: Record<string, string> = {
   cancelado: "bg-destructive",
 };
 
+// Predefined palette for event types (HSL-based for theme consistency)
+const EVENT_TYPE_COLORS = [
+  "hsl(220, 70%, 55%)",  // blue
+  "hsl(340, 70%, 55%)",  // pink
+  "hsl(160, 60%, 45%)",  // teal
+  "hsl(30, 80%, 55%)",   // orange
+  "hsl(270, 60%, 55%)",  // purple
+  "hsl(50, 80%, 48%)",   // gold
+  "hsl(190, 70%, 45%)",  // cyan
+  "hsl(0, 65%, 55%)",    // red
+  "hsl(130, 50%, 45%)",  // green
+  "hsl(300, 50%, 55%)",  // magenta
+];
+
+const NO_TYPE_COLOR = "hsl(var(--muted-foreground) / 0.3)";
+
+function getEventTypeColorMap(jobs: EventJob[]): Map<string, { color: string; name: string }> {
+  const map = new Map<string, { color: string; name: string }>();
+  let idx = 0;
+  jobs.forEach(job => {
+    const typeId = job.event_type_id;
+    if (typeId && !map.has(typeId)) {
+      const typeName = (job.event_type as any)?.name || "Tipo desconhecido";
+      map.set(typeId, { color: EVENT_TYPE_COLORS[idx % EVENT_TYPE_COLORS.length], name: typeName });
+      idx++;
+    }
+  });
+  return map;
+}
+
 type ViewMode = "month" | "week";
 
 // ─── Draggable Job Chip ───
-function DraggableJob({ job, id }: { job: EventJob; id: string }) {
+function DraggableJob({ job, id, typeColor }: { job: EventJob; id: string; typeColor?: string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: { job } });
+  const bgColor = typeColor || NO_TYPE_COLOR;
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`flex items-center gap-1 px-1 py-0.5 rounded text-[10px] leading-tight bg-accent/50 truncate cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? "opacity-30" : ""}`}
+      style={{ borderLeftColor: bgColor, borderLeftWidth: 3 }}
+      className={`flex items-center gap-1 px-1 py-0.5 rounded-r text-[10px] leading-tight bg-accent/50 truncate cursor-grab active:cursor-grabbing select-none transition-opacity ${isDragging ? "opacity-30" : ""}`}
       title={`${job.title} — ${statusLabels[job.status]} (arraste para reagendar)`}
     >
       <GripVertical className="h-2.5 w-2.5 shrink-0 text-muted-foreground/60" />
@@ -61,13 +93,14 @@ function DraggableJob({ job, id }: { job: EventJob; id: string }) {
 
 // ─── Droppable Day Cell ───
 function DroppableDay({
-  day, dayJobs, isCurrentMonth, viewMode, onDayClick,
+  day, dayJobs, isCurrentMonth, viewMode, onDayClick, colorMap,
 }: {
   day: Date;
   dayJobs: EventJob[];
   isCurrentMonth: boolean;
   viewMode: ViewMode;
   onDayClick: (day: Date) => void;
+  colorMap: Map<string, { color: string; name: string }>;
 }) {
   const key = format(day, "yyyy-MM-dd");
   const today = isToday(day);
@@ -100,7 +133,7 @@ function DroppableDay({
       </div>
       <div className="space-y-0.5">
         {uniqueJobs.slice(0, maxVisible).map(job => (
-          <DraggableJob key={`${key}-${job.id}`} job={job} id={`${key}::${job.id}`} />
+          <DraggableJob key={`${key}-${job.id}`} job={job} id={`${key}::${job.id}`} typeColor={job.event_type_id ? colorMap.get(job.event_type_id)?.color : undefined} />
         ))}
         {uniqueJobs.length > maxVisible && (
           <div className="text-[10px] text-muted-foreground px-1">
@@ -113,9 +146,12 @@ function DroppableDay({
 }
 
 // ─── Overlay shown while dragging ───
-function JobDragOverlay({ job }: { job: EventJob }) {
+function JobDragOverlay({ job, typeColor }: { job: EventJob; typeColor?: string }) {
   return (
-    <div className="flex items-center gap-1 px-2 py-1 rounded bg-card border shadow-lg text-xs font-medium max-w-[180px]">
+    <div
+      style={{ borderLeftColor: typeColor || NO_TYPE_COLOR, borderLeftWidth: 3 }}
+      className="flex items-center gap-1 px-2 py-1 rounded-r bg-card border shadow-lg text-xs font-medium max-w-[180px]"
+    >
       <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${statusDotColors[job.status]}`} />
       <span className="truncate">{job.title}</span>
     </div>
@@ -140,6 +176,8 @@ export default function AdminJobsCalendarPage() {
     queryKey: ["event_jobs_calendar"],
     queryFn: () => fetchEventJobs(),
   });
+
+  const eventTypeColorMap = useMemo(() => getEventTypeColorMap(jobs), [jobs]);
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return jobs;
@@ -342,6 +380,7 @@ export default function AdminJobsCalendarPage() {
                     isCurrentMonth={isCurrentMonth}
                     viewMode={viewMode}
                     onDayClick={setSelectedDay}
+                    colorMap={eventTypeColorMap}
                   />
                 );
               })}
@@ -349,9 +388,26 @@ export default function AdminJobsCalendarPage() {
           </div>
 
           <DragOverlay dropAnimation={null}>
-            {activeJob ? <JobDragOverlay job={activeJob} /> : null}
+            {activeJob ? <JobDragOverlay job={activeJob} typeColor={activeJob.event_type_id ? eventTypeColorMap.get(activeJob.event_type_id)?.color : undefined} /> : null}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {/* Legend */}
+      {eventTypeColorMap.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Tipos:</span>
+          {Array.from(eventTypeColorMap.entries()).map(([id, { color, name }]) => (
+            <span key={id} className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-2 rounded-sm" style={{ backgroundColor: color }} />
+              {name}
+            </span>
+          ))}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-2 rounded-sm" style={{ backgroundColor: NO_TYPE_COLOR }} />
+            Sem tipo
+          </span>
+        </div>
       )}
 
       {/* Day detail dialog */}
