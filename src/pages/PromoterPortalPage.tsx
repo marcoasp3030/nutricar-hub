@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchEventJobs, fetchMyPromoterProfile, fetchMyInvites, fetchMyAssignments, respondToInvite, createJobInvite, upsertPromoterProfile, updateJobAssignment, uploadJobFile, EventJob, JobInvite, JobAssignment, PromoterProfile } from "@/lib/jobsApi";
+import { fetchEventJobs, fetchMyPromoterProfile, fetchMyInvites, fetchMyAssignments, respondToInvite, createJobInvite, upsertPromoterProfile, updateJobAssignment, uploadJobFile, createJobAssignment, fetchJobAssignments, EventJob, JobInvite, JobAssignment, PromoterProfile } from "@/lib/jobsApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea as TextareaUI } from "@/components/ui/textarea";
-import { Calendar, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star } from "lucide-react";
+import { Calendar, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const assignmentStatusLabels: Record<string, string> = {
   reservado: "Reservado",
@@ -37,6 +38,21 @@ const PromoterPortalPage = () => {
   const { data: invites = [] } = useQuery({ queryKey: ["my_invites"], queryFn: fetchMyInvites, enabled: !!profile });
   const { data: assignments = [] } = useQuery({ queryKey: ["my_assignments"], queryFn: fetchMyAssignments, enabled: !!profile });
 
+  // Fetch payments for earnings view
+  const { data: myPayments = [] } = useQuery({
+    queryKey: ["my_payments"],
+    queryFn: async () => {
+      if (!profile) return [];
+      const { data, error } = await supabase
+        .from("job_payments")
+        .select("*, assignment:job_assignments(*, job:event_jobs(title))")
+        .in("assignment_id", assignments.map(a => a.id));
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile && assignments.length > 0,
+  });
+
   const acceptMutation = useMutation({
     mutationFn: (id: string) => respondToInvite(id, "aceito"),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_invites"] }); toast({ title: "Aceito com sucesso!" }); },
@@ -51,9 +67,39 @@ const PromoterPortalPage = () => {
   const applyMutation = useMutation({
     mutationFn: async (jobId: string) => {
       if (!profile) throw new Error("Perfil não encontrado");
-      return createJobInvite({ job_id: jobId, promoter_id: profile.id, type: "candidatura" });
+
+      // Check available slots
+      const existingAssignments = await fetchJobAssignments(jobId);
+      const activeAssignments = existingAssignments.filter(a => a.status !== "cancelado");
+      
+      // Get job to check slots
+      const job = openJobs.find(j => j.id === jobId);
+      if (job && activeAssignments.length >= job.promoter_slots) {
+        throw new Error("Todas as vagas para este evento já foram preenchidas.");
+      }
+
+      // Check if already assigned
+      const alreadyAssigned = activeAssignments.some(a => a.promoter_id === profile.id);
+      if (alreadyAssigned) {
+        throw new Error("Você já está atribuída a este evento.");
+      }
+
+      // Create invite as candidatura
+      await createJobInvite({ job_id: jobId, promoter_id: profile.id, type: "candidatura" });
+      
+      // Auto-accept the invite and create assignment directly
+      await createJobAssignment({ job_id: jobId, promoter_id: profile.id });
+
+      return true;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_invites"] }); toast({ title: "Candidatura enviada!" }); setSelectedJob(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my_invites"] });
+      qc.invalidateQueries({ queryKey: ["my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["open_jobs"] });
+      toast({ title: "Candidatura aceita!", description: "Evento adicionado aos seus eventos." });
+      setSelectedJob(null);
+      setTab("meus");
+    },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
@@ -79,6 +125,50 @@ const PromoterPortalPage = () => {
   const pendingInvites = invites.filter(i => i.response === "pendente");
   const confirmedAssignments = assignments.filter(a => a.status === "confirmado" || a.status === "reservado");
   const completedAssignments = assignments.filter(a => (a as any).job?.status === "concluido");
+
+  // Already applied job IDs to prevent double applications
+  const appliedJobIds = useMemo(() => {
+    const ids = new Set<string>();
+    invites.forEach(i => ids.add(i.job_id));
+    assignments.forEach(a => ids.add(a.job_id));
+    return ids;
+  }, [invites, assignments]);
+
+  // Earnings calculations
+  const earnings = useMemo(() => {
+    const now = new Date();
+    const months = [0, 1, 2].map(offset => {
+      const date = subMonths(now, offset);
+      const start = startOfMonth(date);
+      const end = endOfMonth(date);
+      const label = format(date, "MMMM yyyy", { locale: ptBR });
+      
+      // Calculate from assignments with job cache_value for confirmed/completed
+      const monthAssignments = assignments.filter(a => {
+        const job = a.job as any;
+        if (!job) return false;
+        const jobDate = new Date(job.start_date);
+        return jobDate >= start && jobDate <= end && (a.status === "confirmado" || a.status === "reservado");
+      });
+      
+      const total = monthAssignments.reduce((sum, a) => {
+        const job = a.job as any;
+        return sum + (job ? Number(job.cache_value || 0) : 0);
+      }, 0);
+
+      // Also check payments
+      const monthPayments = myPayments.filter((p: any) => {
+        const pDate = new Date(p.created_at);
+        return pDate >= start && pDate <= end;
+      });
+      const totalPaid = monthPayments
+        .filter((p: any) => p.status === "pago")
+        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+
+      return { label, total, totalPaid, count: monthAssignments.length };
+    });
+    return months;
+  }, [assignments, myPayments]);
 
   // If no profile exists, show profile creation
   if (!profile) {
@@ -146,15 +236,19 @@ const PromoterPortalPage = () => {
           <TabsTrigger value="feed" className="flex-1">Oportunidades</TabsTrigger>
           <TabsTrigger value="pendentes" className="flex-1">Pendentes {pendingInvites.length > 0 && <Badge className="ml-1 h-5 w-5 p-0 text-xs">{pendingInvites.length}</Badge>}</TabsTrigger>
           <TabsTrigger value="meus" className="flex-1">Meus Eventos</TabsTrigger>
+          <TabsTrigger value="ganhos" className="flex-1">Ganhos</TabsTrigger>
         </TabsList>
 
         {/* Feed de oportunidades */}
         <TabsContent value="feed" className="mt-4 space-y-3">
           {openJobs.length === 0 ? (
             <div className="text-center py-8"><Briefcase className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" /><p className="text-muted-foreground text-sm">Nenhuma oportunidade disponível no momento</p></div>
-          ) : openJobs.map((job) => (
-            <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)} actionLabel="Ver detalhes" />
-          ))}
+          ) : openJobs.map((job) => {
+            const alreadyApplied = appliedJobIds.has(job.id);
+            return (
+              <JobCard key={job.id} job={job} onClick={() => !alreadyApplied && setSelectedJob(job)} actionLabel={alreadyApplied ? "Já candidatada" : "Ver detalhes"} disabled={alreadyApplied} />
+            );
+          })}
         </TabsContent>
 
         {/* Convites pendentes */}
@@ -202,6 +296,45 @@ const PromoterPortalPage = () => {
             />
           ))}
         </TabsContent>
+
+        {/* Ganhos */}
+        <TabsContent value="ganhos" className="mt-4 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Resumo de Ganhos</h2>
+          </div>
+          
+          {earnings.map((month, i) => (
+            <Card key={i}>
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold capitalize">{month.label}</h3>
+                  <Badge variant={i === 0 ? "default" : "outline"}>
+                    {i === 0 ? "Mês Atual" : i === 1 ? "Mês Anterior" : "2 meses atrás"}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Eventos</p>
+                    <p className="text-lg font-bold text-foreground">{month.count}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Previsto</p>
+                    <p className="text-lg font-bold text-primary">R$ {month.total.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Pago</p>
+                    <p className="text-lg font-bold text-green-600">R$ {month.totalPaid.toFixed(2)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {assignments.length === 0 && (
+            <p className="text-muted-foreground text-center py-4 text-sm">Nenhum evento para calcular ganhos</p>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Job detail / apply dialog */}
@@ -215,6 +348,7 @@ const PromoterPortalPage = () => {
                 {selectedJob.start_time && <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /> {selectedJob.start_time} - {selectedJob.end_time}</div>}
                 <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> {selectedJob.address || "Local não definido"}</div>
                 <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> R$ {Number(selectedJob.cache_value).toFixed(2)} ({selectedJob.cache_type})</div>
+                <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> {selectedJob.promoter_slots} vaga(s)</div>
               </div>
               {selectedJob.description && <><Separator /><p className="text-sm">{selectedJob.description}</p></>}
               {selectedJob.requirements && <><p className="text-sm font-medium">Requisitos:</p><p className="text-sm text-muted-foreground">{selectedJob.requirements}</p></>}
@@ -226,7 +360,7 @@ const PromoterPortalPage = () => {
                 </div>
               )}
               <Button className="w-full" onClick={() => applyMutation.mutate(selectedJob.id)} disabled={applyMutation.isPending}>
-                {applyMutation.isPending ? "Enviando..." : "Candidatar-se"}
+                {applyMutation.isPending ? "Enviando..." : "Aceitar Oportunidade"}
               </Button>
             </div>
           )}
@@ -307,6 +441,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
           <div className="text-xs text-muted-foreground space-y-1">
             <div className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")}</div>
             <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {jobData.address || "—"}</div>
+            <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number(jobData.cache_value || 0).toFixed(2)}</div>
           </div>
         )}
 
@@ -427,8 +562,8 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
 
 // Sub-components
 
-const JobCard = ({ job, onClick, actionLabel }: { job: EventJob; onClick: () => void; actionLabel: string }) => (
-  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
+const JobCard = ({ job, onClick, actionLabel, disabled }: { job: EventJob; onClick: () => void; actionLabel: string; disabled?: boolean }) => (
+  <Card className={`transition-shadow ${disabled ? "opacity-60" : "cursor-pointer hover:shadow-md"}`} onClick={disabled ? undefined : onClick}>
     <CardContent className="pt-4 space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">{job.title}</h3>
@@ -437,10 +572,12 @@ const JobCard = ({ job, onClick, actionLabel }: { job: EventJob; onClick: () => 
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(job.start_date), "dd/MM")}</span>
         <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {job.address || job.store_unit || "—"}</span>
+        <span className="flex items-center gap-1"><User className="h-3 w-3" /> {job.promoter_slots} vaga(s)</span>
       </div>
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-primary flex items-center gap-1"><DollarSign className="h-4 w-4" /> R$ {Number(job.cache_value).toFixed(2)}</span>
         <div className="flex gap-1">
+          {disabled && <Badge variant="secondary" className="text-xs">Já candidatada</Badge>}
           {job.has_transport && <Badge variant="secondary" className="text-xs">🚗</Badge>}
           {job.has_meals && <Badge variant="secondary" className="text-xs">🍽️</Badge>}
         </div>
