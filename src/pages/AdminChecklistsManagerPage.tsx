@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  fetchInstances, fetchTemplates, createInstanceFromTemplate, updateInstance, deleteTemplate,
+  fetchInstances, fetchTemplates, createInstanceFromTemplate, updateInstance, deleteInstance, deleteTemplate,
   type ChecklistInstance, type ChecklistTemplate, type ChecklistPriority,
 } from "@/lib/checklistApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +50,7 @@ export default function AdminChecklistsManagerPage() {
   const [storeFilter, setStoreFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [assignDialog, setAssignDialog] = useState<ChecklistInstance | null>(null);
+  const [editDialog, setEditDialog] = useState<ChecklistInstance | null>(null);
 
   const { data: instances = [], isLoading } = useQuery({
     queryKey: ["checklist-instances-admin"],
@@ -99,6 +100,28 @@ export default function AdminChecklistsManagerPage() {
       await updateInstance(inst.id, { is_public: !inst.is_public } as any);
       queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
       toast({ title: inst.is_public ? "Checklist agora é privado" : "Checklist agora é público" });
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (inst: ChecklistInstance) => {
+    if (!confirm(`Tem certeza que deseja excluir "${inst.name}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await deleteInstance(inst.id);
+      queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
+      toast({ title: "Checklist excluído" });
+    } catch (e: any) {
+      toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdateInstance = async (id: string, updates: Partial<ChecklistInstance>) => {
+    try {
+      await updateInstance(id, updates as any);
+      queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
+      toast({ title: "Checklist atualizado" });
+      setEditDialog(null);
     } catch (e: any) {
       toast({ title: "Erro", description: e.message, variant: "destructive" });
     }
@@ -215,6 +238,9 @@ export default function AdminChecklistsManagerPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditDialog(inst)} title="Editar">
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyLink(inst)} title="Copiar link">
                           <Link2 className="h-3.5 w-3.5" />
                         </Button>
@@ -223,6 +249,9 @@ export default function AdminChecklistsManagerPage() {
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => navigate(`/checklists/${inst.id}`)} title="Executar">
                           <Play className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(inst)} title="Excluir">
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -253,7 +282,81 @@ export default function AdminChecklistsManagerPage() {
           setAssignDialog(null);
         }}
       />
+
+      {editDialog && (
+        <EditChecklistDialog
+          instance={editDialog}
+          onOpenChange={(open) => { if (!open) setEditDialog(null); }}
+          onSave={handleUpdateInstance}
+        />
+      )}
     </div>
+  );
+}
+
+function EditChecklistDialog({ instance, onOpenChange, onSave }: {
+  instance: ChecklistInstance;
+  onOpenChange: (open: boolean) => void;
+  onSave: (id: string, updates: Partial<ChecklistInstance>) => void;
+}) {
+  const [name, setName] = useState(instance.name);
+  const [store, setStore] = useState(instance.store || "");
+  const [location, setLocation] = useState(instance.location || "");
+  const [status, setStatus] = useState(instance.status);
+  const [priority, setPriority] = useState(instance.priority);
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Editar Checklist</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Nome</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Loja/Unidade</Label>
+              <Input value={store} onChange={e => setStore(e.target.value)} />
+            </div>
+            <div>
+              <Label>Local</Label>
+              <Input value={location} onChange={e => setLocation(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select value={status} onValueChange={v => setStatus(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(statusLabels).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Prioridade</Label>
+            <Select value={priority} onValueChange={v => setPriority(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(priorityLabels).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={() => onSave(instance.id, { name, store: store || undefined, location: location || undefined, status, priority } as any)}>
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
