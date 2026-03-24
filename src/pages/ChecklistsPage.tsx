@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { fetchInstances, fetchTemplates, createInstanceFromTemplate, createBlankInstance, type ChecklistInstance, type ChecklistTemplate, type ChecklistPriority } from "@/lib/checklistApi";
+import { fetchInstances, fetchTemplates, createInstanceFromTemplate, createBlankInstance, deleteInstance, type ChecklistInstance, type ChecklistTemplate, type ChecklistPriority } from "@/lib/checklistApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Search, ClipboardList, AlertTriangle, CheckCircle2, Clock, FileText } from "lucide-react";
+import { Plus, Search, ClipboardList, AlertTriangle, CheckCircle2, Clock, FileText, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const statusColors: Record<string, string> = {

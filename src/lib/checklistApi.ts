@@ -149,6 +149,13 @@ export async function updateTemplate(id: string, data: Partial<ChecklistTemplate
   if (error) throw error;
 }
 
+export async function deleteInstance(id: string) {
+  // Delete response items first, then the instance
+  await supabase.from('checklist_response_items').delete().eq('instance_id', id);
+  const { error } = await supabase.from('checklist_instances').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteTemplate(id: string) {
   const { error } = await supabase
     .from('checklist_templates')
