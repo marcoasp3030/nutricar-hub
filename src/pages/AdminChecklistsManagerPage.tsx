@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  fetchInstances, fetchTemplates, createInstanceFromTemplate, updateInstance, deleteTemplate,
+  fetchInstances, fetchTemplates, createInstanceFromTemplate, updateInstance, deleteInstance, deleteTemplate,
   type ChecklistInstance, type ChecklistTemplate, type ChecklistPriority,
 } from "@/lib/checklistApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
