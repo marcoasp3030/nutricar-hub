@@ -237,6 +237,7 @@ const PromoterPortalPage = () => {
           <TabsTrigger value="feed" className="flex-1">Oportunidades</TabsTrigger>
           <TabsTrigger value="pendentes" className="flex-1">Pendentes {pendingInvites.length > 0 && <Badge className="ml-1 h-5 w-5 p-0 text-xs">{pendingInvites.length}</Badge>}</TabsTrigger>
           <TabsTrigger value="meus" className="flex-1">Meus Eventos</TabsTrigger>
+          <TabsTrigger value="calendario" className="flex-1">Calendário</TabsTrigger>
           <TabsTrigger value="ganhos" className="flex-1">Ganhos</TabsTrigger>
         </TabsList>
 
