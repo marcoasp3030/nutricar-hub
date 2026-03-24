@@ -222,8 +222,9 @@ const ProductsPage = ({ tableName, fornecedor }: ProductsPageProps) => {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
                 <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" tickFormatter={(v) => formatCurrency(v)} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={(v: number, name: string) => name === "Valor" ? formatCurrency(v) : Number(v).toLocaleString("pt-BR")} />
                 <Bar dataKey="valor" name="Valor" fill="hsl(340,65%,55%)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="quantidade" name="Quantidade" fill="hsl(200,60%,50%)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
