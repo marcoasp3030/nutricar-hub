@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea as TextareaUI } from "@/components/ui/textarea";
-import { Calendar as CalendarIcon, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Shirt, UtensilsCrossed, Bus, FileText, Info } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
 import { format, subMonths, startOfMonth, endOfMonth, parseISO, isSameMonth, isSameDay, eachDayOfInterval, addMonths } from "date-fns";
