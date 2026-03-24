@@ -388,7 +388,7 @@ const AdminAdvertisingPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {packages.map(pkg => (
+                {filtered.map(pkg => (
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">{pkg.name}</TableCell>
                     <TableCell>{fmt(pkg.monthly_value)}</TableCell>
@@ -410,12 +410,15 @@ const AdminAdvertisingPage = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {packages.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote cadastrado</TableCell></TableRow>
+                {filtered.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote encontrado</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           </Card>
+              </>
+            );
+          })()}
         </TabsContent>
 
         {/* ===== CONTRATOS ===== */}
