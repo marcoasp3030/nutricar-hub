@@ -201,6 +201,7 @@ const ProductsPage = ({ tableName, fornecedor }: ProductsPageProps) => {
             </h3>
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={data.topVenda} layout="vertical">
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
                 <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" tickFormatter={(v) => formatCurrency(v)} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
