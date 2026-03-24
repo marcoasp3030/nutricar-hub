@@ -197,19 +197,15 @@ const ProductsPage = ({ tableName, fornecedor }: ProductsPageProps) => {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" /> Top 15 — Mais Vendidos (Qtd)
+              <TrendingUp className="h-4 w-4 text-primary" /> Top 15 — Mais Vendidos (Valor)
             </h3>
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={data.topVenda} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(90,15%,88%)" />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(90,10%,45%)" tickFormatter={(v) => formatCurrency(v)} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="hsl(90,10%,45%)" width={140} />
-                <Tooltip
-                  formatter={(v: number, name: string) =>
-                    name === "valor" ? formatCurrency(v) : Number(v).toLocaleString("pt-BR")
-                  }
-                />
-                <Bar dataKey="quantidade" name="Quantidade" fill="hsl(87,48%,51%)" radius={[0, 4, 4, 0]} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Bar dataKey="valor" name="Valor" fill="hsl(87,48%,51%)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
