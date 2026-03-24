@@ -369,9 +369,15 @@ const AdminAdvertisingPage = () => {
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">{pkg.name}</TableCell>
                     <TableCell>{fmt(pkg.monthly_value)}</TableCell>
-                    <TableCell>{pkg.duration_months} {pkg.duration_months === 1 ? "mês" : "meses"}</TableCell>
-                    <TableCell className="text-xs">{pkg.display_frequency}</TableCell>
-                    <TableCell className="text-xs">{playlists.find(p => p.id === pkg.playlist_id)?.name || "—"}</TableCell>
+                    <TableCell className="text-xs capitalize">{(pkg as any).media_type || "—"}</TableCell>
+                    <TableCell className="text-xs capitalize">{((pkg as any).screen_position || "—").replace(/_/g, " ")}</TableCell>
+                    <TableCell className="text-xs">{(pkg as any).content_format || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {((pkg as any).tags || []).map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                        {(!((pkg as any).tags) || (pkg as any).tags.length === 0) && <span className="text-muted-foreground text-xs">—</span>}
+                      </div>
+                    </TableCell>
                     <TableCell><Badge variant={pkg.is_active ? "default" : "secondary"}>{pkg.is_active ? "Ativo" : "Inativo"}</Badge></TableCell>
                     <TableCell>
                       <div className="flex gap-1">
