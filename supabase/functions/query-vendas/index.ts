@@ -140,13 +140,10 @@ Deno.serve(async (req) => {
 
       if (action === 'produtos') {
         const dateClause = buildDateClause(filters);
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE 1=1${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} ${dateClause}`
+          : `WHERE 1=1${dateClause}`;
 
         const statusOk = ` AND status = 'OK'`;
         const whereOk = whereClause + statusOk;
