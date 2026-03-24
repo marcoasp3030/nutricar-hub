@@ -266,7 +266,7 @@ const PromoterPortalPage = () => {
                 </div>
                 {inv.job && (
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <div className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date((inv.job as any).start_date), "dd/MM/yyyy")}</div>
+                    <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date((inv.job as any).start_date), "dd/MM/yyyy")}</div>
                     <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {(inv.job as any).address || "—"}</div>
                     <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number((inv.job as any).cache_value).toFixed(2)}</div>
                   </div>
