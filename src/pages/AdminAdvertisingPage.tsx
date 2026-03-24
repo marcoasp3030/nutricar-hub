@@ -11,11 +11,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const FornecedorSelector = ({ fornecedores, selected, onChange }: { fornecedores: string[]; selected: string[]; onChange: (v: string[]) => void }) => {
+  const [search, setSearch] = useState("");
+  const filtered = fornecedores.filter(f => f.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <div>
+      <Label className="flex items-center gap-1.5 mb-2"><Users className="h-4 w-4" /> Fornecedores Atribuídos</Label>
+      <p className="text-xs text-muted-foreground mb-2">Selecione os fornecedores que terão acesso a este pacote. Se nenhum for selecionado, ficará disponível para todos.</p>
+      {fornecedores.length > 5 && (
+        <div className="relative mb-2">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input className="pl-8 h-8 text-xs" placeholder="Buscar fornecedor..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      )}
+      <div className="max-h-44 overflow-y-auto border rounded-md p-2 space-y-0.5">
+        {filtered.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">{fornecedores.length === 0 ? "Nenhum fornecedor cadastrado" : "Nenhum resultado"}</p>}
+        {filtered.map(f => (
+          <label key={f} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1">
+            <Checkbox
+              checked={selected.includes(f)}
+              onCheckedChange={(checked) => onChange(checked ? [...selected, f] : selected.filter(x => x !== f))}
+            />
+            <span className="text-sm truncate">{f}</span>
+          </label>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+          <Badge variant="secondary" className="text-[10px]">{selected.length} selecionado(s)</Badge>
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => onChange([])}>Limpar</Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface AdPackage {
   id: string;
@@ -547,9 +582,9 @@ const AdminAdvertisingPage = () => {
 
       {/* === Package Dialog === */}
       <Dialog open={pkgDialog} onOpenChange={setPkgDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>{editingPkg ? "Editar Pacote" : "Novo Pacote"}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto pr-1 flex-1">
             <div><Label>Nome</Label><Input value={pkgForm.name} onChange={e => setPkgForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div><Label>Descrição</Label><Textarea value={pkgForm.description} onChange={e => setPkgForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -621,38 +656,17 @@ const AdminAdvertisingPage = () => {
               </Select>
             </div>
             <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
-            <div>
-              <Label className="flex items-center gap-1.5 mb-2"><Users className="h-4 w-4" /> Fornecedores Atribuídos</Label>
-              <p className="text-xs text-muted-foreground mb-2">Selecione os fornecedores que terão acesso a este pacote. Se nenhum for selecionado, o pacote ficará disponível para todos.</p>
-              <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1.5">
-                {fornecedores.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhum fornecedor cadastrado</p>}
-                {fornecedores.map(f => (
-                  <label key={f} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1">
-                    <Checkbox
-                      checked={pkgSelectedFornecedores.includes(f)}
-                      onCheckedChange={(checked) => {
-                        setPkgSelectedFornecedores(prev =>
-                          checked ? [...prev, f] : prev.filter(x => x !== f)
-                        );
-                      }}
-                    />
-                    <span className="text-sm">{f}</span>
-                  </label>
-                ))}
-              </div>
-              {pkgSelectedFornecedores.length > 0 && (
-                <div className="flex items-center gap-1 mt-1.5">
-                  <Badge variant="secondary" className="text-[10px]">{pkgSelectedFornecedores.length} selecionado(s)</Badge>
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => setPkgSelectedFornecedores([])}>Limpar</Button>
-                </div>
-              )}
-            </div>
+            <FornecedorSelector
+              fornecedores={fornecedores}
+              selected={pkgSelectedFornecedores}
+              onChange={setPkgSelectedFornecedores}
+            />
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={pkgForm.is_active} onChange={e => setPkgForm(f => ({ ...f, is_active: e.target.checked }))} id="pkg-active" />
               <Label htmlFor="pkg-active">Ativo</Label>
             </div>
-            <Button className="w-full" onClick={savePkg}>{editingPkg ? "Salvar" : "Criar"}</Button>
           </div>
+          <Button className="w-full mt-2" onClick={savePkg}>{editingPkg ? "Salvar" : "Criar"}</Button>
         </DialogContent>
       </Dialog>
 
