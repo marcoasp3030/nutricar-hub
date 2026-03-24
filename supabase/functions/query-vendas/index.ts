@@ -96,13 +96,10 @@ Deno.serve(async (req) => {
       if (action === 'dashboard') {
         const dateClause = buildDateClause(filters);
         const groupByExtra = filters.groupBy || 'categoria';
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE status = 'OK'${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' AND status = 'OK'${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} AND status = 'OK'${dateClause}`
+          : `WHERE status = 'OK'${dateClause}`;
 
         const buildGroupQuery = (col: string, limit = 20) =>
           `SELECT ${col} as name, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(quantidade::numeric),0) as quantidade FROM ${tableNameClean} ${whereClause} GROUP BY ${col} ORDER BY valor DESC LIMIT ${limit}`;
