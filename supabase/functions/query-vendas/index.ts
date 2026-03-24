@@ -35,11 +35,13 @@ Deno.serve(async (req) => {
     // Get user profile and role
     const { data: profile } = await supabase.from('profiles').select('fornecedor').eq('user_id', userId).single();
     const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+    const { data: userFornecedores } = await supabase.from('user_fornecedores').select('fornecedor').eq('user_id', userId);
     
     const isAdmin = roles?.some((r: any) => r.role === 'admin') || false;
     const fornecedor = profile?.fornecedor;
+    const allUserFornecedores = userFornecedores?.map((f: any) => f.fornecedor) || (fornecedor ? [fornecedor] : []);
 
-    if (!isAdmin && !fornecedor) {
+    if (!isAdmin && allUserFornecedores.length === 0) {
       return new Response(JSON.stringify({ error: 'Fornecedor não vinculado ao usuário' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
