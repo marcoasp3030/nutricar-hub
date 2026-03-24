@@ -15,7 +15,7 @@ import { Textarea as TextareaUI } from "@/components/ui/textarea";
 import { Calendar as CalendarIcon, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "@/hooks/use-toast";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, parseISO, isSameMonth, isSameDay, eachDayOfInterval, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const assignmentStatusLabels: Record<string, string> = {
