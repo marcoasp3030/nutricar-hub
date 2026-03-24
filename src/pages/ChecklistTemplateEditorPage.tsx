@@ -281,6 +281,19 @@ function AddSectionDialog({ open, onOpenChange, onAdd }: {
   );
 }
 
+const SUGGESTED_ITEM_NAMES = [
+  "Rota de Ida",
+  "Rota de Retorno",
+  "Check-in",
+  "Check-out",
+  "Foto do Local",
+  "Assinatura do Responsável",
+  "Observações Gerais",
+  "Contagem de Estoque",
+  "Limpeza e Organização",
+  "Material de Apoio",
+];
+
 function ItemFormDialog({ open, onOpenChange, title, initial, onSubmit }: {
   open: boolean; onOpenChange: (o: boolean) => void; title: string;
   initial?: Partial<TemplateItem>; onSubmit: (data: any) => void;
@@ -306,6 +319,22 @@ function ItemFormDialog({ open, onOpenChange, title, initial, onSubmit }: {
     }
   });
 
+  const handleSelectSuggestion = (suggestion: string) => {
+    setName(suggestion);
+    // Auto-set type based on suggestion
+    if (suggestion === "Rota de Ida" || suggestion === "Rota de Retorno" || suggestion === "Observações Gerais") {
+      setItemType("texto");
+    } else if (suggestion === "Foto do Local") {
+      setItemType("foto");
+    } else if (suggestion === "Assinatura do Responsável") {
+      setItemType("assinatura");
+    } else if (suggestion === "Contagem de Estoque") {
+      setItemType("quantidade");
+    } else if (suggestion === "Check-in" || suggestion === "Check-out") {
+      setItemType("data_hora");
+    }
+  };
+
   const handleSubmit = () => {
     if (!name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     onSubmit({
@@ -325,7 +354,24 @@ function ItemFormDialog({ open, onOpenChange, title, initial, onSubmit }: {
       <DialogContent className="sm:max-w-md">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-          <div><Label>Nome do item *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Balcão de atendimento" /></div>
+          <div>
+            <Label>Nome do item *</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Balcão de atendimento" />
+            {!initial && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {SUGGESTED_ITEM_NAMES.map(s => (
+                  <Badge
+                    key={s}
+                    variant={name === s ? "default" : "outline"}
+                    className="cursor-pointer text-xs hover:bg-primary/10 transition-colors"
+                    onClick={() => handleSelectSuggestion(s)}
+                  >
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
           <div>
             <Label>Tipo</Label>
             <Select value={itemType} onValueChange={v => setItemType(v as ChecklistItemType)}>
