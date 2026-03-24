@@ -446,7 +446,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
         </div>
         {jobData && (
           <div className="text-xs text-muted-foreground space-y-1">
-            <div className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")}</div>
+            <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")}</div>
             <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {jobData.address || "—"}</div>
             <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number(jobData.cache_value || 0).toFixed(2)}</div>
           </div>
