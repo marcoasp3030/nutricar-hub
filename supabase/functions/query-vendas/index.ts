@@ -212,6 +212,7 @@ Deno.serve(async (req) => {
 
       if (action === 'list') {
         const offset = (page - 1) * pageSize;
+        const filterFields = ['periodo', 'produto', 'categoria', 'loja', 'status', 'kind', 'feriado', 'bandeira', 'adquirente', 'regiao', 'bairro', 'tipo_de_pagamento'];
         
         const fornClause = resolveFornecedorClause(filters);
         let whereClause = fornClause ? `WHERE ${fornClause}` : 'WHERE 1=1';
