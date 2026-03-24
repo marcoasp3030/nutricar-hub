@@ -404,6 +404,7 @@ const PromoterPortalPage = () => {
 const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }: any) => {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showRating, setShowRating] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [notes, setNotes] = useState(a.execution_notes || "");
@@ -436,8 +437,10 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
   });
 
   const jobData = a.job as any;
+  const cacheTypeLabels: Record<string, string> = { por_hora: "Por Hora", por_dia: "Por Dia", fechado: "Fechado" };
 
   return (
+    <>
     <Card>
       <CardContent className="pt-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -446,11 +449,16 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
         </div>
         {jobData && (
           <div className="text-xs text-muted-foreground space-y-1">
-            <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")}</div>
+            <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")} - {format(new Date(jobData.end_date), "dd/MM/yyyy")}</div>
+            {jobData.start_time && <div className="flex items-center gap-1"><Clock className="h-3 w-3" /> {jobData.start_time} - {jobData.end_time || "—"}</div>}
             <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {jobData.address || "—"}</div>
-            <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number(jobData.cache_value || 0).toFixed(2)}</div>
+            <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number(jobData.cache_value || 0).toFixed(2)} ({cacheTypeLabels[jobData.cache_type] || jobData.cache_type})</div>
           </div>
         )}
+
+        <Button size="sm" variant="outline" className="w-full" onClick={() => setShowDetails(true)}>
+          <Eye className="h-3 w-3 mr-1" /> Ver Detalhes Completos
+        </Button>
 
         {/* Check-in/out */}
         <div className="flex gap-2">
