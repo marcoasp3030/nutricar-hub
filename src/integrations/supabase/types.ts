@@ -96,6 +96,35 @@ export type Database = {
           },
         ]
       }
+      ad_package_fornecedores: {
+        Row: {
+          created_at: string
+          fornecedor: string
+          id: string
+          package_id: string
+        }
+        Insert: {
+          created_at?: string
+          fornecedor: string
+          id?: string
+          package_id: string
+        }
+        Update: {
+          created_at?: string
+          fornecedor?: string
+          id?: string
+          package_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_package_fornecedores_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "ad_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_packages: {
         Row: {
           content_format: string | null

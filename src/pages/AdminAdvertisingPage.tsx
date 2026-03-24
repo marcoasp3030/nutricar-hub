@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -75,12 +76,14 @@ const AdminAdvertisingPage = () => {
   const [payments, setPayments] = useState<AdPayment[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [fornecedores, setFornecedores] = useState<string[]>([]);
+  const [packageFornecedores, setPackageFornecedores] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   // Package form
   const [pkgDialog, setPkgDialog] = useState(false);
   const [editingPkg, setEditingPkg] = useState<AdPackage | null>(null);
   const [pkgForm, setPkgForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
+  const [pkgSelectedFornecedores, setPkgSelectedFornecedores] = useState<string[]>([]);
 
   // Contract form
   const [contractDialog, setContractDialog] = useState(false);
@@ -106,12 +109,13 @@ const AdminAdvertisingPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [pkgRes, contractRes, payRes, playlistRes, fornRes] = await Promise.all([
+    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes] = await Promise.all([
       supabase.from("ad_packages").select("*").order("created_at", { ascending: false }),
       supabase.from("ad_contracts").select("*, ad_packages(*)").order("created_at", { ascending: false }),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))").order("created_at", { ascending: false }),
       supabase.from("playlists").select("id, name").order("name"),
       supabase.from("user_fornecedores").select("fornecedor"),
+      supabase.from("ad_package_fornecedores").select("*"),
     ]);
     setPackages(pkgRes.data || []);
     setContracts(contractRes.data || []);
@@ -119,6 +123,13 @@ const AdminAdvertisingPage = () => {
     setPlaylists(playlistRes.data || []);
     const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))];
     setFornecedores(uniqueF);
+    // Build package->fornecedores map
+    const pfMap: Record<string, string[]> = {};
+    (pkgFornRes.data || []).forEach((pf: any) => {
+      if (!pfMap[pf.package_id]) pfMap[pf.package_id] = [];
+      pfMap[pf.package_id].push(pf.fornecedor);
+    });
+    setPackageFornecedores(pfMap);
     setLoading(false);
   };
 
@@ -128,25 +139,37 @@ const AdminAdvertisingPage = () => {
   const openPkgCreate = () => {
     setEditingPkg(null);
     setPkgForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
+    setPkgSelectedFornecedores([]);
     setPkgDialog(true);
   };
   const openPkgEdit = (pkg: AdPackage) => {
     setEditingPkg(pkg);
     setPkgForm({ name: pkg.name, description: pkg.description || "", monthly_value: String(pkg.monthly_value), duration_months: String(pkg.duration_months), display_frequency: pkg.display_frequency, playlist_id: pkg.playlist_id || "", is_active: pkg.is_active, media_type: (pkg as any).media_type || "video", screen_position: (pkg as any).screen_position || "tela_cheia", display_schedule: (pkg as any).display_schedule || "integral", content_format: (pkg as any).content_format || "16:9", tags: ((pkg as any).tags || []).join(", ") });
+    setPkgSelectedFornecedores(packageFornecedores[pkg.id] || []);
     setPkgDialog(true);
   };
   const savePkg = async () => {
     const tagsArr = pkgForm.tags ? pkgForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
     const payload = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr };
+    let pkgId = editingPkg?.id;
     if (editingPkg) {
       const { error } = await supabase.from("ad_packages").update(payload).eq("id", editingPkg.id);
       if (error) { toast.error("Erro ao atualizar pacote"); return; }
-      toast.success("Pacote atualizado");
     } else {
-      const { error } = await supabase.from("ad_packages").insert(payload);
-      if (error) { toast.error("Erro ao criar pacote"); return; }
-      toast.success("Pacote criado");
+      const { data, error } = await supabase.from("ad_packages").insert(payload).select("id").single();
+      if (error || !data) { toast.error("Erro ao criar pacote"); return; }
+      pkgId = data.id;
     }
+    // Sync fornecedor assignments
+    if (pkgId) {
+      await supabase.from("ad_package_fornecedores").delete().eq("package_id", pkgId);
+      if (pkgSelectedFornecedores.length > 0) {
+        await supabase.from("ad_package_fornecedores").insert(
+          pkgSelectedFornecedores.map(f => ({ package_id: pkgId!, fornecedor: f }))
+        );
+      }
+    }
+    toast.success(editingPkg ? "Pacote atualizado" : "Pacote criado");
     setPkgDialog(false);
     fetchAll();
   };
@@ -376,30 +399,33 @@ const AdminAdvertisingPage = () => {
           <Card>
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Valor Mensal</TableHead>
-                  <TableHead>Tipo Mídia</TableHead>
-                  <TableHead>Posição</TableHead>
-                  <TableHead>Formato</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-24">Ações</TableHead>
-                </TableRow>
+                 <TableRow>
+                   <TableHead>Nome</TableHead>
+                   <TableHead>Valor Mensal</TableHead>
+                   <TableHead>Tipo Mídia</TableHead>
+                   <TableHead>Fornecedores</TableHead>
+                   <TableHead>Tags</TableHead>
+                   <TableHead>Status</TableHead>
+                   <TableHead className="w-24">Ações</TableHead>
+                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(pkg => (
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">{pkg.name}</TableCell>
-                    <TableCell>{fmt(pkg.monthly_value)}</TableCell>
-                    <TableCell className="text-xs capitalize">{(pkg as any).media_type || "—"}</TableCell>
-                    <TableCell className="text-xs capitalize">{((pkg as any).screen_position || "—").replace(/_/g, " ")}</TableCell>
-                    <TableCell className="text-xs">{(pkg as any).content_format || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {((pkg as any).tags || []).map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
-                        {(!((pkg as any).tags) || (pkg as any).tags.length === 0) && <span className="text-muted-foreground text-xs">—</span>}
-                      </div>
+                     <TableCell>{fmt(pkg.monthly_value)}</TableCell>
+                     <TableCell className="text-xs capitalize">{(pkg as any).media_type || "—"}</TableCell>
+                     <TableCell>
+                       <div className="flex gap-1 flex-wrap">
+                         {(packageFornecedores[pkg.id] || []).map((f: string) => <Badge key={f} variant="outline" className="text-[10px]">{f}</Badge>)}
+                         {(!packageFornecedores[pkg.id] || packageFornecedores[pkg.id].length === 0) && <span className="text-muted-foreground text-xs">Todos</span>}
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       <div className="flex gap-1 flex-wrap">
+                         {((pkg as any).tags || []).map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                         {(!((pkg as any).tags) || (pkg as any).tags.length === 0) && <span className="text-muted-foreground text-xs">—</span>}
+                       </div>
                     </TableCell>
                     <TableCell><Badge variant={pkg.is_active ? "default" : "secondary"}>{pkg.is_active ? "Ativo" : "Inativo"}</Badge></TableCell>
                     <TableCell>
@@ -411,7 +437,7 @@ const AdminAdvertisingPage = () => {
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote encontrado</TableCell></TableRow>
+                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote encontrado</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -595,6 +621,32 @@ const AdminAdvertisingPage = () => {
               </Select>
             </div>
             <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
+            <div>
+              <Label className="flex items-center gap-1.5 mb-2"><Users className="h-4 w-4" /> Fornecedores Atribuídos</Label>
+              <p className="text-xs text-muted-foreground mb-2">Selecione os fornecedores que terão acesso a este pacote. Se nenhum for selecionado, o pacote ficará disponível para todos.</p>
+              <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1.5">
+                {fornecedores.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhum fornecedor cadastrado</p>}
+                {fornecedores.map(f => (
+                  <label key={f} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1">
+                    <Checkbox
+                      checked={pkgSelectedFornecedores.includes(f)}
+                      onCheckedChange={(checked) => {
+                        setPkgSelectedFornecedores(prev =>
+                          checked ? [...prev, f] : prev.filter(x => x !== f)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{f}</span>
+                  </label>
+                ))}
+              </div>
+              {pkgSelectedFornecedores.length > 0 && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  <Badge variant="secondary" className="text-[10px]">{pkgSelectedFornecedores.length} selecionado(s)</Badge>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => setPkgSelectedFornecedores([])}>Limpar</Button>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={pkgForm.is_active} onChange={e => setPkgForm(f => ({ ...f, is_active: e.target.checked }))} id="pkg-active" />
               <Label htmlFor="pkg-active">Ativo</Label>
