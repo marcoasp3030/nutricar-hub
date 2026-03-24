@@ -437,7 +437,7 @@ const AdminAdvertisingPage = () => {
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote encontrado</TableCell></TableRow>
+                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote encontrado</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
