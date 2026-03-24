@@ -399,16 +399,15 @@ const AdminAdvertisingPage = () => {
           <Card>
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Valor Mensal</TableHead>
-                  <TableHead>Tipo Mídia</TableHead>
-                  <TableHead>Posição</TableHead>
-                  <TableHead>Formato</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-24">Ações</TableHead>
-                </TableRow>
+                 <TableRow>
+                   <TableHead>Nome</TableHead>
+                   <TableHead>Valor Mensal</TableHead>
+                   <TableHead>Tipo Mídia</TableHead>
+                   <TableHead>Fornecedores</TableHead>
+                   <TableHead>Tags</TableHead>
+                   <TableHead>Status</TableHead>
+                   <TableHead className="w-24">Ações</TableHead>
+                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(pkg => (
