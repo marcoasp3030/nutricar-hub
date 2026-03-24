@@ -282,6 +282,14 @@ export default function AdminChecklistsManagerPage() {
           setAssignDialog(null);
         }}
       />
+
+      {editDialog && (
+        <EditChecklistDialog
+          instance={editDialog}
+          onOpenChange={(open) => { if (!open) setEditDialog(null); }}
+          onSave={handleUpdateInstance}
+        />
+      )}
     </div>
   );
 }
