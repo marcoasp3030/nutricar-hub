@@ -197,7 +197,7 @@ const ProductsPage = ({ tableName, fornecedor }: ProductsPageProps) => {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" /> Top 15 — Mais Vendidos (Valor)
+              <TrendingUp className="h-4 w-4 text-primary" /> Top 15 — Mais Vendidos (Quantidade)
             </h3>
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={data.topVenda} layout="vertical">
