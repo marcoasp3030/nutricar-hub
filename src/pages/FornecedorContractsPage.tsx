@@ -129,13 +129,41 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
         </Card>
       </div>
 
-      <Tabs defaultValue="contracts" className="w-full">
-        <TabsList>
-          <TabsTrigger value="contracts"><FileText className="h-4 w-4 mr-1" /> Meus Contratos</TabsTrigger>
-          <TabsTrigger value="payments"><DollarSign className="h-4 w-4 mr-1" /> Pagamentos</TabsTrigger>
-          <TabsTrigger value="packages"><Package className="h-4 w-4 mr-1" /> Pacotes Disponíveis</TabsTrigger>
-        </TabsList>
-
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Pagamentos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Pacote</TableHead>
+                <TableHead>Mês Ref.</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Pago em</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {payments.map(p => {
+                const st = PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending;
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.ad_contracts?.ad_packages?.name || "—"}</TableCell>
+                    <TableCell>{p.month_ref}</TableCell>
+                    <TableCell>{fmt(p.amount)}</TableCell>
+                    <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+                    <TableCell className="text-xs">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {payments.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
         <TabsContent value="contracts" className="space-y-4">
           <Card>
             <Table>
