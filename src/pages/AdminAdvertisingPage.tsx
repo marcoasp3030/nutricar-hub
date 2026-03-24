@@ -109,12 +109,13 @@ const AdminAdvertisingPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [pkgRes, contractRes, payRes, playlistRes, fornRes] = await Promise.all([
+    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes] = await Promise.all([
       supabase.from("ad_packages").select("*").order("created_at", { ascending: false }),
       supabase.from("ad_contracts").select("*, ad_packages(*)").order("created_at", { ascending: false }),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))").order("created_at", { ascending: false }),
       supabase.from("playlists").select("id, name").order("name"),
       supabase.from("user_fornecedores").select("fornecedor"),
+      supabase.from("ad_package_fornecedores").select("*"),
     ]);
     setPackages(pkgRes.data || []);
     setContracts(contractRes.data || []);
@@ -122,6 +123,13 @@ const AdminAdvertisingPage = () => {
     setPlaylists(playlistRes.data || []);
     const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))];
     setFornecedores(uniqueF);
+    // Build package->fornecedores map
+    const pfMap: Record<string, string[]> = {};
+    (pkgFornRes.data || []).forEach((pf: any) => {
+      if (!pfMap[pf.package_id]) pfMap[pf.package_id] = [];
+      pfMap[pf.package_id].push(pf.fornecedor);
+    });
+    setPackageFornecedores(pfMap);
     setLoading(false);
   };
 
