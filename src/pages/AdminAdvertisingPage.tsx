@@ -133,7 +133,8 @@ const AdminAdvertisingPage = () => {
     setPkgDialog(true);
   };
   const savePkg = async () => {
-    const payload = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active };
+    const tagsArr = pkgForm.tags ? pkgForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+    const payload = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr };
     if (editingPkg) {
       const { error } = await supabase.from("ad_packages").update(payload).eq("id", editingPkg.id);
       if (error) { toast.error("Erro ao atualizar pacote"); return; }
