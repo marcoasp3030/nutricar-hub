@@ -350,9 +350,29 @@ const AdminAdvertisingPage = () => {
 
         {/* ===== PACOTES ===== */}
         <TabsContent value="packages" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={openPkgCreate}><Plus className="h-4 w-4 mr-1" /> Novo Pacote</Button>
-          </div>
+          {(() => {
+            const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].sort();
+            const filtered = filterTag === "__all__" ? packages : packages.filter(p => ((p as any).tags || []).includes(filterTag));
+            return (
+              <>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <Select value={filterTag} onValueChange={setFilterTag}>
+                      <SelectTrigger className="w-48 h-9 text-xs">
+                        <SelectValue placeholder="Filtrar por tag" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas as tags</SelectItem>
+                        {allTags.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {filterTag !== "__all__" && (
+                      <Badge variant="secondary" className="text-xs">{filtered.length} pacote(s)</Badge>
+                    )}
+                  </div>
+                  <Button onClick={openPkgCreate}><Plus className="h-4 w-4 mr-1" /> Novo Pacote</Button>
+                </div>
           <Card>
             <Table>
               <TableHeader>
