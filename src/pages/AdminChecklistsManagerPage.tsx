@@ -105,6 +105,28 @@ export default function AdminChecklistsManagerPage() {
     }
   };
 
+  const handleDelete = async (inst: ChecklistInstance) => {
+    if (!confirm(`Tem certeza que deseja excluir "${inst.name}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await deleteInstance(inst.id);
+      queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
+      toast({ title: "Checklist excluído" });
+    } catch (e: any) {
+      toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdateInstance = async (id: string, updates: Partial<ChecklistInstance>) => {
+    try {
+      await updateInstance(id, updates as any);
+      queryClient.invalidateQueries({ queryKey: ["checklist-instances-admin"] });
+      toast({ title: "Checklist atualizado" });
+      setEditDialog(null);
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
