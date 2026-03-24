@@ -413,15 +413,19 @@ const AdminAdvertisingPage = () => {
                 {filtered.map(pkg => (
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">{pkg.name}</TableCell>
-                    <TableCell>{fmt(pkg.monthly_value)}</TableCell>
-                    <TableCell className="text-xs capitalize">{(pkg as any).media_type || "—"}</TableCell>
-                    <TableCell className="text-xs capitalize">{((pkg as any).screen_position || "—").replace(/_/g, " ")}</TableCell>
-                    <TableCell className="text-xs">{(pkg as any).content_format || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {((pkg as any).tags || []).map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
-                        {(!((pkg as any).tags) || (pkg as any).tags.length === 0) && <span className="text-muted-foreground text-xs">—</span>}
-                      </div>
+                     <TableCell>{fmt(pkg.monthly_value)}</TableCell>
+                     <TableCell className="text-xs capitalize">{(pkg as any).media_type || "—"}</TableCell>
+                     <TableCell>
+                       <div className="flex gap-1 flex-wrap">
+                         {(packageFornecedores[pkg.id] || []).map((f: string) => <Badge key={f} variant="outline" className="text-[10px]">{f}</Badge>)}
+                         {(!packageFornecedores[pkg.id] || packageFornecedores[pkg.id].length === 0) && <span className="text-muted-foreground text-xs">Todos</span>}
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       <div className="flex gap-1 flex-wrap">
+                         {((pkg as any).tags || []).map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                         {(!((pkg as any).tags) || (pkg as any).tags.length === 0) && <span className="text-muted-foreground text-xs">—</span>}
+                       </div>
                     </TableCell>
                     <TableCell><Badge variant={pkg.is_active ? "default" : "secondary"}>{pkg.is_active ? "Ativo" : "Inativo"}</Badge></TableCell>
                     <TableCell>
