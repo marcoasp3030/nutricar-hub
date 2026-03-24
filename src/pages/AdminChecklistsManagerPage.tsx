@@ -294,6 +294,72 @@ export default function AdminChecklistsManagerPage() {
   );
 }
 
+function EditChecklistDialog({ instance, onOpenChange, onSave }: {
+  instance: ChecklistInstance;
+  onOpenChange: (open: boolean) => void;
+  onSave: (id: string, updates: Partial<ChecklistInstance>) => void;
+}) {
+  const [name, setName] = useState(instance.name);
+  const [store, setStore] = useState(instance.store || "");
+  const [location, setLocation] = useState(instance.location || "");
+  const [status, setStatus] = useState(instance.status);
+  const [priority, setPriority] = useState(instance.priority);
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Editar Checklist</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Nome</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Loja/Unidade</Label>
+              <Input value={store} onChange={e => setStore(e.target.value)} />
+            </div>
+            <div>
+              <Label>Local</Label>
+              <Input value={location} onChange={e => setLocation(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select value={status} onValueChange={v => setStatus(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(statusLabels).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Prioridade</Label>
+            <Select value={priority} onValueChange={v => setPriority(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(priorityLabels).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={() => onSave(instance.id, { name, store: store || undefined, location: location || undefined, status, priority } as any)}>
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const roleFilterOptions = [
   { value: "all", label: "Todos" },
   { value: "promotor", label: "Promotores" },
