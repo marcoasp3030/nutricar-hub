@@ -171,6 +171,7 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
               <Select value={fornecedor} onValueChange={onFornecedorChange}>
                 <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__all__" className="text-xs font-semibold">📊 Todos (Unificado)</SelectItem>
                   {fornecedores.map(f => (
                     <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
                   ))}
