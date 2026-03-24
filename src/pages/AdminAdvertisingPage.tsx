@@ -80,7 +80,7 @@ const AdminAdvertisingPage = () => {
   // Package form
   const [pkgDialog, setPkgDialog] = useState(false);
   const [editingPkg, setEditingPkg] = useState<AdPackage | null>(null);
-  const [pkgForm, setPkgForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true });
+  const [pkgForm, setPkgForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
 
   // Contract form
   const [contractDialog, setContractDialog] = useState(false);
@@ -124,16 +124,17 @@ const AdminAdvertisingPage = () => {
   // === Package CRUD ===
   const openPkgCreate = () => {
     setEditingPkg(null);
-    setPkgForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true });
+    setPkgForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
     setPkgDialog(true);
   };
   const openPkgEdit = (pkg: AdPackage) => {
     setEditingPkg(pkg);
-    setPkgForm({ name: pkg.name, description: pkg.description || "", monthly_value: String(pkg.monthly_value), duration_months: String(pkg.duration_months), display_frequency: pkg.display_frequency, playlist_id: pkg.playlist_id || "", is_active: pkg.is_active });
+    setPkgForm({ name: pkg.name, description: pkg.description || "", monthly_value: String(pkg.monthly_value), duration_months: String(pkg.duration_months), display_frequency: pkg.display_frequency, playlist_id: pkg.playlist_id || "", is_active: pkg.is_active, media_type: (pkg as any).media_type || "video", screen_position: (pkg as any).screen_position || "tela_cheia", display_schedule: (pkg as any).display_schedule || "integral", content_format: (pkg as any).content_format || "16:9", tags: ((pkg as any).tags || []).join(", ") });
     setPkgDialog(true);
   };
   const savePkg = async () => {
-    const payload = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active };
+    const tagsArr = pkgForm.tags ? pkgForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+    const payload = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr };
     if (editingPkg) {
       const { error } = await supabase.from("ad_packages").update(payload).eq("id", editingPkg.id);
       if (error) { toast.error("Erro ao atualizar pacote"); return; }
@@ -355,9 +356,10 @@ const AdminAdvertisingPage = () => {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Valor Mensal</TableHead>
-                  <TableHead>Duração</TableHead>
-                  <TableHead>Frequência</TableHead>
-                  <TableHead>Playlist</TableHead>
+                  <TableHead>Tipo Mídia</TableHead>
+                  <TableHead>Posição</TableHead>
+                  <TableHead>Formato</TableHead>
+                  <TableHead>Tags</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-24">Ações</TableHead>
                 </TableRow>
@@ -367,9 +369,15 @@ const AdminAdvertisingPage = () => {
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">{pkg.name}</TableCell>
                     <TableCell>{fmt(pkg.monthly_value)}</TableCell>
-                    <TableCell>{pkg.duration_months} {pkg.duration_months === 1 ? "mês" : "meses"}</TableCell>
-                    <TableCell className="text-xs">{pkg.display_frequency}</TableCell>
-                    <TableCell className="text-xs">{playlists.find(p => p.id === pkg.playlist_id)?.name || "—"}</TableCell>
+                    <TableCell className="text-xs capitalize">{(pkg as any).media_type || "—"}</TableCell>
+                    <TableCell className="text-xs capitalize">{((pkg as any).screen_position || "—").replace(/_/g, " ")}</TableCell>
+                    <TableCell className="text-xs">{(pkg as any).content_format || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {((pkg as any).tags || []).map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                        {(!((pkg as any).tags) || (pkg as any).tags.length === 0) && <span className="text-muted-foreground text-xs">—</span>}
+                      </div>
+                    </TableCell>
                     <TableCell><Badge variant={pkg.is_active ? "default" : "secondary"}>{pkg.is_active ? "Ativo" : "Inativo"}</Badge></TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -380,7 +388,7 @@ const AdminAdvertisingPage = () => {
                   </TableRow>
                 ))}
                 {packages.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum pacote cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote cadastrado</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -497,6 +505,59 @@ const AdminAdvertisingPage = () => {
               <div><Label>Duração (meses)</Label><Input type="number" value={pkgForm.duration_months} onChange={e => setPkgForm(f => ({ ...f, duration_months: e.target.value }))} /></div>
             </div>
             <div><Label>Frequência de Exibição</Label><Input value={pkgForm.display_frequency} onChange={e => setPkgForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo de Mídia</Label>
+                <Select value={pkgForm.media_type} onValueChange={v => setPkgForm(f => ({ ...f, media_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">Vídeo</SelectItem>
+                    <SelectItem value="banner">Banner</SelectItem>
+                    <SelectItem value="slide">Slide</SelectItem>
+                    <SelectItem value="institucional">Institucional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Posição na Tela</Label>
+                <Select value={pkgForm.screen_position} onValueChange={v => setPkgForm(f => ({ ...f, screen_position: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tela_cheia">Tela Cheia</SelectItem>
+                    <SelectItem value="rodape">Rodapé</SelectItem>
+                    <SelectItem value="lateral">Lateral</SelectItem>
+                    <SelectItem value="topo">Topo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Horário de Exibição</Label>
+                <Select value={pkgForm.display_schedule} onValueChange={v => setPkgForm(f => ({ ...f, display_schedule: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="integral">Integral</SelectItem>
+                    <SelectItem value="manha">Manhã</SelectItem>
+                    <SelectItem value="tarde">Tarde</SelectItem>
+                    <SelectItem value="noite">Noite</SelectItem>
+                    <SelectItem value="horario_comercial">Horário Comercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Formato do Conteúdo</Label>
+                <Select value={pkgForm.content_format} onValueChange={v => setPkgForm(f => ({ ...f, content_format: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="16:9">16:9 (Paisagem)</SelectItem>
+                    <SelectItem value="9:16">9:16 (Retrato)</SelectItem>
+                    <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
+                    <SelectItem value="4:3">4:3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
               <Label>Playlist Vinculada</Label>
               <Select value={pkgForm.playlist_id || "none"} onValueChange={v => setPkgForm(f => ({ ...f, playlist_id: v === "none" ? "" : v }))}>
@@ -507,6 +568,7 @@ const AdminAdvertisingPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={pkgForm.is_active} onChange={e => setPkgForm(f => ({ ...f, is_active: e.target.checked }))} id="pkg-active" />
               <Label htmlFor="pkg-active">Ativo</Label>
