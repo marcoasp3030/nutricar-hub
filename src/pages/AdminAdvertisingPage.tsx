@@ -505,6 +505,59 @@ const AdminAdvertisingPage = () => {
               <div><Label>Duração (meses)</Label><Input type="number" value={pkgForm.duration_months} onChange={e => setPkgForm(f => ({ ...f, duration_months: e.target.value }))} /></div>
             </div>
             <div><Label>Frequência de Exibição</Label><Input value={pkgForm.display_frequency} onChange={e => setPkgForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo de Mídia</Label>
+                <Select value={pkgForm.media_type} onValueChange={v => setPkgForm(f => ({ ...f, media_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">Vídeo</SelectItem>
+                    <SelectItem value="banner">Banner</SelectItem>
+                    <SelectItem value="slide">Slide</SelectItem>
+                    <SelectItem value="institucional">Institucional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Posição na Tela</Label>
+                <Select value={pkgForm.screen_position} onValueChange={v => setPkgForm(f => ({ ...f, screen_position: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tela_cheia">Tela Cheia</SelectItem>
+                    <SelectItem value="rodape">Rodapé</SelectItem>
+                    <SelectItem value="lateral">Lateral</SelectItem>
+                    <SelectItem value="topo">Topo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Horário de Exibição</Label>
+                <Select value={pkgForm.display_schedule} onValueChange={v => setPkgForm(f => ({ ...f, display_schedule: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="integral">Integral</SelectItem>
+                    <SelectItem value="manha">Manhã</SelectItem>
+                    <SelectItem value="tarde">Tarde</SelectItem>
+                    <SelectItem value="noite">Noite</SelectItem>
+                    <SelectItem value="horario_comercial">Horário Comercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Formato do Conteúdo</Label>
+                <Select value={pkgForm.content_format} onValueChange={v => setPkgForm(f => ({ ...f, content_format: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="16:9">16:9 (Paisagem)</SelectItem>
+                    <SelectItem value="9:16">9:16 (Retrato)</SelectItem>
+                    <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
+                    <SelectItem value="4:3">4:3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
               <Label>Playlist Vinculada</Label>
               <Select value={pkgForm.playlist_id || "none"} onValueChange={v => setPkgForm(f => ({ ...f, playlist_id: v === "none" ? "" : v }))}>
@@ -515,6 +568,7 @@ const AdminAdvertisingPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={pkgForm.is_active} onChange={e => setPkgForm(f => ({ ...f, is_active: e.target.checked }))} id="pkg-active" />
               <Label htmlFor="pkg-active">Ativo</Label>
