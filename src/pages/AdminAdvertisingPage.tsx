@@ -547,9 +547,9 @@ const AdminAdvertisingPage = () => {
 
       {/* === Package Dialog === */}
       <Dialog open={pkgDialog} onOpenChange={setPkgDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>{editingPkg ? "Editar Pacote" : "Novo Pacote"}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto pr-1 flex-1">
             <div><Label>Nome</Label><Input value={pkgForm.name} onChange={e => setPkgForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div><Label>Descrição</Label><Textarea value={pkgForm.description} onChange={e => setPkgForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -621,38 +621,17 @@ const AdminAdvertisingPage = () => {
               </Select>
             </div>
             <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
-            <div>
-              <Label className="flex items-center gap-1.5 mb-2"><Users className="h-4 w-4" /> Fornecedores Atribuídos</Label>
-              <p className="text-xs text-muted-foreground mb-2">Selecione os fornecedores que terão acesso a este pacote. Se nenhum for selecionado, o pacote ficará disponível para todos.</p>
-              <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1.5">
-                {fornecedores.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhum fornecedor cadastrado</p>}
-                {fornecedores.map(f => (
-                  <label key={f} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1">
-                    <Checkbox
-                      checked={pkgSelectedFornecedores.includes(f)}
-                      onCheckedChange={(checked) => {
-                        setPkgSelectedFornecedores(prev =>
-                          checked ? [...prev, f] : prev.filter(x => x !== f)
-                        );
-                      }}
-                    />
-                    <span className="text-sm">{f}</span>
-                  </label>
-                ))}
-              </div>
-              {pkgSelectedFornecedores.length > 0 && (
-                <div className="flex items-center gap-1 mt-1.5">
-                  <Badge variant="secondary" className="text-[10px]">{pkgSelectedFornecedores.length} selecionado(s)</Badge>
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => setPkgSelectedFornecedores([])}>Limpar</Button>
-                </div>
-              )}
-            </div>
+            <FornecedorSelector
+              fornecedores={fornecedores}
+              selected={pkgSelectedFornecedores}
+              onChange={setPkgSelectedFornecedores}
+            />
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={pkgForm.is_active} onChange={e => setPkgForm(f => ({ ...f, is_active: e.target.checked }))} id="pkg-active" />
               <Label htmlFor="pkg-active">Ativo</Label>
             </div>
-            <Button className="w-full" onClick={savePkg}>{editingPkg ? "Salvar" : "Criar"}</Button>
           </div>
+          <Button className="w-full mt-2" onClick={savePkg}>{editingPkg ? "Salvar" : "Criar"}</Button>
         </DialogContent>
       </Dialog>
 
