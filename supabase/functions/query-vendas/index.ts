@@ -35,11 +35,13 @@ Deno.serve(async (req) => {
     // Get user profile and role
     const { data: profile } = await supabase.from('profiles').select('fornecedor').eq('user_id', userId).single();
     const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+    const { data: userFornecedores } = await supabase.from('user_fornecedores').select('fornecedor').eq('user_id', userId);
     
     const isAdmin = roles?.some((r: any) => r.role === 'admin') || false;
     const fornecedor = profile?.fornecedor;
+    const allUserFornecedores = userFornecedores?.map((f: any) => f.fornecedor) || (fornecedor ? [fornecedor] : []);
 
-    if (!isAdmin && !fornecedor) {
+    if (!isAdmin && allUserFornecedores.length === 0) {
       return new Response(JSON.stringify({ error: 'Fornecedor não vinculado ao usuário' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -74,16 +76,30 @@ Deno.serve(async (req) => {
         return clause;
       };
 
+      // Helper to resolve fornecedor filter — supports single, array (__all__), or default
+      const resolveFornecedorClause = (f: Record<string, any>) => {
+        // If admin with no filter, show all
+        if (isAdmin && !f.fornecedor) return '';
+        
+        // Unified mode: user selected "__all__" — use all their fornecedores
+        if (f.fornecedor === '__all__' && allUserFornecedores.length > 0) {
+          const escaped = allUserFornecedores.map((s: string) => `'${s.replace(/'/g, "''")}'`).join(',');
+          return `fornecedor IN (${escaped})`;
+        }
+
+        // Single fornecedor
+        const forn = f.fornecedor || fornecedor;
+        if (!forn) return '';
+        return `fornecedor = '${String(forn).replace(/'/g, "''")}'`;
+      };
+
       if (action === 'dashboard') {
         const dateClause = buildDateClause(filters);
         const groupByExtra = filters.groupBy || 'categoria';
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE status = 'OK'${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' AND status = 'OK'${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} AND status = 'OK'${dateClause}`
+          : `WHERE status = 'OK'${dateClause}`;
 
         const buildGroupQuery = (col: string, limit = 20) =>
           `SELECT ${col} as name, COALESCE(SUM(valor::numeric),0) as valor, COALESCE(SUM(quantidade::numeric),0) as quantidade FROM ${tableNameClean} ${whereClause} GROUP BY ${col} ORDER BY valor DESC LIMIT ${limit}`;
@@ -124,13 +140,10 @@ Deno.serve(async (req) => {
 
       if (action === 'produtos') {
         const dateClause = buildDateClause(filters);
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE 1=1${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} ${dateClause}`
+          : `WHERE 1=1${dateClause}`;
 
         const statusOk = ` AND status = 'OK'`;
         const whereOk = whereClause + statusOk;
@@ -156,13 +169,10 @@ Deno.serve(async (req) => {
 
       if (action === 'kpis') {
         const dateClause = buildDateClause(filters);
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE 1=1${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} ${dateClause}`
+          : `WHERE 1=1${dateClause}`;
         const result = await sql.unsafe(`
           SELECT 
             COALESCE(SUM(quantidade::numeric), 0) as total_quantidade,
@@ -183,13 +193,10 @@ Deno.serve(async (req) => {
         }
 
         const dateClause = buildDateClause(filters);
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE 1=1${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} ${dateClause}`
+          : `WHERE 1=1${dateClause}`;
 
         const result = await sql.unsafe(`
           SELECT ${groupBy} as name,
@@ -205,29 +212,10 @@ Deno.serve(async (req) => {
 
       if (action === 'list') {
         const offset = (page - 1) * pageSize;
-        const forn = filters.fornecedor || fornecedor;
-        
-        // Build conditions array
-        const conditions: string[] = [];
-        const values: any[] = [];
-
-        if (!isAdmin || forn) {
-          conditions.push('fornecedor');
-          values.push(forn);
-        }
-
-        // Dynamic filtering with parameterized queries
         const filterFields = ['periodo', 'produto', 'categoria', 'loja', 'status', 'kind', 'feriado', 'bandeira', 'adquirente', 'regiao', 'bairro', 'tipo_de_pagamento'];
         
-        // For simplicity with the postgres library, we'll use template literals with parameterized values
-        let whereClause = '';
-        if (!isAdmin) {
-          whereClause = `WHERE fornecedor = '${forn?.replace(/'/g, "''")}'`;
-        } else if (forn) {
-          whereClause = `WHERE fornecedor = '${forn?.replace(/'/g, "''")}'`;
-        } else {
-          whereClause = 'WHERE 1=1';
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        let whereClause = fornClause ? `WHERE ${fornClause}` : 'WHERE 1=1';
 
         for (const field of filterFields) {
           if (filters[field]) {
@@ -265,16 +253,16 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: 'Campo inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
+        const fornClause = resolveFornecedorClause(filters);
         let result;
-        if (isAdmin && !filters.fornecedor) {
+        if (!fornClause) {
           result = await sql`
             SELECT DISTINCT ${sql(field)} as value FROM ${sql(tableNameClean)} WHERE ${sql(field)} IS NOT NULL ORDER BY value LIMIT 100
           `;
         } else {
-          const forn = filters.fornecedor || fornecedor;
-          result = await sql`
-            SELECT DISTINCT ${sql(field)} as value FROM ${sql(tableNameClean)} WHERE fornecedor = ${forn} AND ${sql(field)} IS NOT NULL ORDER BY value LIMIT 100
-          `;
+          result = await sql.unsafe(
+            `SELECT DISTINCT ${field} as value FROM ${tableNameClean} WHERE ${fornClause} AND ${field} IS NOT NULL ORDER BY value LIMIT 100`
+          );
         }
         return new Response(JSON.stringify({ data: result.map((r: any) => r.value) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -292,15 +280,16 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ data: allTables }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        // For fornecedor users, filter by permissions in fornecedor_tables
-        const forn = filters.fornecedor || fornecedor;
+        // For unified mode, get tables for all user fornecedores
+        const fornsToCheck = filters.fornecedor === '__all__' ? allUserFornecedores : [filters.fornecedor || fornecedor];
+        
         const { data: allowedTables } = await supabase
           .from('fornecedor_tables')
           .select('table_name')
-          .eq('fornecedor', forn);
+          .in('fornecedor', fornsToCheck);
 
         if (allowedTables && allowedTables.length > 0) {
-          const allowed = allowedTables.map((t: any) => t.table_name);
+          const allowed = [...new Set(allowedTables.map((t: any) => t.table_name))];
           const filtered = allTables.filter((t: string) => allowed.includes(t));
           return new Response(JSON.stringify({ data: filtered }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
