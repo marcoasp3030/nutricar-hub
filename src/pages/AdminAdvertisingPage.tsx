@@ -95,6 +95,9 @@ const AdminAdvertisingPage = () => {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
+  // Tag filter for packages
+  const [filterTag, setFilterTag] = useState<string>("__all__");
+
   // History
   const [historyDialog, setHistoryDialog] = useState(false);
   const [historyContractId, setHistoryContractId] = useState<string | null>(null);
