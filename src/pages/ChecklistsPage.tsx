@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { fetchInstances, fetchTemplates, createInstanceFromTemplate, createBlankInstance, type ChecklistInstance, type ChecklistTemplate, type ChecklistPriority } from "@/lib/checklistApi";
+import { fetchInstances, fetchTemplates, createInstanceFromTemplate, createBlankInstance, deleteInstance, type ChecklistInstance, type ChecklistTemplate, type ChecklistPriority } from "@/lib/checklistApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Search, ClipboardList, AlertTriangle, CheckCircle2, Clock, FileText } from "lucide-react";
+import { Plus, Search, ClipboardList, AlertTriangle, CheckCircle2, Clock, FileText, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const statusColors: Record<string, string> = {
@@ -61,6 +61,22 @@ export default function ChecklistsPage() {
     queryKey: ["checklist-templates"],
     queryFn: () => fetchTemplates(),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteInstance,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklist-instances"] });
+      toast({ title: "Checklist excluído" });
+    },
+    onError: (e: any) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
+  });
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("Tem certeza que deseja excluir este checklist? Esta ação não pode ser desfeita.")) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const filtered = instances.filter(i => {
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
@@ -113,7 +129,12 @@ export default function ChecklistsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base leading-tight">{inst.name}</CardTitle>
-                  <Badge variant="secondary" className={statusColors[inst.status]}>{statusLabels[inst.status]}</Badge>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge variant="secondary" className={statusColors[inst.status]}>{statusLabels[inst.status]}</Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) => handleDelete(e, inst.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 {inst.store && <p className="text-xs text-muted-foreground">{inst.store}{inst.location ? ` · ${inst.location}` : ""}</p>}
               </CardHeader>
