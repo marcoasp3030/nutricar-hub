@@ -82,8 +82,8 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
   
 
   useEffect(() => {
-    if (role === 'admin' || role === 'promotora') return; // Admin/Promotora don't need table data
-    queryVendas({ action: 'tables', filters: { fornecedor: fornecedor !== 'Não vinculado' ? fornecedor : undefined } })
+    if (role === 'admin' || role === 'promotora' || !fornecedor || fornecedor === 'Não vinculado') return;
+    queryVendas({ action: 'tables', filters: { fornecedor } })
       .then(res => {
         if (res.data?.length) {
           setTables(res.data);
