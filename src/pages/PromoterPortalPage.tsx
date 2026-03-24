@@ -12,9 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea as TextareaUI } from "@/components/ui/textarea";
-import { Calendar, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "@/hooks/use-toast";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, parseISO, isSameMonth, isSameDay, eachDayOfInterval, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const assignmentStatusLabels: Record<string, string> = {
@@ -236,6 +237,7 @@ const PromoterPortalPage = () => {
           <TabsTrigger value="feed" className="flex-1">Oportunidades</TabsTrigger>
           <TabsTrigger value="pendentes" className="flex-1">Pendentes {pendingInvites.length > 0 && <Badge className="ml-1 h-5 w-5 p-0 text-xs">{pendingInvites.length}</Badge>}</TabsTrigger>
           <TabsTrigger value="meus" className="flex-1">Meus Eventos</TabsTrigger>
+          <TabsTrigger value="calendario" className="flex-1">Calendário</TabsTrigger>
           <TabsTrigger value="ganhos" className="flex-1">Ganhos</TabsTrigger>
         </TabsList>
 
@@ -295,6 +297,11 @@ const PromoterPortalPage = () => {
               qc={qc}
             />
           ))}
+        </TabsContent>
+
+        {/* Calendário */}
+        <TabsContent value="calendario" className="mt-4">
+          <PromoterCalendar assignments={assignments} />
         </TabsContent>
 
         {/* Ganhos */}
@@ -603,5 +610,122 @@ const ProfileDialog = ({ open, onOpenChange, form, setForm, onSave, saving }: an
     </DialogContent>
   </Dialog>
 );
+
+// ─── Promoter Calendar ───
+function PromoterCalendar({ assignments }: { assignments: JobAssignment[] }) {
+  const [calMonth, setCalMonth] = useState(new Date());
+
+  const eventDays = useMemo(() => {
+    const map = new Map<string, { title: string; status: string }[]>();
+    assignments.forEach((a) => {
+      const job = a.job as any;
+      if (!job) return;
+      try {
+        const start = parseISO(job.start_date.split("T")[0]);
+        const end = job.end_date ? parseISO(job.end_date.split("T")[0]) : start;
+        const days = eachDayOfInterval({ start, end });
+        days.forEach((d) => {
+          const key = format(d, "yyyy-MM-dd");
+          if (!map.has(key)) map.set(key, []);
+          map.get(key)!.push({ title: job.title, status: a.status });
+        });
+      } catch {}
+    });
+    return map;
+  }, [assignments]);
+
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const selectedEvents = selectedDay ? eventDays.get(format(selectedDay, "yyyy-MM-dd")) || [] : [];
+
+  // Get the days in the current month grid
+  const monthStart = startOfMonth(calMonth);
+  const monthEnd = endOfMonth(calMonth);
+
+  return (
+    <div className="space-y-4">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between">
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalMonth(prev => addMonths(prev, -1))}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <h3 className="text-sm font-semibold capitalize">
+          {format(calMonth, "MMMM yyyy", { locale: ptBR })}
+        </h3>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalMonth(prev => addMonths(prev, 1))}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-0 border rounded-lg overflow-hidden bg-card">
+        {/* Day headers */}
+        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+          <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-2 bg-muted/50 border-b">{d}</div>
+        ))}
+        {/* Day cells */}
+        {(() => {
+          const startWeekDay = monthStart.getDay();
+          const daysInMonth = monthEnd.getDate();
+          const cells = [];
+          // Empty cells before month start
+          for (let i = 0; i < startWeekDay; i++) {
+            cells.push(<div key={`empty-${i}`} className="h-12 border-b border-r" />);
+          }
+          for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(calMonth.getFullYear(), calMonth.getMonth(), day);
+            const key = format(date, "yyyy-MM-dd");
+            const events = eventDays.get(key) || [];
+            const isSelected = selectedDay && isSameDay(date, selectedDay);
+            const isToday = isSameDay(date, new Date());
+
+            cells.push(
+              <div
+                key={key}
+                onClick={() => setSelectedDay(events.length > 0 ? date : null)}
+                className={`h-12 border-b border-r p-1 cursor-pointer transition-colors relative ${
+                  isSelected ? "bg-primary/10 ring-1 ring-inset ring-primary" : ""
+                } ${isToday ? "bg-accent/40" : ""} ${events.length > 0 ? "hover:bg-accent" : ""}`}
+              >
+                <span className={`text-xs ${isToday ? "font-bold text-primary" : "text-foreground"}`}>{day}</span>
+                {events.length > 0 && (
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    {events.slice(0, 3).map((_, i) => (
+                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+          return cells;
+        })()}
+      </div>
+
+      {/* Selected day events */}
+      {selectedDay && selectedEvents.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">
+              {format(selectedDay, "dd 'de' MMMM", { locale: ptBR })} — {selectedEvents.length} evento(s)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {selectedEvents.map((ev, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm">
+                <CalendarIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="flex-1">{ev.title}</span>
+                <Badge variant="outline" className="text-[10px] capitalize">{ev.status}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {assignments.length === 0 && (
+        <p className="text-center text-sm text-muted-foreground py-4">Nenhum evento atribuído para exibir no calendário</p>
+      )}
+    </div>
+  );
+}
 
 export default PromoterPortalPage;
