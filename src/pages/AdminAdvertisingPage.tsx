@@ -356,9 +356,10 @@ const AdminAdvertisingPage = () => {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Valor Mensal</TableHead>
-                  <TableHead>Duração</TableHead>
-                  <TableHead>Frequência</TableHead>
-                  <TableHead>Playlist</TableHead>
+                  <TableHead>Tipo Mídia</TableHead>
+                  <TableHead>Posição</TableHead>
+                  <TableHead>Formato</TableHead>
+                  <TableHead>Tags</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-24">Ações</TableHead>
                 </TableRow>
