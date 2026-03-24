@@ -252,16 +252,16 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: 'Campo inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
+        const fornClause = resolveFornecedorClause(filters);
         let result;
-        if (isAdmin && !filters.fornecedor) {
+        if (!fornClause) {
           result = await sql`
             SELECT DISTINCT ${sql(field)} as value FROM ${sql(tableNameClean)} WHERE ${sql(field)} IS NOT NULL ORDER BY value LIMIT 100
           `;
         } else {
-          const forn = filters.fornecedor || fornecedor;
-          result = await sql`
-            SELECT DISTINCT ${sql(field)} as value FROM ${sql(tableNameClean)} WHERE fornecedor = ${forn} AND ${sql(field)} IS NOT NULL ORDER BY value LIMIT 100
-          `;
+          result = await sql.unsafe(
+            `SELECT DISTINCT ${field} as value FROM ${tableNameClean} WHERE ${fornClause} AND ${field} IS NOT NULL ORDER BY value LIMIT 100`
+          );
         }
         return new Response(JSON.stringify({ data: result.map((r: any) => r.value) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -279,15 +279,16 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ data: allTables }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        // For fornecedor users, filter by permissions in fornecedor_tables
-        const forn = filters.fornecedor || fornecedor;
+        // For unified mode, get tables for all user fornecedores
+        const fornsToCheck = filters.fornecedor === '__all__' ? allUserFornecedores : [filters.fornecedor || fornecedor];
+        
         const { data: allowedTables } = await supabase
           .from('fornecedor_tables')
           .select('table_name')
-          .eq('fornecedor', forn);
+          .in('fornecedor', fornsToCheck);
 
         if (allowedTables && allowedTables.length > 0) {
-          const allowed = allowedTables.map((t: any) => t.table_name);
+          const allowed = [...new Set(allowedTables.map((t: any) => t.table_name))];
           const filtered = allTables.filter((t: string) => allowed.includes(t));
           return new Response(JSON.stringify({ data: filtered }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
