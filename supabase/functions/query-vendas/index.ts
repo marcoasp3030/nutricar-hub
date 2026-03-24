@@ -169,13 +169,10 @@ Deno.serve(async (req) => {
 
       if (action === 'kpis') {
         const dateClause = buildDateClause(filters);
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE 1=1${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} ${dateClause}`
+          : `WHERE 1=1${dateClause}`;
         const result = await sql.unsafe(`
           SELECT 
             COALESCE(SUM(quantidade::numeric), 0) as total_quantidade,
@@ -196,13 +193,10 @@ Deno.serve(async (req) => {
         }
 
         const dateClause = buildDateClause(filters);
-        let whereClause = '';
-        if (isAdmin && !filters.fornecedor) {
-          whereClause = `WHERE 1=1${dateClause}`;
-        } else {
-          const forn = filters.fornecedor || fornecedor;
-          whereClause = `WHERE fornecedor = '${String(forn).replace(/'/g, "''")}' ${dateClause}`;
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        const whereClause = fornClause
+          ? `WHERE ${fornClause} ${dateClause}`
+          : `WHERE 1=1${dateClause}`;
 
         const result = await sql.unsafe(`
           SELECT ${groupBy} as name,
@@ -218,29 +212,9 @@ Deno.serve(async (req) => {
 
       if (action === 'list') {
         const offset = (page - 1) * pageSize;
-        const forn = filters.fornecedor || fornecedor;
         
-        // Build conditions array
-        const conditions: string[] = [];
-        const values: any[] = [];
-
-        if (!isAdmin || forn) {
-          conditions.push('fornecedor');
-          values.push(forn);
-        }
-
-        // Dynamic filtering with parameterized queries
-        const filterFields = ['periodo', 'produto', 'categoria', 'loja', 'status', 'kind', 'feriado', 'bandeira', 'adquirente', 'regiao', 'bairro', 'tipo_de_pagamento'];
-        
-        // For simplicity with the postgres library, we'll use template literals with parameterized values
-        let whereClause = '';
-        if (!isAdmin) {
-          whereClause = `WHERE fornecedor = '${forn?.replace(/'/g, "''")}'`;
-        } else if (forn) {
-          whereClause = `WHERE fornecedor = '${forn?.replace(/'/g, "''")}'`;
-        } else {
-          whereClause = 'WHERE 1=1';
-        }
+        const fornClause = resolveFornecedorClause(filters);
+        let whereClause = fornClause ? `WHERE ${fornClause}` : 'WHERE 1=1';
 
         for (const field of filterFields) {
           if (filters[field]) {
