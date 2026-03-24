@@ -76,6 +76,7 @@ const AdminAdvertisingPage = () => {
   const [payments, setPayments] = useState<AdPayment[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [fornecedores, setFornecedores] = useState<string[]>([]);
+  const [packageFornecedores, setPackageFornecedores] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   // Package form
