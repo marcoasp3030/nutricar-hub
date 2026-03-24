@@ -238,6 +238,9 @@ export default function AdminChecklistsManagerPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditDialog(inst)} title="Editar">
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyLink(inst)} title="Copiar link">
                           <Link2 className="h-3.5 w-3.5" />
                         </Button>
@@ -246,6 +249,9 @@ export default function AdminChecklistsManagerPage() {
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => navigate(`/checklists/${inst.id}`)} title="Executar">
                           <Play className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(inst)} title="Excluir">
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>
