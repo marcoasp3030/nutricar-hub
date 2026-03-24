@@ -351,7 +351,7 @@ const PromoterPortalPage = () => {
           {selectedJob && (
             <div className="space-y-4">
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" /> {format(new Date(selectedJob.start_date), "dd/MM/yyyy")} - {format(new Date(selectedJob.end_date), "dd/MM/yyyy")}</div>
+                <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-muted-foreground" /> {format(new Date(selectedJob.start_date), "dd/MM/yyyy")} - {format(new Date(selectedJob.end_date), "dd/MM/yyyy")}</div>
                 {selectedJob.start_time && <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /> {selectedJob.start_time} - {selectedJob.end_time}</div>}
                 <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> {selectedJob.address || "Local não definido"}</div>
                 <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> R$ {Number(selectedJob.cache_value).toFixed(2)} ({selectedJob.cache_type})</div>
