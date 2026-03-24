@@ -577,7 +577,7 @@ const JobCard = ({ job, onClick, actionLabel, disabled }: { job: EventJob; onCli
         {job.event_type && <Badge variant="outline" className="text-xs">{(job.event_type as any).name}</Badge>}
       </div>
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(job.start_date), "dd/MM")}</span>
+        <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(job.start_date), "dd/MM")}</span>
         <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {job.address || job.store_unit || "—"}</span>
         <span className="flex items-center gap-1"><User className="h-3 w-3" /> {job.promoter_slots} vaga(s)</span>
       </div>
