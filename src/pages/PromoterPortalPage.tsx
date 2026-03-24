@@ -299,6 +299,11 @@ const PromoterPortalPage = () => {
           ))}
         </TabsContent>
 
+        {/* Calendário */}
+        <TabsContent value="calendario" className="mt-4">
+          <PromoterCalendar assignments={assignments} />
+        </TabsContent>
+
         {/* Ganhos */}
         <TabsContent value="ganhos" className="mt-4 space-y-4">
           <div className="flex items-center gap-2 mb-2">
