@@ -129,7 +129,12 @@ export default function ChecklistsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base leading-tight">{inst.name}</CardTitle>
-                  <Badge variant="secondary" className={statusColors[inst.status]}>{statusLabels[inst.status]}</Badge>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge variant="secondary" className={statusColors[inst.status]}>{statusLabels[inst.status]}</Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) => handleDelete(e, inst.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 {inst.store && <p className="text-xs text-muted-foreground">{inst.store}{inst.location ? ` · ${inst.location}` : ""}</p>}
               </CardHeader>
