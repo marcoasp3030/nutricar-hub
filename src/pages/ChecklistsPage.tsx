@@ -62,6 +62,22 @@ export default function ChecklistsPage() {
     queryFn: () => fetchTemplates(),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteInstance,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklist-instances"] });
+      toast({ title: "Checklist excluído" });
+    },
+    onError: (e: any) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
+  });
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("Tem certeza que deseja excluir este checklist? Esta ação não pode ser desfeita.")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
   const filtered = instances.filter(i => {
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
     if (search && !i.name.toLowerCase().includes(search.toLowerCase()) && !i.store?.toLowerCase().includes(search.toLowerCase())) return false;
