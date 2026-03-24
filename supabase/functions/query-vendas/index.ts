@@ -76,6 +76,23 @@ Deno.serve(async (req) => {
         return clause;
       };
 
+      // Helper to resolve fornecedor filter — supports single, array (__all__), or default
+      const resolveFornecedorClause = (f: Record<string, any>) => {
+        // If admin with no filter, show all
+        if (isAdmin && !f.fornecedor) return '';
+        
+        // Unified mode: user selected "__all__" — use all their fornecedores
+        if (f.fornecedor === '__all__' && allUserFornecedores.length > 0) {
+          const escaped = allUserFornecedores.map((s: string) => `'${s.replace(/'/g, "''")}'`).join(',');
+          return `fornecedor IN (${escaped})`;
+        }
+
+        // Single fornecedor
+        const forn = f.fornecedor || fornecedor;
+        if (!forn) return '';
+        return `fornecedor = '${String(forn).replace(/'/g, "''")}'`;
+      };
+
       if (action === 'dashboard') {
         const dateClause = buildDateClause(filters);
         const groupByExtra = filters.groupBy || 'categoria';
