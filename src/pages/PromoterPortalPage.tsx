@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea as TextareaUI } from "@/components/ui/textarea";
-import { Calendar as CalendarIcon, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, DollarSign, Check, X, Clock, Camera, Briefcase, User, Star, TrendingUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Shirt, UtensilsCrossed, Bus, FileText, Info } from "lucide-react";
 
 import { toast } from "@/hooks/use-toast";
 import { format, subMonths, startOfMonth, endOfMonth, parseISO, isSameMonth, isSameDay, eachDayOfInterval, addMonths } from "date-fns";
@@ -404,6 +404,7 @@ const PromoterPortalPage = () => {
 const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }: any) => {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showRating, setShowRating] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [notes, setNotes] = useState(a.execution_notes || "");
@@ -436,8 +437,10 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
   });
 
   const jobData = a.job as any;
+  const cacheTypeLabels: Record<string, string> = { por_hora: "Por Hora", por_dia: "Por Dia", fechado: "Fechado" };
 
   return (
+    <>
     <Card>
       <CardContent className="pt-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -446,11 +449,16 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
         </div>
         {jobData && (
           <div className="text-xs text-muted-foreground space-y-1">
-            <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")}</div>
+            <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")} - {format(new Date(jobData.end_date), "dd/MM/yyyy")}</div>
+            {jobData.start_time && <div className="flex items-center gap-1"><Clock className="h-3 w-3" /> {jobData.start_time} - {jobData.end_time || "—"}</div>}
             <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {jobData.address || "—"}</div>
-            <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number(jobData.cache_value || 0).toFixed(2)}</div>
+            <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number(jobData.cache_value || 0).toFixed(2)} ({cacheTypeLabels[jobData.cache_type] || jobData.cache_type})</div>
           </div>
         )}
+
+        <Button size="sm" variant="outline" className="w-full" onClick={() => setShowDetails(true)}>
+          <Eye className="h-3 w-3 mr-1" /> Ver Detalhes Completos
+        </Button>
 
         {/* Check-in/out */}
         <div className="flex gap-2">
@@ -564,6 +572,119 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
         )}
       </CardContent>
     </Card>
+
+    {/* Event Details Dialog */}
+    <Dialog open={showDetails} onOpenChange={setShowDetails}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Info className="h-5 w-5" /> {jobData?.title || "Detalhes do Evento"}</DialogTitle></DialogHeader>
+        {jobData && (
+          <div className="space-y-4">
+            {/* Dates & Time */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1.5"><CalendarIcon className="h-4 w-4 text-primary" /> Data e Horário</h4>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
+                <p><span className="text-muted-foreground">Período:</span> {format(new Date(jobData.start_date), "dd/MM/yyyy")} - {format(new Date(jobData.end_date), "dd/MM/yyyy")}</p>
+                {jobData.start_time && <p><span className="text-muted-foreground">Horário:</span> {jobData.start_time} - {jobData.end_time || "—"}</p>}
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1.5"><MapPin className="h-4 w-4 text-primary" /> Localização</h4>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
+                <p>{jobData.address || "Endereço não informado"}</p>
+                {jobData.store_unit && <p><span className="text-muted-foreground">Unidade/Loja:</span> {jobData.store_unit}</p>}
+                {jobData.map_link && (
+                  <a href={jobData.map_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-xs mt-1">
+                    <ExternalLink className="h-3 w-3" /> Abrir no mapa
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Payment */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1.5"><DollarSign className="h-4 w-4 text-primary" /> Remuneração</h4>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
+                <p><span className="text-muted-foreground">Cachê:</span> <span className="font-semibold">R$ {Number(jobData.cache_value || 0).toFixed(2)}</span> ({cacheTypeLabels[jobData.cache_type] || jobData.cache_type})</p>
+                {jobData.travel_allowance > 0 && <p><span className="text-muted-foreground">Auxílio transporte:</span> R$ {Number(jobData.travel_allowance).toFixed(2)}</p>}
+              </div>
+            </div>
+
+            {/* Benefits */}
+            {(jobData.has_transport || jobData.has_meals) && (
+              <div className="flex gap-2 flex-wrap">
+                {jobData.has_transport && <Badge variant="outline" className="gap-1"><Bus className="h-3 w-3" /> Transporte incluso</Badge>}
+                {jobData.has_meals && <Badge variant="outline" className="gap-1"><UtensilsCrossed className="h-3 w-3" /> Refeição inclusa</Badge>}
+              </div>
+            )}
+
+            {/* Description */}
+            {jobData.description && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-1.5"><FileText className="h-4 w-4 text-primary" /> Descrição</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{jobData.description}</p>
+              </div>
+            )}
+
+            {/* Requirements */}
+            {jobData.requirements && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">📋 Requisitos</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{jobData.requirements}</p>
+              </div>
+            )}
+
+            {/* Uniform */}
+            {jobData.uniform_notes && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Shirt className="h-4 w-4 text-primary" /> Uniforme / Vestimenta</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{jobData.uniform_notes}</p>
+              </div>
+            )}
+
+            {/* Photos */}
+            {jobData.photo_urls && jobData.photo_urls.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">📸 Fotos do Evento</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {jobData.photo_urls.map((url: string, i: number) => (
+                    <img key={i} src={url} className="rounded-lg aspect-square object-cover border" alt={`Foto ${i + 1}`} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Attachments */}
+            {jobData.attachment_urls && jobData.attachment_urls.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">📎 Anexos</h4>
+                <div className="space-y-1">
+                  {jobData.attachment_urls.map((url: string, i: number) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline">
+                      <ExternalLink className="h-3 w-3" /> Anexo {i + 1}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Assignment info */}
+            <Separator />
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">📌 Seu Status</h4>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
+                <p><span className="text-muted-foreground">Status:</span> <Badge>{assignmentStatusLabels[a.status]}</Badge></p>
+                {a.checkin_at && <p><span className="text-muted-foreground">Check-in:</span> {format(new Date(a.checkin_at), "dd/MM/yyyy HH:mm")}</p>}
+                {a.checkout_at && <p><span className="text-muted-foreground">Check-out:</span> {format(new Date(a.checkout_at), "dd/MM/yyyy HH:mm")}</p>}
+                {a.execution_notes && <p><span className="text-muted-foreground">Observações:</span> {a.execution_notes}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
