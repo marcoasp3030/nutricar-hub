@@ -50,6 +50,7 @@ export default function AdminChecklistsManagerPage() {
   const [storeFilter, setStoreFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [assignDialog, setAssignDialog] = useState<ChecklistInstance | null>(null);
+  const [editDialog, setEditDialog] = useState<ChecklistInstance | null>(null);
 
   const { data: instances = [], isLoading } = useQuery({
     queryKey: ["checklist-instances-admin"],
