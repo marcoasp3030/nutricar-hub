@@ -80,7 +80,7 @@ const AdminAdvertisingPage = () => {
   // Package form
   const [pkgDialog, setPkgDialog] = useState(false);
   const [editingPkg, setEditingPkg] = useState<AdPackage | null>(null);
-  const [pkgForm, setPkgForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true });
+  const [pkgForm, setPkgForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
 
   // Contract form
   const [contractDialog, setContractDialog] = useState(false);
