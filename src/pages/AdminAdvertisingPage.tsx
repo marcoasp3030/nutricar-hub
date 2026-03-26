@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search, Copy, LayoutTemplate, Eye, Monitor, CalendarDays, Tv, Play, Grid3X3, Link2, ToggleLeft, ToggleRight, ShoppingBag, Download } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search, Copy, LayoutTemplate, Eye, Monitor, CalendarDays, Tv, Play, Grid3X3, Link2, ToggleLeft, ToggleRight, ShoppingBag, Download, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import { exportToXLSX, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -399,38 +399,23 @@ const AdminAdvertisingPage = () => {
     setEditingTpl(tpl);
     setTplName(tpl.name);
     setTplIsActive(tpl.is_active);
-    // Detect which built-in fields have values
-    const enabled: string[] = [];
-    const vals: Record<string, any> = {};
-    if (tpl.description) { enabled.push("description"); vals.description = tpl.description; }
-    if (tpl.monthly_value) { enabled.push("monthly_value"); vals.monthly_value = String(tpl.monthly_value); }
-    if (tpl.duration_months && tpl.duration_months !== 1) { enabled.push("duration_months"); vals.duration_months = String(tpl.duration_months); }
-    if (tpl.display_frequency && tpl.display_frequency !== "30s a cada 5 min") { enabled.push("display_frequency"); vals.display_frequency = tpl.display_frequency; }
-    if (tpl.media_type) { enabled.push("media_type"); vals.media_type = tpl.media_type; }
-    if (tpl.screen_position) { enabled.push("screen_position"); vals.screen_position = tpl.screen_position; }
-    if (tpl.display_schedule) { enabled.push("display_schedule"); vals.display_schedule = tpl.display_schedule; }
-    if (tpl.content_format) { enabled.push("content_format"); vals.content_format = tpl.content_format; }
-    if (tpl.tags && tpl.tags.length > 0) { enabled.push("tags"); vals.tags = tpl.tags.join(", "); }
-    // Also enable custom field defs that have values
     const cf = { ...((tpl as any).custom_fields || {}) };
-    const storedEnabled: string[] = cf._enabled_fields || [];
+    const storedBuiltinEnabled: string[] = cf._enabled_fields || [];
+    const storedAllEnabled: string[] = cf._enabled_fields_all || storedBuiltinEnabled;
     delete cf._enabled_fields;
-    // If we have stored enabled fields, use those; otherwise fall back to detection
-    if (storedEnabled.length > 0) {
-      // Merge stored builtin enabled with detected custom enabled
-      enabled.length = 0;
-      enabled.push(...storedEnabled);
-      // Rebuild values from stored enabled
-      Object.keys(vals).forEach(k => delete vals[k]);
-      for (const key of storedEnabled) {
-        if (key === "description" && tpl.description) vals.description = tpl.description;
-        else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
-        else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
-        else if (key === "tags" && tpl.tags?.length) vals.tags = tpl.tags.join(", ");
-        else if ((tpl as any)[key]) vals[key] = (tpl as any)[key];
-      }
+    delete cf._enabled_fields_all;
+    
+    // Use stored enabled fields; for old templates without _enabled_fields, start empty
+    const enabled: string[] = [...storedAllEnabled];
+    const vals: Record<string, any> = {};
+    for (const key of storedAllEnabled) {
+      if (key.startsWith("custom_")) continue; // custom fields handled via tplCustomFields
+      if (key === "description" && tpl.description) vals.description = tpl.description;
+      else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
+      else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
+      else if (key === "tags" && tpl.tags?.length) vals.tags = tpl.tags.join(", ");
+      else if ((tpl as any)[key]) vals[key] = (tpl as any)[key];
     }
-    Object.keys(cf).forEach(k => { if (cf[k]) enabled.push(`custom_${k}`); });
     setTplEnabledFields(enabled);
     setTplFieldValues(vals);
     setTplCustomFields(cf);
@@ -449,6 +434,15 @@ const AdminAdvertisingPage = () => {
     } else {
       setTplFieldValues((prev: Record<string, any>) => { const n = { ...prev }; delete n[key]; return n; });
     }
+  };
+  const moveTplField = (index: number, direction: "up" | "down") => {
+    setTplEnabledFields(prev => {
+      const arr = [...prev];
+      const targetIdx = direction === "up" ? index - 1 : index + 1;
+      if (targetIdx < 0 || targetIdx >= arr.length) return prev;
+      [arr[index], arr[targetIdx]] = [arr[targetIdx], arr[index]];
+      return arr;
+    });
   };
   const saveTpl = async () => {
     if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
@@ -473,7 +467,7 @@ const AdminAdvertisingPage = () => {
       content_format: v.content_format || null,
       tags: tagsArr,
       is_active: tplIsActive,
-     custom_fields: { ...tplCustomFields, _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")) },
+     custom_fields: { ...tplCustomFields, _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")), _enabled_fields_all: [...tplEnabledFields] },
     };
     // Set non-enabled built-in fields to null so they don't get auto-detected
     const builtinKeys = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "description", "tags"];
@@ -507,13 +501,18 @@ const AdminAdvertisingPage = () => {
     setEditingPkg(null);
     setPkgName(tpl.name);
     setPkgIsActive(true);
-    // Use stored enabled fields from template instead of auto-detecting
-    const cf = (tpl as any).custom_fields || {};
-    const storedEnabled: string[] = cf._enabled_fields || [];
+    const cf = { ...((tpl as any).custom_fields || {}) };
+    const storedAllEnabled: string[] = cf._enabled_fields_all || cf._enabled_fields || [];
+    delete cf._enabled_fields;
+    delete cf._enabled_fields_all;
+    
+    const builtinEnabled: string[] = [];
     const values: Record<string, any> = {};
-    for (const key of storedEnabled) {
+    for (const key of storedAllEnabled) {
+      if (key.startsWith("custom_")) continue;
       const bf = BUILTIN_FIELDS.find(b => b.key === key);
       if (bf) {
+        builtinEnabled.push(key);
         const val = (tpl as any)[key];
         if (key === "tags") {
           const tags = (tpl as any).tags || [];
@@ -523,15 +522,10 @@ const AdminAdvertisingPage = () => {
         }
       }
     }
-    // Also add custom field entries
-    const customFieldEntries = { ...cf };
-    delete customFieldEntries._enabled_fields;
-    const customEnabled = Object.keys(customFieldEntries).filter(k => customFieldEntries[k]);
-    const allEnabled = [...storedEnabled, ...customEnabled.map(k => `custom_${k}`)];
-    setPkgEnabledFields(storedEnabled);
+    setPkgEnabledFields(builtinEnabled);
     setPkgFieldValues(values);
     setPkgSelectedFornecedores([]);
-    setPkgCustomFields(customFieldEntries);
+    setPkgCustomFields(cf);
     setPkgDialog(true);
     toast.info("Pacote pré-preenchido a partir do template");
   };
@@ -1554,7 +1548,15 @@ const AdminAdvertisingPage = () => {
             <div><Label>Nome *</Label><Input value={tplName} onChange={e => setTplName(e.target.value)} placeholder="Ex: Premium Tela Cheia" /></div>
 
             {/* Enabled fields */}
-            {tplEnabledFields.map(key => {
+            {tplEnabledFields.map((key, idx) => {
+              const isFirst = idx === 0;
+              const isLast = idx === tplEnabledFields.length - 1;
+              const moveButtons = (
+                <div className="flex gap-0.5 absolute top-1 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isFirst} onClick={() => moveTplField(idx, "up")}><ArrowUp className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isLast} onClick={() => moveTplField(idx, "down")}><ArrowDown className="h-3 w-3" /></Button>
+                </div>
+              );
               // Check if it's a custom field
               if (key.startsWith("custom_")) {
                 const fdId = key.replace("custom_", "");
@@ -1562,8 +1564,9 @@ const AdminAdvertisingPage = () => {
                 if (!fd) return null;
                 return (
                   <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
+                    {moveButtons}
                     <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full" onClick={() => removeTplField(key)}><Trash2 className="h-3 w-3" /></Button>
-                    <Label>{fd.name}</Label>
+                    <div className="flex items-center gap-1.5 mb-1"><GripVertical className="h-3.5 w-3.5 text-muted-foreground" /><Label>{fd.name}</Label></div>
                     {fd.field_type === "select" ? (
                       <Select value={tplCustomFields[fdId] || ""} onValueChange={v => setTplCustomFields((prev: Record<string, any>) => ({ ...prev, [fdId]: v }))}>
                         <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -1580,8 +1583,9 @@ const AdminAdvertisingPage = () => {
               if (!fieldDef) return null;
               return (
                 <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
+                  {moveButtons}
                   <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full" onClick={() => removeTplField(key)}><Trash2 className="h-3 w-3" /></Button>
-                  <Label>{fieldDef.label}</Label>
+                  <div className="flex items-center gap-1.5 mb-1"><GripVertical className="h-3.5 w-3.5 text-muted-foreground" /><Label>{fieldDef.label}</Label></div>
                   {fieldDef.type === "textarea" ? (
                     <Textarea value={tplFieldValues[key] || ""} onChange={e => setTplFieldValues(prev => ({ ...prev, [key]: e.target.value }))} rows={2} />
                   ) : fieldDef.type === "select" ? (
