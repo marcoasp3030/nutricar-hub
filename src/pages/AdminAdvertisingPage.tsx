@@ -180,7 +180,7 @@ const AdminAdvertisingPage = () => {
     setContracts(contractRes.data || []);
     setPayments(payRes.data || []);
     setPlaylists(playlistRes.data || []);
-    const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))];
+    const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))].filter(f => f && f.trim() !== "");
     setFornecedores(uniqueF);
     // Build package->fornecedores map
     const pfMap: Record<string, string[]> = {};
