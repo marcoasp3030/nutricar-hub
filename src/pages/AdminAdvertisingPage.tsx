@@ -491,7 +491,7 @@ const AdminAdvertisingPage = () => {
       if (error) { toast.error("Erro ao atualizar template"); return; }
     } else {
       const { error } = await supabase.from("ad_package_templates").insert(payload);
-      if (error) { toast.error("Erro ao criar template"); return; }
+      if (error) { console.error("Erro ao criar template:", error); toast.error("Erro ao criar template"); return; }
     }
     toast.success(editingTpl ? "Template atualizado" : "Template criado");
     setTplDialog(false);
