@@ -1604,7 +1604,7 @@ const AdminAdvertisingPage = () => {
               // Check if it's a custom field
               if (key.startsWith("custom_")) {
                 const fdId = key.replace("custom_", "");
-                const fd = fieldDefs.find(f => f.id === fdId);
+                const fd = tplCustomFieldDefs.find(f => f.id === fdId);
                 if (!fd) return null;
                 return (
                   <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
@@ -1644,35 +1644,37 @@ const AdminAdvertisingPage = () => {
               );
             })}
 
-            {tplEnabledFields.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
-                Template em branco. Use o botão abaixo para adicionar campos.
-              </p>
-            )}
+            <div className="border rounded-md p-3 space-y-3 bg-muted/20">
+              <Label className="text-sm">Novo campo personalizado deste template</Label>
+              <div><Input value={tplNewCustomField.name} onChange={e => setTplNewCustomField(prev => ({ ...prev, name: e.target.value }))} placeholder="Ex: SKU, Forma de pagamento" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={tplNewCustomField.field_type} onValueChange={(v: "text" | "number" | "select") => setTplNewCustomField(prev => ({ ...prev, field_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Texto</SelectItem>
+                    <SelectItem value="number">Número</SelectItem>
+                    <SelectItem value="select">Lista suspensa</SelectItem>
+                  </SelectContent>
+                </Select>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={tplNewCustomField.is_required} onChange={e => setTplNewCustomField(prev => ({ ...prev, is_required: e.target.checked }))} /> Obrigatório</label>
+              </div>
+              {tplNewCustomField.field_type === "select" && <Input value={tplNewCustomField.options} onChange={e => setTplNewCustomField(prev => ({ ...prev, options: e.target.value }))} placeholder="Opções separadas por vírgula" />}
+              <Button type="button" variant="outline" onClick={addTplLocalCustomField}><Plus className="h-4 w-4 mr-1" /> Adicionar campo personalizado</Button>
+            </div>
 
             {/* Add field dropdown */}
             {(() => {
               const availableBuiltin = BUILTIN_TPL_FIELDS.filter(f => !tplEnabledFields.includes(f.key));
-              const availableCustom = fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && !tplEnabledFields.includes(`custom_${fd.id}`));
-              const hasAvailable = availableBuiltin.length > 0 || availableCustom.length > 0;
-              if (!hasAvailable) return null;
+              if (availableBuiltin.length === 0) return null;
               return (
                 <Select value="" onValueChange={v => addTplField(v)}>
                   <SelectTrigger className="border-dashed">
-                    <div className="flex items-center gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Adicionar campo</div>
+                    <div className="flex items-center gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Adicionar campo padrão</div>
                   </SelectTrigger>
                   <SelectContent>
-                    {availableBuiltin.length > 0 && availableBuiltin.map(f => (
+                    {availableBuiltin.map(f => (
                       <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
                     ))}
-                    {availableCustom.length > 0 && (
-                      <>
-                        {availableBuiltin.length > 0 && <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Campos Personalizados</div>}
-                        {availableCustom.map(fd => (
-                          <SelectItem key={`custom_${fd.id}`} value={`custom_${fd.id}`}>{fd.name}</SelectItem>
-                        ))}
-                      </>
-                    )}
                   </SelectContent>
                 </Select>
               );
