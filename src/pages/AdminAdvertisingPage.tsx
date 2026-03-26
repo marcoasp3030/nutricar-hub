@@ -310,17 +310,19 @@ const AdminAdvertisingPage = () => {
   const openTplCreate = () => {
     setEditingTpl(null);
     setTplForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
+    setTplCustomFields({});
     setTplDialog(true);
   };
   const openTplEdit = (tpl: AdPackageTemplate) => {
     setEditingTpl(tpl);
     setTplForm({ name: tpl.name, description: tpl.description || "", monthly_value: String(tpl.monthly_value), duration_months: String(tpl.duration_months), display_frequency: tpl.display_frequency, media_type: tpl.media_type || "video", screen_position: tpl.screen_position || "tela_cheia", display_schedule: tpl.display_schedule || "integral", content_format: tpl.content_format || "16:9", tags: (tpl.tags || []).join(", "), is_active: tpl.is_active });
+    setTplCustomFields((tpl as any).custom_fields || {});
     setTplDialog(true);
   };
   const saveTpl = async () => {
     if (!tplForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
     const tagsArr = tplForm.tags ? tplForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    const payload = { name: tplForm.name, description: tplForm.description || null, monthly_value: parseFloat(tplForm.monthly_value) || 0, duration_months: parseInt(tplForm.duration_months) || 1, display_frequency: tplForm.display_frequency, media_type: tplForm.media_type, screen_position: tplForm.screen_position, display_schedule: tplForm.display_schedule, content_format: tplForm.content_format, tags: tagsArr, is_active: tplForm.is_active };
+    const payload: any = { name: tplForm.name, description: tplForm.description || null, monthly_value: parseFloat(tplForm.monthly_value) || 0, duration_months: parseInt(tplForm.duration_months) || 1, display_frequency: tplForm.display_frequency, media_type: tplForm.media_type, screen_position: tplForm.screen_position, display_schedule: tplForm.display_schedule, content_format: tplForm.content_format, tags: tagsArr, is_active: tplForm.is_active, custom_fields: tplCustomFields };
     if (editingTpl) {
       const { error } = await supabase.from("ad_package_templates").update(payload).eq("id", editingTpl.id);
       if (error) { toast.error("Erro ao atualizar template"); return; }
@@ -355,6 +357,7 @@ const AdminAdvertisingPage = () => {
     });
     setEditingPkg(null);
     setPkgSelectedFornecedores([]);
+    setPkgCustomFields((tpl as any).custom_fields || {});
     setPkgDialog(true);
     toast.info("Pacote pré-preenchido a partir do template");
   };
