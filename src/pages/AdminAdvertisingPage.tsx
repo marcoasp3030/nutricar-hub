@@ -95,8 +95,9 @@ interface AdPackageTemplate {
   custom_fields?: any;
 }
 
-// Built-in fields available for templates
-const BUILTIN_TPL_FIELDS: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] }[] = [
+// Built-in fields available for templates and packages
+type BuiltinField = { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] };
+const BUILTIN_FIELDS: BuiltinField[] = [
   { key: "description", label: "Descrição", type: "textarea" },
   { key: "monthly_value", label: "Valor Mensal (R$)", type: "number" },
   { key: "duration_months", label: "Duração (meses)", type: "number" },
@@ -105,8 +106,11 @@ const BUILTIN_TPL_FIELDS: { key: string; label: string; type: "text" | "number" 
   { key: "screen_position", label: "Posição na Tela", type: "select", options: [{ value: "tela_cheia", label: "Tela Cheia" }, { value: "rodape", label: "Rodapé" }, { value: "lateral", label: "Lateral" }, { value: "topo", label: "Topo" }] },
   { key: "display_schedule", label: "Horário de Exibição", type: "select", options: [{ value: "integral", label: "Integral" }, { value: "manha", label: "Manhã" }, { value: "tarde", label: "Tarde" }, { value: "noite", label: "Noite" }, { value: "horario_comercial", label: "Horário Comercial" }] },
   { key: "content_format", label: "Formato do Conteúdo", type: "select", options: [{ value: "16:9", label: "16:9 (Paisagem)" }, { value: "9:16", label: "9:16 (Retrato)" }, { value: "1:1", label: "1:1 (Quadrado)" }, { value: "4:3", label: "4:3" }] },
+  { key: "playlist_id", label: "Playlist Vinculada", type: "select" },
   { key: "tags", label: "Tags", type: "text" },
 ];
+// Alias for backward compat
+const BUILTIN_TPL_FIELDS = BUILTIN_FIELDS;
 
 interface AdContract {
   id: string;
@@ -173,10 +177,13 @@ const AdminAdvertisingPage = () => {
   const [tplEnabledFields, setTplEnabledFields] = useState<string[]>([]);
   const [tplFieldValues, setTplFieldValues] = useState<Record<string, any>>({});
 
-  // Package form
+  // Package form - dynamic fields (same pattern as templates)
   const [pkgDialog, setPkgDialog] = useState(false);
   const [editingPkg, setEditingPkg] = useState<AdPackage | null>(null);
-  const [pkgForm, setPkgForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
+  const [pkgName, setPkgName] = useState("");
+  const [pkgIsActive, setPkgIsActive] = useState(true);
+  const [pkgEnabledFields, setPkgEnabledFields] = useState<string[]>([]);
+  const [pkgFieldValues, setPkgFieldValues] = useState<Record<string, any>>({});
   const [pkgSelectedFornecedores, setPkgSelectedFornecedores] = useState<string[]>([]);
 
   // Contract form
@@ -276,23 +283,55 @@ const AdminAdvertisingPage = () => {
   // Helper: get field defs for a target
   const getFieldsFor = (target: "packages" | "templates") => fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === target));
 
-  // === Package CRUD ===
+  // === Package CRUD (dynamic fields) ===
+  const detectPkgEnabledFields = (pkg: any) => {
+    const enabled: string[] = [];
+    const values: Record<string, any> = {};
+    for (const bf of BUILTIN_FIELDS) {
+      const val = pkg[bf.key];
+      if (bf.key === "tags") {
+        const tags = pkg.tags || [];
+        if (tags.length > 0) { enabled.push(bf.key); values[bf.key] = tags.join(", "); }
+      } else if (bf.key === "playlist_id") {
+        if (val) { enabled.push(bf.key); values[bf.key] = val; }
+      } else if (val !== null && val !== undefined && String(val).trim() !== "" && val !== 0) {
+        enabled.push(bf.key);
+        values[bf.key] = String(val);
+      }
+    }
+    return { enabled, values };
+  };
+
   const openPkgCreate = () => {
     setEditingPkg(null);
-    setPkgForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
+    setPkgName("");
+    setPkgIsActive(true);
+    setPkgEnabledFields([]);
+    setPkgFieldValues({});
     setPkgSelectedFornecedores([]);
     setPkgCustomFields({});
     setPkgDialog(true);
   };
   const openPkgEdit = (pkg: AdPackage) => {
     setEditingPkg(pkg);
-    setPkgForm({ name: pkg.name, description: pkg.description || "", monthly_value: String(pkg.monthly_value), duration_months: String(pkg.duration_months), display_frequency: pkg.display_frequency, playlist_id: pkg.playlist_id || "", is_active: pkg.is_active, media_type: (pkg as any).media_type || "video", screen_position: (pkg as any).screen_position || "tela_cheia", display_schedule: (pkg as any).display_schedule || "integral", content_format: (pkg as any).content_format || "16:9", tags: ((pkg as any).tags || []).join(", ") });
+    setPkgName(pkg.name);
+    setPkgIsActive(pkg.is_active);
+    const { enabled, values } = detectPkgEnabledFields(pkg);
+    setPkgEnabledFields(enabled);
+    setPkgFieldValues(values);
     setPkgSelectedFornecedores(packageFornecedores[pkg.id] || []);
     setPkgCustomFields((pkg as any).custom_fields || {});
     setPkgDialog(true);
   };
+  const addPkgField = (key: string) => {
+    if (!pkgEnabledFields.includes(key)) setPkgEnabledFields(prev => [...prev, key]);
+  };
+  const removePkgField = (key: string) => {
+    setPkgEnabledFields(prev => prev.filter(k => k !== key));
+    setPkgFieldValues(prev => { const n = { ...prev }; delete n[key]; return n; });
+  };
   const savePkg = async () => {
-    if (!pkgForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
+    if (!pkgName.trim()) { toast.error("Nome é obrigatório"); return; }
     // Validate required custom fields
     const requiredPkgFields = getFieldsFor("packages").filter(fd => fd.is_required);
     const missingPkg = requiredPkgFields.filter(fd => !pkgCustomFields[fd.id] || String(pkgCustomFields[fd.id]).trim() === "");
@@ -300,8 +339,23 @@ const AdminAdvertisingPage = () => {
       toast.error(`Preencha os campos obrigatórios: ${missingPkg.map(f => f.name).join(", ")}`);
       return;
     }
-    const tagsArr = pkgForm.tags ? pkgForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    const payload: any = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr, custom_fields: pkgCustomFields };
+    const v = pkgFieldValues;
+    const tagsArr = v.tags ? String(v.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+    const payload: any = {
+      name: pkgName,
+      description: v.description || null,
+      monthly_value: parseFloat(v.monthly_value) || 0,
+      duration_months: parseInt(v.duration_months) || 1,
+      display_frequency: v.display_frequency || "30s a cada 5 min",
+      playlist_id: v.playlist_id || null,
+      is_active: pkgIsActive,
+      media_type: v.media_type || null,
+      screen_position: v.screen_position || null,
+      display_schedule: v.display_schedule || null,
+      content_format: v.content_format || null,
+      tags: tagsArr,
+      custom_fields: pkgCustomFields,
+    };
     let pkgId = editingPkg?.id;
     if (editingPkg) {
       const { error } = await supabase.from("ad_packages").update(payload).eq("id", editingPkg.id);
@@ -422,21 +476,12 @@ const AdminAdvertisingPage = () => {
     fetchAll();
   };
   const createPkgFromTemplate = (tpl: AdPackageTemplate) => {
-    setPkgForm({
-      name: tpl.name,
-      description: tpl.description || "",
-      monthly_value: String(tpl.monthly_value),
-      duration_months: String(tpl.duration_months),
-      display_frequency: tpl.display_frequency,
-      media_type: tpl.media_type || "video",
-      screen_position: tpl.screen_position || "tela_cheia",
-      display_schedule: tpl.display_schedule || "integral",
-      content_format: tpl.content_format || "16:9",
-      tags: (tpl.tags || []).join(", "),
-      playlist_id: "",
-      is_active: true,
-    });
     setEditingPkg(null);
+    setPkgName(tpl.name);
+    setPkgIsActive(true);
+    const { enabled, values } = detectPkgEnabledFields(tpl);
+    setPkgEnabledFields(enabled);
+    setPkgFieldValues(values);
     setPkgSelectedFornecedores([]);
     setPkgCustomFields((tpl as any).custom_fields || {});
     setPkgDialog(true);
@@ -881,22 +926,14 @@ const AdminAdvertisingPage = () => {
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => {
                               // Duplicate package
-                              setPkgForm({
-                                name: `${pkg.name} (Cópia)`,
-                                description: pkg.description || "",
-                                monthly_value: String(pkg.monthly_value),
-                                duration_months: String(pkg.duration_months),
-                                display_frequency: pkg.display_frequency,
-                                media_type: (pkg as any).media_type || "video",
-                                screen_position: (pkg as any).screen_position || "tela_cheia",
-                                display_schedule: (pkg as any).display_schedule || "integral",
-                                content_format: (pkg as any).content_format || "16:9",
-                                tags: ((pkg as any).tags || []).join(", "),
-                                playlist_id: pkg.playlist_id || "",
-                                is_active: true,
-                              });
                               setEditingPkg(null);
+                              setPkgName(`${pkg.name} (Cópia)`);
+                              setPkgIsActive(true);
+                              const { enabled, values } = detectPkgEnabledFields(pkg);
+                              setPkgEnabledFields(enabled);
+                              setPkgFieldValues(values);
                               setPkgSelectedFornecedores(assignedF);
+                              setPkgCustomFields((pkg as any).custom_fields || {});
                               setPkgDialog(true);
                             }}>
                               <Copy className="h-3.5 w-3.5" />
@@ -1244,82 +1281,67 @@ const AdminAdvertisingPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* === Package Dialog === */}
+      {/* === Package Dialog (dynamic fields) === */}
       <Dialog open={pkgDialog} onOpenChange={setPkgDialog}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>{editingPkg ? "Editar Pacote" : "Novo Pacote"}</DialogTitle></DialogHeader>
           <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-            <div><Label>Nome</Label><Input value={pkgForm.name} onChange={e => setPkgForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>Descrição</Label><Textarea value={pkgForm.description} onChange={e => setPkgForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor Mensal (R$)</Label><Input type="number" step="0.01" value={pkgForm.monthly_value} onChange={e => setPkgForm(f => ({ ...f, monthly_value: e.target.value }))} /></div>
-              <div><Label>Duração (meses)</Label><Input type="number" value={pkgForm.duration_months} onChange={e => setPkgForm(f => ({ ...f, duration_months: e.target.value }))} /></div>
-            </div>
-            <div><Label>Frequência de Exibição</Label><Input value={pkgForm.display_frequency} onChange={e => setPkgForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Tipo de Mídia</Label>
-                <Select value={pkgForm.media_type} onValueChange={v => setPkgForm(f => ({ ...f, media_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+            <div><Label>Nome *</Label><Input value={pkgName} onChange={e => setPkgName(e.target.value)} /></div>
+
+            {/* Dynamic built-in fields */}
+            {pkgEnabledFields.map(key => {
+              const bf = BUILTIN_FIELDS.find(f => f.key === key);
+              if (!bf) return null;
+              // Special handling for playlist_id
+              if (bf.key === "playlist_id") {
+                return (
+                  <div key={key} className="relative group">
+                    <Label>{bf.label}</Label>
+                    <Select value={pkgFieldValues[key] || "none"} onValueChange={v => setPkgFieldValues(prev => ({ ...prev, [key]: v === "none" ? "" : v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar playlist" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <button type="button" className="absolute top-0 right-0 text-muted-foreground hover:text-destructive" onClick={() => removePkgField(key)}><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                );
+              }
+              return (
+                <div key={key} className="relative group">
+                  <Label>{bf.label}</Label>
+                  {bf.type === "textarea" ? (
+                    <Textarea value={pkgFieldValues[key] || ""} onChange={e => setPkgFieldValues(prev => ({ ...prev, [key]: e.target.value }))} rows={2} />
+                  ) : bf.type === "select" && bf.options ? (
+                    <Select value={pkgFieldValues[key] || ""} onValueChange={v => setPkgFieldValues(prev => ({ ...prev, [key]: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        {bf.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input type={bf.type === "number" ? "number" : "text"} step={bf.type === "number" ? "0.01" : undefined} value={pkgFieldValues[key] || ""} onChange={e => setPkgFieldValues(prev => ({ ...prev, [key]: e.target.value }))} placeholder={bf.key === "tags" ? "Ex: destaque, premium (separadas por vírgula)" : undefined} />
+                  )}
+                  <button type="button" className="absolute top-0 right-0 text-muted-foreground hover:text-destructive" onClick={() => removePkgField(key)}><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              );
+            })}
+
+            {/* Add field dropdown */}
+            {(() => {
+              const available = BUILTIN_FIELDS.filter(bf => !pkgEnabledFields.includes(bf.key));
+              if (available.length === 0) return null;
+              return (
+                <Select value="" onValueChange={v => addPkgField(v)}>
+                  <SelectTrigger className="border-dashed"><Plus className="h-4 w-4 mr-1" /><SelectValue placeholder="Adicionar campo" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="video">Vídeo</SelectItem>
-                    <SelectItem value="banner">Banner</SelectItem>
-                    <SelectItem value="slide">Slide</SelectItem>
-                    <SelectItem value="institucional">Institucional</SelectItem>
+                    {available.map(bf => <SelectItem key={bf.key} value={bf.key}>{bf.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label>Posição na Tela</Label>
-                <Select value={pkgForm.screen_position} onValueChange={v => setPkgForm(f => ({ ...f, screen_position: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tela_cheia">Tela Cheia</SelectItem>
-                    <SelectItem value="rodape">Rodapé</SelectItem>
-                    <SelectItem value="lateral">Lateral</SelectItem>
-                    <SelectItem value="topo">Topo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Horário de Exibição</Label>
-                <Select value={pkgForm.display_schedule} onValueChange={v => setPkgForm(f => ({ ...f, display_schedule: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="integral">Integral</SelectItem>
-                    <SelectItem value="manha">Manhã</SelectItem>
-                    <SelectItem value="tarde">Tarde</SelectItem>
-                    <SelectItem value="noite">Noite</SelectItem>
-                    <SelectItem value="horario_comercial">Horário Comercial</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Formato do Conteúdo</Label>
-                <Select value={pkgForm.content_format} onValueChange={v => setPkgForm(f => ({ ...f, content_format: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="16:9">16:9 (Paisagem)</SelectItem>
-                    <SelectItem value="9:16">9:16 (Retrato)</SelectItem>
-                    <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
-                    <SelectItem value="4:3">4:3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Playlist Vinculada</Label>
-              <Select value={pkgForm.playlist_id || "none"} onValueChange={v => setPkgForm(f => ({ ...f, playlist_id: v === "none" ? "" : v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecionar playlist" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
+              );
+            })()}
+
             {renderCustomFields("packages", pkgCustomFields, setPkgCustomFields)}
             <FornecedorSelector
               fornecedores={fornecedores}
@@ -1327,7 +1349,7 @@ const AdminAdvertisingPage = () => {
               onChange={setPkgSelectedFornecedores}
             />
             <div className="flex items-center gap-2">
-              <input type="checkbox" checked={pkgForm.is_active} onChange={e => setPkgForm(f => ({ ...f, is_active: e.target.checked }))} id="pkg-active" />
+              <input type="checkbox" checked={pkgIsActive} onChange={e => setPkgIsActive(e.target.checked)} id="pkg-active" />
               <Label htmlFor="pkg-active">Ativo</Label>
             </div>
           </div>
