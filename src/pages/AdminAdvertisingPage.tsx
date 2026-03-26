@@ -1548,7 +1548,15 @@ const AdminAdvertisingPage = () => {
             <div><Label>Nome *</Label><Input value={tplName} onChange={e => setTplName(e.target.value)} placeholder="Ex: Premium Tela Cheia" /></div>
 
             {/* Enabled fields */}
-            {tplEnabledFields.map(key => {
+            {tplEnabledFields.map((key, idx) => {
+              const isFirst = idx === 0;
+              const isLast = idx === tplEnabledFields.length - 1;
+              const moveButtons = (
+                <div className="flex gap-0.5 absolute top-1 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isFirst} onClick={() => moveTplField(idx, "up")}><ArrowUp className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isLast} onClick={() => moveTplField(idx, "down")}><ArrowDown className="h-3 w-3" /></Button>
+                </div>
+              );
               // Check if it's a custom field
               if (key.startsWith("custom_")) {
                 const fdId = key.replace("custom_", "");
@@ -1556,8 +1564,9 @@ const AdminAdvertisingPage = () => {
                 if (!fd) return null;
                 return (
                   <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
+                    {moveButtons}
                     <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full" onClick={() => removeTplField(key)}><Trash2 className="h-3 w-3" /></Button>
-                    <Label>{fd.name}</Label>
+                    <div className="flex items-center gap-1.5 mb-1"><GripVertical className="h-3.5 w-3.5 text-muted-foreground" /><Label>{fd.name}</Label></div>
                     {fd.field_type === "select" ? (
                       <Select value={tplCustomFields[fdId] || ""} onValueChange={v => setTplCustomFields((prev: Record<string, any>) => ({ ...prev, [fdId]: v }))}>
                         <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -1574,8 +1583,9 @@ const AdminAdvertisingPage = () => {
               if (!fieldDef) return null;
               return (
                 <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
+                  {moveButtons}
                   <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full" onClick={() => removeTplField(key)}><Trash2 className="h-3 w-3" /></Button>
-                  <Label>{fieldDef.label}</Label>
+                  <div className="flex items-center gap-1.5 mb-1"><GripVertical className="h-3.5 w-3.5 text-muted-foreground" /><Label>{fieldDef.label}</Label></div>
                   {fieldDef.type === "textarea" ? (
                     <Textarea value={tplFieldValues[key] || ""} onChange={e => setTplFieldValues(prev => ({ ...prev, [key]: e.target.value }))} rows={2} />
                   ) : fieldDef.type === "select" ? (
