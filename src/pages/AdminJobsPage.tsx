@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
+import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, deleteEventJob, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
 import { fetchTemplates, ChecklistTemplate } from "@/lib/checklistApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { Plus, Calendar, CalendarDays, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase, Star, Image, ClipboardList } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Calendar, CalendarDays, MapPin, DollarSign, Users, Eye, UserPlus, CheckCircle, Send, Briefcase, Star, Image, ClipboardList, Trash2, Edit, MoreVertical, Copy } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -48,6 +50,7 @@ const AdminJobsPage = () => {
   const [detailJob, setDetailJob] = useState<EventJob | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<EventJob | null>(null);
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["event_jobs", tab],
@@ -105,6 +108,29 @@ const AdminJobsPage = () => {
       createJobPayment({ assignment_id: assignmentId, amount }),
     onSuccess: () => toast({ title: "Pagamento criado!" }),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteEventJob(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event_jobs"] });
+      toast({ title: "Evento excluído!" });
+      setDeleteConfirm(null);
+      setDetailJob(null);
+    },
+    onError: (e: any) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
+  });
+
+  const duplicateJob = (job: EventJob) => {
+    const { id, created_at, updated_at, event_type, ...rest } = job as any;
+    setForm({
+      ...rest,
+      title: `${rest.title} (cópia)`,
+      status: "rascunho",
+      start_date: rest.start_date?.split("T")[0],
+      end_date: rest.end_date?.split("T")[0],
+    });
+    setFormOpen(true);
+  };
 
   const openNewJob = () => {
     setForm({
@@ -181,15 +207,50 @@ const AdminJobsPage = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredJobs.map((job) => (
-            <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDetailJob(job)}>
+            <Card key={job.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base truncate">{job.title}</CardTitle>
-                  <Badge variant={statusColors[job.status] as any}>{statusLabels[job.status]}</Badge>
+                  <CardTitle className="text-base truncate cursor-pointer" onClick={() => setDetailJob(job)}>{job.title}</CardTitle>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={statusColors[job.status] as any}>{statusLabels[job.status]}</Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setDetailJob(job)}>
+                          <Eye className="h-4 w-4 mr-2" /> Ver Detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditJob(job)}>
+                          <Edit className="h-4 w-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => duplicateJob(job)}>
+                          <Copy className="h-4 w-4 mr-2" /> Duplicar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {job.status === "rascunho" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: job.id, status: "publicado" })}>
+                            <Send className="h-4 w-4 mr-2" /> Publicar
+                          </DropdownMenuItem>
+                        )}
+                        {job.status !== "cancelado" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: job.id, status: "cancelado" })} className="text-orange-600">
+                            Cancelar Evento
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setDeleteConfirm(job)} className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
                 {job.event_type && <Badge variant="outline" className="text-xs w-fit">{(job.event_type as any).name}</Badge>}
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2 cursor-pointer" onClick={() => setDetailJob(job)}>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
                   {job.start_date ? format(new Date(job.start_date), "dd/MM/yyyy") : "—"}
@@ -386,17 +447,41 @@ const AdminJobsPage = () => {
               assignMutation={assignMutation}
               onEdit={openEditJob}
               onClose={() => setDetailJob(null)}
+              onDelete={() => { setDetailJob(null); setDeleteConfirm(detailJob); }}
+              onDuplicate={() => { setDetailJob(null); duplicateJob(detailJob); }}
               qc={qc}
             />
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir evento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o evento "{deleteConfirm?.title}"? Esta ação irá remover todos os convites, atribuições, pagamentos e logs relacionados. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteConfirm && deleteMutation.mutate(deleteConfirm.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 // Job Detail with assignments, evidences, and admin rating
-const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assignMutation, onEdit, onClose, qc }: any) => {
+const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assignMutation, onEdit, onClose, onDelete, onDuplicate, qc }: any) => {
   const [adminRating, setAdminRating] = useState(0);
   const [adminComment, setAdminComment] = useState("");
   const [ratingAssignmentId, setRatingAssignmentId] = useState<string | null>(null);
@@ -452,10 +537,12 @@ const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assi
             Concluir
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => onEdit(job)}>Editar</Button>
+        <Button size="sm" variant="outline" onClick={() => onEdit(job)}><Edit className="h-3 w-3 mr-1" /> Editar</Button>
+        <Button size="sm" variant="outline" onClick={onDuplicate}><Copy className="h-3 w-3 mr-1" /> Duplicar</Button>
         {job.status !== "cancelado" && (
           <Button size="sm" variant="destructive" onClick={() => { statusMutation.mutate({ id: job.id, status: "cancelado" }); onClose(); }}>Cancelar</Button>
         )}
+        <Button size="sm" variant="destructive" onClick={onDelete}><Trash2 className="h-3 w-3 mr-1" /> Excluir</Button>
       </div>
 
       {/* Assignments & Evidences */}

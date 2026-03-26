@@ -208,6 +208,20 @@ export const upsertEventJob = async (job: Partial<EventJob>) => {
   return data as EventJob;
 };
 
+export const deleteEventJob = async (id: string) => {
+  // Delete related records first
+  const { data: assignments } = await supabase.from('job_assignments').select('id').eq('job_id', id);
+  if (assignments?.length) {
+    const assignmentIds = assignments.map((a: any) => a.id);
+    await supabase.from('job_payments').delete().in('assignment_id', assignmentIds as any);
+    await supabase.from('job_assignments').delete().eq('job_id', id as any);
+  }
+  await supabase.from('job_invites').delete().eq('job_id', id as any);
+  await supabase.from('job_audit_log').delete().eq('job_id', id as any);
+  const { error } = await supabase.from('event_jobs').delete().eq('id', id as any);
+  if (error) throw error;
+};
+
 export const updateJobStatus = async (id: string, status: EventJob['status']) => {
   const { error } = await supabase
     .from('event_jobs')
