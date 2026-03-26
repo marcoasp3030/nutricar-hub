@@ -456,8 +456,18 @@ const AdminAdvertisingPage = () => {
       content_format: v.content_format || null,
       tags: tagsArr,
       is_active: tplIsActive,
-      custom_fields: tplCustomFields,
+     custom_fields: { ...tplCustomFields, _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")) },
     };
+    // Set non-enabled built-in fields to null so they don't get auto-detected
+    const builtinKeys = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "description", "tags"];
+    for (const bk of builtinKeys) {
+      if (!tplEnabledFields.includes(bk)) {
+        if (bk === "monthly_value") payload[bk] = 0;
+        else if (bk === "duration_months") payload[bk] = 0;
+        else if (bk === "tags") payload[bk] = [];
+        else payload[bk] = null;
+      }
+    }
     if (editingTpl) {
       const { error } = await supabase.from("ad_package_templates").update(payload).eq("id", editingTpl.id);
       if (error) { toast.error("Erro ao atualizar template"); return; }
