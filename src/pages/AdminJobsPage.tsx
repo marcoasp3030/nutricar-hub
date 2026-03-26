@@ -481,7 +481,7 @@ const AdminJobsPage = () => {
 };
 
 // Job Detail with assignments, evidences, and admin rating
-const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assignMutation, onEdit, onClose, qc }: any) => {
+const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assignMutation, onEdit, onClose, onDelete, onDuplicate, qc }: any) => {
   const [adminRating, setAdminRating] = useState(0);
   const [adminComment, setAdminComment] = useState("");
   const [ratingAssignmentId, setRatingAssignmentId] = useState<string | null>(null);
