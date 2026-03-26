@@ -292,6 +292,14 @@ const AdminAdvertisingPage = () => {
     setPkgDialog(true);
   };
   const savePkg = async () => {
+    if (!pkgForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
+    // Validate required custom fields
+    const requiredPkgFields = getFieldsFor("packages").filter(fd => fd.is_required);
+    const missingPkg = requiredPkgFields.filter(fd => !pkgCustomFields[fd.id] || String(pkgCustomFields[fd.id]).trim() === "");
+    if (missingPkg.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${missingPkg.map(f => f.name).join(", ")}`);
+      return;
+    }
     const tagsArr = pkgForm.tags ? pkgForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
     const payload: any = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr, custom_fields: pkgCustomFields };
     let pkgId = editingPkg?.id;
@@ -373,6 +381,13 @@ const AdminAdvertisingPage = () => {
   };
   const saveTpl = async () => {
     if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
+    // Validate required custom fields that are enabled
+    const requiredTplFields = fieldDefs.filter(fd => fd.is_required && fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && tplEnabledFields.includes(`custom_${fd.id}`));
+    const missingTpl = requiredTplFields.filter(fd => !tplCustomFields[fd.id] || String(tplCustomFields[fd.id]).trim() === "");
+    if (missingTpl.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${missingTpl.map(f => f.name).join(", ")}`);
+      return;
+    }
     const v = tplFieldValues;
     const tagsArr = v.tags ? String(v.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [];
     const payload: any = {
