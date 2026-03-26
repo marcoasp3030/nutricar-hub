@@ -900,6 +900,26 @@ const AdminAdvertisingPage = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="min-w-[120px]">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Período de</Label>
+                      <Select value={payFilterFrom} onValueChange={setPayFilterFrom}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Início</SelectItem>
+                          {allMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="min-w-[120px]">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Período até</Label>
+                      <Select value={payFilterTo} onValueChange={setPayFilterTo}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Fim</SelectItem>
+                          {allMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     {hasActiveFilters && (
                       <Button variant="ghost" size="sm" onClick={clearPayFilters} className="text-xs h-9">
                         <XCircle className="h-3.5 w-3.5 mr-1" /> Limpar filtros
