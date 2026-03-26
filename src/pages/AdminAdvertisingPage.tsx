@@ -403,6 +403,8 @@ const AdminAdvertisingPage = () => {
     setTplEnabledFields([]);
     setTplFieldValues({});
     setTplCustomFields({});
+    setTplCustomFieldDefs([]);
+    setTplNewCustomField({ name: "", field_type: "text", options: "", is_required: false });
     setTplDialog(true);
   };
   const openTplEdit = (tpl: AdPackageTemplate) => {
