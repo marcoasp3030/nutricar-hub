@@ -859,9 +859,11 @@ const AdminAdvertisingPage = () => {
               setPayFilterFornecedor("__all__");
               setPayFilterStatus("__all__");
               setPayFilterMethod("__all__");
+              setPayFilterFrom("__all__");
+              setPayFilterTo("__all__");
             };
 
-            const hasActiveFilters = payFilterFornecedor !== "__all__" || payFilterStatus !== "__all__" || payFilterMethod !== "__all__";
+            const hasActiveFilters = payFilterFornecedor !== "__all__" || payFilterStatus !== "__all__" || payFilterMethod !== "__all__" || payFilterFrom !== "__all__" || payFilterTo !== "__all__";
 
             return (
               <>
