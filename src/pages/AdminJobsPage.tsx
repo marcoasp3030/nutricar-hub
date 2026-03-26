@@ -207,15 +207,50 @@ const AdminJobsPage = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredJobs.map((job) => (
-            <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDetailJob(job)}>
+            <Card key={job.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base truncate">{job.title}</CardTitle>
-                  <Badge variant={statusColors[job.status] as any}>{statusLabels[job.status]}</Badge>
+                  <CardTitle className="text-base truncate cursor-pointer" onClick={() => setDetailJob(job)}>{job.title}</CardTitle>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={statusColors[job.status] as any}>{statusLabels[job.status]}</Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setDetailJob(job)}>
+                          <Eye className="h-4 w-4 mr-2" /> Ver Detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditJob(job)}>
+                          <Edit className="h-4 w-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => duplicateJob(job)}>
+                          <Copy className="h-4 w-4 mr-2" /> Duplicar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {job.status === "rascunho" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: job.id, status: "publicado" })}>
+                            <Send className="h-4 w-4 mr-2" /> Publicar
+                          </DropdownMenuItem>
+                        )}
+                        {job.status !== "cancelado" && (
+                          <DropdownMenuItem onClick={() => statusMutation.mutate({ id: job.id, status: "cancelado" })} className="text-orange-600">
+                            Cancelar Evento
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setDeleteConfirm(job)} className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
                 {job.event_type && <Badge variant="outline" className="text-xs w-fit">{(job.event_type as any).name}</Badge>}
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2 cursor-pointer" onClick={() => setDetailJob(job)}>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
                   {job.start_date ? format(new Date(job.start_date), "dd/MM/yyyy") : "—"}
