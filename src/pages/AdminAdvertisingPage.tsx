@@ -435,6 +435,15 @@ const AdminAdvertisingPage = () => {
       setTplFieldValues((prev: Record<string, any>) => { const n = { ...prev }; delete n[key]; return n; });
     }
   };
+  const moveTplField = (index: number, direction: "up" | "down") => {
+    setTplEnabledFields(prev => {
+      const arr = [...prev];
+      const targetIdx = direction === "up" ? index - 1 : index + 1;
+      if (targetIdx < 0 || targetIdx >= arr.length) return prev;
+      [arr[index], arr[targetIdx]] = [arr[targetIdx], arr[index]];
+      return arr;
+    });
+  };
   const saveTpl = async () => {
     if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
     // Validate required custom fields that are enabled
