@@ -1450,6 +1450,51 @@ const AdminAdvertisingPage = () => {
           <Button className="w-full mt-2" onClick={saveTpl}>{editingTpl ? "Salvar" : "Criar"}</Button>
         </DialogContent>
       </Dialog>
+
+      {/* === Field Definition Dialog === */}
+      <Dialog open={fieldDefDialog} onOpenChange={setFieldDefDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{editingFieldDef ? "Editar Campo" : "Novo Campo Personalizado"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome do Campo</Label><Input value={fieldDefForm.name} onChange={e => setFieldDefForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Resolução do Vídeo" /></div>
+            <div>
+              <Label>Tipo</Label>
+              <Select value={fieldDefForm.field_type} onValueChange={v => setFieldDefForm(f => ({ ...f, field_type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Texto Livre</SelectItem>
+                  <SelectItem value="number">Número</SelectItem>
+                  <SelectItem value="select">Lista Suspensa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {fieldDefForm.field_type === "select" && (
+              <div>
+                <Label>Opções da Lista</Label>
+                <Input value={fieldDefForm.options} onChange={e => setFieldDefForm(f => ({ ...f, options: e.target.value }))} placeholder="Opção 1, Opção 2, Opção 3 (separadas por vírgula)" />
+                <p className="text-xs text-muted-foreground mt-1">Separe as opções por vírgula</p>
+              </div>
+            )}
+            <div>
+              <Label>Aplica-se a</Label>
+              <Select value={fieldDefForm.applies_to} onValueChange={v => setFieldDefForm(f => ({ ...f, applies_to: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="both">Pacotes & Templates</SelectItem>
+                  <SelectItem value="packages">Apenas Pacotes</SelectItem>
+                  <SelectItem value="templates">Apenas Templates</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Ordem de Exibição</Label><Input type="number" value={fieldDefForm.sort_order} onChange={e => setFieldDefForm(f => ({ ...f, sort_order: e.target.value }))} /></div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" checked={fieldDefForm.is_required} onChange={e => setFieldDefForm(f => ({ ...f, is_required: e.target.checked }))} id="fd-required" />
+              <Label htmlFor="fd-required">Campo Obrigatório</Label>
+            </div>
+            <Button className="w-full" onClick={saveFieldDef}>{editingFieldDef ? "Salvar" : "Criar"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
