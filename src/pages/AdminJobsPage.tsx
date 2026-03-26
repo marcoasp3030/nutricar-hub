@@ -537,10 +537,12 @@ const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assi
             Concluir
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => onEdit(job)}>Editar</Button>
+        <Button size="sm" variant="outline" onClick={() => onEdit(job)}><Edit className="h-3 w-3 mr-1" /> Editar</Button>
+        <Button size="sm" variant="outline" onClick={onDuplicate}><Copy className="h-3 w-3 mr-1" /> Duplicar</Button>
         {job.status !== "cancelado" && (
           <Button size="sm" variant="destructive" onClick={() => { statusMutation.mutate({ id: job.id, status: "cancelado" }); onClose(); }}>Cancelar</Button>
         )}
+        <Button size="sm" variant="destructive" onClick={onDelete}><Trash2 className="h-3 w-3 mr-1" /> Excluir</Button>
       </div>
 
       {/* Assignments & Evidences */}
