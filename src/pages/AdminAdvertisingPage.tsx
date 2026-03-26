@@ -95,8 +95,9 @@ interface AdPackageTemplate {
   custom_fields?: any;
 }
 
-// Built-in fields available for templates
-const BUILTIN_TPL_FIELDS: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] }[] = [
+// Built-in fields available for templates and packages
+type BuiltinField = { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] };
+const BUILTIN_FIELDS: BuiltinField[] = [
   { key: "description", label: "Descrição", type: "textarea" },
   { key: "monthly_value", label: "Valor Mensal (R$)", type: "number" },
   { key: "duration_months", label: "Duração (meses)", type: "number" },
@@ -105,8 +106,11 @@ const BUILTIN_TPL_FIELDS: { key: string; label: string; type: "text" | "number" 
   { key: "screen_position", label: "Posição na Tela", type: "select", options: [{ value: "tela_cheia", label: "Tela Cheia" }, { value: "rodape", label: "Rodapé" }, { value: "lateral", label: "Lateral" }, { value: "topo", label: "Topo" }] },
   { key: "display_schedule", label: "Horário de Exibição", type: "select", options: [{ value: "integral", label: "Integral" }, { value: "manha", label: "Manhã" }, { value: "tarde", label: "Tarde" }, { value: "noite", label: "Noite" }, { value: "horario_comercial", label: "Horário Comercial" }] },
   { key: "content_format", label: "Formato do Conteúdo", type: "select", options: [{ value: "16:9", label: "16:9 (Paisagem)" }, { value: "9:16", label: "9:16 (Retrato)" }, { value: "1:1", label: "1:1 (Quadrado)" }, { value: "4:3", label: "4:3" }] },
+  { key: "playlist_id", label: "Playlist Vinculada", type: "select" },
   { key: "tags", label: "Tags", type: "text" },
 ];
+// Alias for backward compat
+const BUILTIN_TPL_FIELDS = BUILTIN_FIELDS;
 
 interface AdContract {
   id: string;
