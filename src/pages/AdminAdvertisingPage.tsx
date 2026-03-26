@@ -65,6 +65,14 @@ interface FieldDefinition {
   created_at: string;
 }
 
+interface LocalCustomFieldDefinition {
+  id: string;
+  name: string;
+  field_type: "text" | "number" | "select";
+  options: string[];
+  is_required: boolean;
+}
+
 interface AdPackage {
   id: string;
   name: string;
