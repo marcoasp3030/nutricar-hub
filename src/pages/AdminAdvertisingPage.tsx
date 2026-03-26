@@ -926,22 +926,14 @@ const AdminAdvertisingPage = () => {
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => {
                               // Duplicate package
-                              setPkgForm({
-                                name: `${pkg.name} (Cópia)`,
-                                description: pkg.description || "",
-                                monthly_value: String(pkg.monthly_value),
-                                duration_months: String(pkg.duration_months),
-                                display_frequency: pkg.display_frequency,
-                                media_type: (pkg as any).media_type || "video",
-                                screen_position: (pkg as any).screen_position || "tela_cheia",
-                                display_schedule: (pkg as any).display_schedule || "integral",
-                                content_format: (pkg as any).content_format || "16:9",
-                                tags: ((pkg as any).tags || []).join(", "),
-                                playlist_id: pkg.playlist_id || "",
-                                is_active: true,
-                              });
                               setEditingPkg(null);
+                              setPkgName(`${pkg.name} (Cópia)`);
+                              setPkgIsActive(true);
+                              const { enabled, values } = detectPkgEnabledFields(pkg);
+                              setPkgEnabledFields(enabled);
+                              setPkgFieldValues(values);
                               setPkgSelectedFornecedores(assignedF);
+                              setPkgCustomFields((pkg as any).custom_fields || {});
                               setPkgDialog(true);
                             }}>
                               <Copy className="h-3.5 w-3.5" />
