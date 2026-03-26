@@ -445,7 +445,11 @@ const AdminAdvertisingPage = () => {
     setTplEnabledFields(prev => prev.filter(k => k !== key));
     if (key.startsWith("custom_")) {
       const fdId = key.replace("custom_", "");
-      setTplCustomFields((prev: Record<string, any>) => { const n = { ...prev }; delete n[fdId]; return n; });
+      if (tplCustomFieldDefs.some(f => f.id === fdId)) {
+        removeTplLocalCustomField(fdId);
+      } else {
+        setTplCustomFields((prev: Record<string, any>) => { const n = { ...prev }; delete n[fdId]; return n; });
+      }
     } else {
       setTplFieldValues((prev: Record<string, any>) => { const n = { ...prev }; delete n[key]; return n; });
     }
