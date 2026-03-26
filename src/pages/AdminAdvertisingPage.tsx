@@ -481,7 +481,7 @@ const AdminAdvertisingPage = () => {
       if (!tplEnabledFields.includes(bk)) {
         if (bk === "monthly_value") payload[bk] = 0;
         else if (bk === "duration_months") payload[bk] = 1;
-        else if (bk === "display_frequency") payload[bk] = "";
+        else if (bk === "display_frequency") payload[bk] = "30s a cada 5 min";
         else if (bk === "tags") payload[bk] = [];
         else payload[bk] = null;
       }
