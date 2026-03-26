@@ -447,11 +447,35 @@ const AdminJobsPage = () => {
               assignMutation={assignMutation}
               onEdit={openEditJob}
               onClose={() => setDetailJob(null)}
+              onDelete={() => { setDetailJob(null); setDeleteConfirm(detailJob); }}
+              onDuplicate={() => { setDetailJob(null); duplicateJob(detailJob); }}
               qc={qc}
             />
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir evento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o evento "{deleteConfirm?.title}"? Esta ação irá remover todos os convites, atribuições, pagamentos e logs relacionados. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteConfirm && deleteMutation.mutate(deleteConfirm.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
