@@ -459,7 +459,28 @@ const AdminAdvertisingPage = () => {
       return arr;
     });
   };
-  const saveTpl = async () => {
+  const addTplLocalCustomField = () => {
+    if (!tplNewCustomField.name.trim()) { toast.error("Nome do campo é obrigatório"); return; }
+    const id = `local_${crypto.randomUUID()}`;
+    const options = tplNewCustomField.field_type === "select"
+      ? tplNewCustomField.options.split(",").map(o => o.trim()).filter(Boolean)
+      : [];
+    const newField: LocalCustomFieldDefinition = {
+      id,
+      name: tplNewCustomField.name.trim(),
+      field_type: tplNewCustomField.field_type,
+      options,
+      is_required: tplNewCustomField.is_required,
+    };
+    setTplCustomFieldDefs(prev => [...prev, newField]);
+    setTplEnabledFields(prev => [...prev, `custom_${id}`]);
+    setTplNewCustomField({ name: "", field_type: "text", options: "", is_required: false });
+  };
+  const removeTplLocalCustomField = (fieldId: string) => {
+    setTplCustomFieldDefs(prev => prev.filter(f => f.id !== fieldId));
+    setTplEnabledFields(prev => prev.filter(k => k !== `custom_${fieldId}`));
+    setTplCustomFields(prev => { const next = { ...prev }; delete next[fieldId]; return next; });
+  };
     if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
     // Validate required custom fields that are enabled
     const requiredTplFields = fieldDefs.filter(fd => fd.is_required && fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && tplEnabledFields.includes(`custom_${fd.id}`));
