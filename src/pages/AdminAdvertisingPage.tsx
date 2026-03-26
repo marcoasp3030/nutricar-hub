@@ -476,21 +476,12 @@ const AdminAdvertisingPage = () => {
     fetchAll();
   };
   const createPkgFromTemplate = (tpl: AdPackageTemplate) => {
-    setPkgForm({
-      name: tpl.name,
-      description: tpl.description || "",
-      monthly_value: String(tpl.monthly_value),
-      duration_months: String(tpl.duration_months),
-      display_frequency: tpl.display_frequency,
-      media_type: tpl.media_type || "video",
-      screen_position: tpl.screen_position || "tela_cheia",
-      display_schedule: tpl.display_schedule || "integral",
-      content_format: tpl.content_format || "16:9",
-      tags: (tpl.tags || []).join(", "),
-      playlist_id: "",
-      is_active: true,
-    });
     setEditingPkg(null);
+    setPkgName(tpl.name);
+    setPkgIsActive(true);
+    const { enabled, values } = detectPkgEnabledFields(tpl);
+    setPkgEnabledFields(enabled);
+    setPkgFieldValues(values);
     setPkgSelectedFornecedores([]);
     setPkgCustomFields((tpl as any).custom_fields || {});
     setPkgDialog(true);
