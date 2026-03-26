@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search, Copy, LayoutTemplate } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search, Copy, LayoutTemplate, Eye, Monitor, CalendarDays, Tv, Play, Grid3X3, Link2, ToggleLeft, ToggleRight, ShoppingBag } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
@@ -478,83 +478,208 @@ const AdminAdvertisingPage = () => {
 
       <Tabs defaultValue="packages" className="w-full">
         <TabsList>
-          <TabsTrigger value="packages"><Package className="h-4 w-4 mr-1" /> Pacotes</TabsTrigger>
+          <TabsTrigger value="packages"><ShoppingBag className="h-4 w-4 mr-1" /> Produtos & Serviços</TabsTrigger>
           <TabsTrigger value="templates"><LayoutTemplate className="h-4 w-4 mr-1" /> Templates</TabsTrigger>
           <TabsTrigger value="contracts"><FileText className="h-4 w-4 mr-1" /> Contratos</TabsTrigger>
           <TabsTrigger value="payments"><DollarSign className="h-4 w-4 mr-1" /> Pagamentos</TabsTrigger>
         </TabsList>
 
-        {/* ===== PACOTES ===== */}
+        {/* ===== PACOTES / PRODUTOS & SERVIÇOS ===== */}
         <TabsContent value="packages" className="space-y-4">
           {(() => {
             const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].sort();
             const filtered = filterTag === "__all__" ? packages : packages.filter(p => ((p as any).tags || []).includes(filterTag));
+            
+            const MEDIA_LABELS: Record<string, string> = { video: "Vídeo", banner: "Banner", slide: "Slide", institucional: "Institucional" };
+            const POSITION_LABELS: Record<string, string> = { tela_cheia: "Tela Cheia", rodape: "Rodapé", lateral: "Lateral", topo: "Topo" };
+            const SCHEDULE_LABELS: Record<string, string> = { integral: "Integral", manha: "Manhã", tarde: "Tarde", noite: "Noite", horario_comercial: "Horário Comercial" };
+
             return (
               <>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
-                    <Select value={filterTag} onValueChange={setFilterTag}>
-                      <SelectTrigger className="w-48 h-9 text-xs">
-                        <SelectValue placeholder="Filtrar por tag" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__all__">Todas as tags</SelectItem>
-                        {allTags.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {filterTag !== "__all__" && (
-                      <Badge variant="secondary" className="text-xs">{filtered.length} pacote(s)</Badge>
+                    <p className="text-sm text-muted-foreground">
+                      {filtered.length} produto(s) cadastrado(s) • {filtered.filter(p => p.is_active).length} ativo(s)
+                    </p>
+                    {allTags.length > 0 && (
+                      <>
+                        <span className="text-border">|</span>
+                        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Select value={filterTag} onValueChange={setFilterTag}>
+                          <SelectTrigger className="w-40 h-8 text-xs">
+                            <SelectValue placeholder="Filtrar por tag" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">Todas as tags</SelectItem>
+                            {allTags.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </>
                     )}
                   </div>
-                  <Button onClick={openPkgCreate}><Plus className="h-4 w-4 mr-1" /> Novo Pacote</Button>
+                  <Button onClick={openPkgCreate}><Plus className="h-4 w-4 mr-1" /> Novo Produto</Button>
                 </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                 <TableRow>
-                   <TableHead>Nome</TableHead>
-                   <TableHead>Valor Mensal</TableHead>
-                   <TableHead>Tipo Mídia</TableHead>
-                   <TableHead>Fornecedores</TableHead>
-                   <TableHead>Tags</TableHead>
-                   <TableHead>Status</TableHead>
-                   <TableHead className="w-24">Ações</TableHead>
-                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map(pkg => (
-                  <TableRow key={pkg.id}>
-                    <TableCell className="font-medium">{pkg.name}</TableCell>
-                     <TableCell>{fmt(pkg.monthly_value)}</TableCell>
-                     <TableCell className="text-xs capitalize">{(pkg as any).media_type || "—"}</TableCell>
-                     <TableCell>
-                       <div className="flex gap-1 flex-wrap">
-                         {(packageFornecedores[pkg.id] || []).map((f: string) => <Badge key={f} variant="outline" className="text-[10px]">{f}</Badge>)}
-                         {(!packageFornecedores[pkg.id] || packageFornecedores[pkg.id].length === 0) && <span className="text-muted-foreground text-xs">Todos</span>}
-                       </div>
-                     </TableCell>
-                     <TableCell>
-                       <div className="flex gap-1 flex-wrap">
-                         {((pkg as any).tags || []).map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
-                         {(!((pkg as any).tags) || (pkg as any).tags.length === 0) && <span className="text-muted-foreground text-xs">—</span>}
-                       </div>
-                    </TableCell>
-                    <TableCell><Badge variant={pkg.is_active ? "default" : "secondary"}>{pkg.is_active ? "Ativo" : "Inativo"}</Badge></TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openPkgEdit(pkg)}><Edit className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => deletePkg(pkg.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filtered.length === 0 && (
-                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum pacote encontrado</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {filtered.map(pkg => {
+                    const pkgContracts = contracts.filter(c => c.package_id === pkg.id);
+                    const activeCount = pkgContracts.filter(c => c.status === "active").length;
+                    const pkgPayments = payments.filter(p => p.ad_contracts?.package_id === pkg.id);
+                    const totalRevenue = pkgPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+                    const pendingRevenue = pkgPayments.filter(p => p.status !== "paid").reduce((s, p) => s + p.amount, 0);
+                    const assignedF = packageFornecedores[pkg.id] || [];
+                    const mediaType = (pkg as any).media_type || "video";
+                    const screenPos = (pkg as any).screen_position || "tela_cheia";
+                    const schedule = (pkg as any).display_schedule || "integral";
+                    const contentFmt = (pkg as any).content_format || "16:9";
+                    const tags = (pkg as any).tags || [];
+
+                    return (
+                      <Card key={pkg.id} className={`relative overflow-hidden ${!pkg.is_active ? "opacity-60" : ""}`}>
+                        {/* Status indicator stripe */}
+                        <div className={`absolute top-0 left-0 right-0 h-1 ${pkg.is_active ? "bg-primary" : "bg-muted-foreground/30"}`} />
+                        
+                        <CardHeader className="pb-3 pt-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-lg truncate">{pkg.name}</CardTitle>
+                              {pkg.description && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{pkg.description}</p>
+                              )}
+                            </div>
+                            <Badge variant={pkg.is_active ? "default" : "secondary"} className="shrink-0">
+                              {pkg.is_active ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="space-y-4 pt-0">
+                          {/* Pricing */}
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold text-primary">{fmt(pkg.monthly_value)}</span>
+                            <span className="text-sm text-muted-foreground">/mês</span>
+                            <span className="text-xs text-muted-foreground ml-1">• {pkg.duration_months} mês(es)</span>
+                          </div>
+
+                          {/* Specs grid */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <Tv className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">Mídia:</span>
+                              <span className="font-medium">{MEDIA_LABELS[mediaType] || mediaType}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Monitor className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">Posição:</span>
+                              <span className="font-medium">{POSITION_LABELS[screenPos] || screenPos}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">Horário:</span>
+                              <span className="font-medium">{SCHEDULE_LABELS[schedule] || schedule}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Grid3X3 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">Formato:</span>
+                              <span className="font-medium">{contentFmt}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 col-span-2">
+                              <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">Frequência:</span>
+                              <span className="font-medium">{pkg.display_frequency}</span>
+                            </div>
+                            {pkg.playlist_id && (
+                              <div className="flex items-center gap-1.5 col-span-2">
+                                <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-muted-foreground">Playlist:</span>
+                                <span className="font-medium truncate">{playlists.find(p => p.id === pkg.playlist_id)?.name || "—"}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Revenue metrics */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="rounded-lg bg-muted/50 p-2 text-center">
+                              <p className="text-lg font-bold">{activeCount}</p>
+                              <p className="text-[10px] text-muted-foreground leading-tight">Contratos Ativos</p>
+                            </div>
+                            <div className="rounded-lg bg-muted/50 p-2 text-center">
+                              <p className="text-sm font-bold text-primary">{fmt(totalRevenue)}</p>
+                              <p className="text-[10px] text-muted-foreground leading-tight">Recebido</p>
+                            </div>
+                            <div className="rounded-lg bg-muted/50 p-2 text-center">
+                              <p className="text-sm font-bold">{fmt(pendingRevenue)}</p>
+                              <p className="text-[10px] text-muted-foreground leading-tight">Pendente</p>
+                            </div>
+                          </div>
+
+                          {/* Tags */}
+                          {tags.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {tags.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                            </div>
+                          )}
+
+                          {/* Fornecedores */}
+                          <div className="text-xs">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-muted-foreground font-medium">
+                                Fornecedores: {assignedF.length === 0 ? "Todos" : `${assignedF.length} atribuído(s)`}
+                              </span>
+                            </div>
+                            {assignedF.length > 0 && (
+                              <div className="flex gap-1 flex-wrap max-h-16 overflow-y-auto">
+                                {assignedF.map(f => <Badge key={f} variant="outline" className="text-[10px]">{f}</Badge>)}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-1 border-t border-border">
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => openPkgEdit(pkg)}>
+                              <Edit className="h-3.5 w-3.5 mr-1" /> Editar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => {
+                              // Duplicate package
+                              setPkgForm({
+                                name: `${pkg.name} (Cópia)`,
+                                description: pkg.description || "",
+                                monthly_value: String(pkg.monthly_value),
+                                duration_months: String(pkg.duration_months),
+                                display_frequency: pkg.display_frequency,
+                                media_type: (pkg as any).media_type || "video",
+                                screen_position: (pkg as any).screen_position || "tela_cheia",
+                                display_schedule: (pkg as any).display_schedule || "integral",
+                                content_format: (pkg as any).content_format || "16:9",
+                                tags: ((pkg as any).tags || []).join(", "),
+                                playlist_id: pkg.playlist_id || "",
+                                is_active: true,
+                              });
+                              setEditingPkg(null);
+                              setPkgSelectedFornecedores(assignedF);
+                              setPkgDialog(true);
+                            }}>
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => deletePkg(pkg.id)}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+
+                  {filtered.length === 0 && (
+                    <div className="col-span-full text-center py-16">
+                      <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                      <p className="text-muted-foreground font-medium">Nenhum produto cadastrado</p>
+                      <p className="text-xs text-muted-foreground mt-1">Crie produtos e serviços para oferecer aos fornecedores</p>
+                      <Button className="mt-4" onClick={openPkgCreate}><Plus className="h-4 w-4 mr-1" /> Criar Primeiro Produto</Button>
+                    </div>
+                  )}
+                </div>
               </>
             );
           })()}
