@@ -252,7 +252,10 @@ export type Database = {
           created_at: string
           id: string
           month_ref: string
+          notes: string | null
           paid_at: string | null
+          payment_method: string | null
+          receipt_url: string | null
           status: string
         }
         Insert: {
@@ -261,7 +264,10 @@ export type Database = {
           created_at?: string
           id?: string
           month_ref: string
+          notes?: string | null
           paid_at?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
           status?: string
         }
         Update: {
@@ -270,7 +276,10 @@ export type Database = {
           created_at?: string
           id?: string
           month_ref?: string
+          notes?: string | null
           paid_at?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
           status?: string
         }
         Relationships: [
