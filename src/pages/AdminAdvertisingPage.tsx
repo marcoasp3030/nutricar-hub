@@ -65,6 +65,14 @@ interface FieldDefinition {
   created_at: string;
 }
 
+interface LocalCustomFieldDefinition {
+  id: string;
+  name: string;
+  field_type: "text" | "number" | "select";
+  options: string[];
+  is_required: boolean;
+}
+
 interface AdPackage {
   id: string;
   name: string;
@@ -168,6 +176,8 @@ const AdminAdvertisingPage = () => {
   const [fieldDefForm, setFieldDefForm] = useState({ name: "", field_type: "text", options: "", applies_to: "both", is_required: false, sort_order: "0" });
   const [pkgCustomFields, setPkgCustomFields] = useState<Record<string, any>>({});
   const [tplCustomFields, setTplCustomFields] = useState<Record<string, any>>({});
+  const [tplCustomFieldDefs, setTplCustomFieldDefs] = useState<LocalCustomFieldDefinition[]>([]);
+  const [tplNewCustomField, setTplNewCustomField] = useState({ name: "", field_type: "text" as "text" | "number" | "select", options: "", is_required: false });
 
   // Template form - dynamic fields
   const [tplDialog, setTplDialog] = useState(false);
@@ -393,6 +403,8 @@ const AdminAdvertisingPage = () => {
     setTplEnabledFields([]);
     setTplFieldValues({});
     setTplCustomFields({});
+    setTplCustomFieldDefs([]);
+    setTplNewCustomField({ name: "", field_type: "text", options: "", is_required: false });
     setTplDialog(true);
   };
   const openTplEdit = (tpl: AdPackageTemplate) => {
@@ -402,14 +414,15 @@ const AdminAdvertisingPage = () => {
     const cf = { ...((tpl as any).custom_fields || {}) };
     const storedBuiltinEnabled: string[] = cf._enabled_fields || [];
     const storedAllEnabled: string[] = cf._enabled_fields_all || storedBuiltinEnabled;
+    const localFieldDefs: LocalCustomFieldDefinition[] = cf._custom_field_defs || [];
     delete cf._enabled_fields;
     delete cf._enabled_fields_all;
-    
-    // Use stored enabled fields; for old templates without _enabled_fields, start empty
+    delete cf._custom_field_defs;
+
     const enabled: string[] = [...storedAllEnabled];
     const vals: Record<string, any> = {};
     for (const key of storedAllEnabled) {
-      if (key.startsWith("custom_")) continue; // custom fields handled via tplCustomFields
+      if (key.startsWith("custom_")) continue;
       if (key === "description" && tpl.description) vals.description = tpl.description;
       else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
       else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
@@ -419,6 +432,8 @@ const AdminAdvertisingPage = () => {
     setTplEnabledFields(enabled);
     setTplFieldValues(vals);
     setTplCustomFields(cf);
+    setTplCustomFieldDefs(localFieldDefs);
+    setTplNewCustomField({ name: "", field_type: "text", options: "", is_required: false });
     setTplDialog(true);
   };
   const addTplField = (key: string) => {
@@ -430,7 +445,11 @@ const AdminAdvertisingPage = () => {
     setTplEnabledFields(prev => prev.filter(k => k !== key));
     if (key.startsWith("custom_")) {
       const fdId = key.replace("custom_", "");
-      setTplCustomFields((prev: Record<string, any>) => { const n = { ...prev }; delete n[fdId]; return n; });
+      if (tplCustomFieldDefs.some(f => f.id === fdId)) {
+        removeTplLocalCustomField(fdId);
+      } else {
+        setTplCustomFields((prev: Record<string, any>) => { const n = { ...prev }; delete n[fdId]; return n; });
+      }
     } else {
       setTplFieldValues((prev: Record<string, any>) => { const n = { ...prev }; delete n[key]; return n; });
     }
@@ -444,10 +463,31 @@ const AdminAdvertisingPage = () => {
       return arr;
     });
   };
+  const addTplLocalCustomField = () => {
+    if (!tplNewCustomField.name.trim()) { toast.error("Nome do campo é obrigatório"); return; }
+    const id = `local_${crypto.randomUUID()}`;
+    const options = tplNewCustomField.field_type === "select"
+      ? tplNewCustomField.options.split(",").map(o => o.trim()).filter(Boolean)
+      : [];
+    const newField: LocalCustomFieldDefinition = {
+      id,
+      name: tplNewCustomField.name.trim(),
+      field_type: tplNewCustomField.field_type,
+      options,
+      is_required: tplNewCustomField.is_required,
+    };
+    setTplCustomFieldDefs(prev => [...prev, newField]);
+    setTplEnabledFields(prev => [...prev, `custom_${id}`]);
+    setTplNewCustomField({ name: "", field_type: "text", options: "", is_required: false });
+  };
+  const removeTplLocalCustomField = (fieldId: string) => {
+    setTplCustomFieldDefs(prev => prev.filter(f => f.id !== fieldId));
+    setTplEnabledFields(prev => prev.filter(k => k !== `custom_${fieldId}`));
+    setTplCustomFields(prev => { const next = { ...prev }; delete next[fieldId]; return next; });
+  };
   const saveTpl = async () => {
     if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
-    // Validate required custom fields that are enabled
-    const requiredTplFields = fieldDefs.filter(fd => fd.is_required && fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && tplEnabledFields.includes(`custom_${fd.id}`));
+    const requiredTplFields = tplCustomFieldDefs.filter(fd => fd.is_required && tplEnabledFields.includes(`custom_${fd.id}`));
     const missingTpl = requiredTplFields.filter(fd => !tplCustomFields[fd.id] || String(tplCustomFields[fd.id]).trim() === "");
     if (missingTpl.length > 0) {
       toast.error(`Preencha os campos obrigatórios: ${missingTpl.map(f => f.name).join(", ")}`);
@@ -467,9 +507,13 @@ const AdminAdvertisingPage = () => {
       content_format: v.content_format || null,
       tags: tagsArr,
       is_active: tplIsActive,
-     custom_fields: { ...tplCustomFields, _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")), _enabled_fields_all: [...tplEnabledFields] },
+      custom_fields: {
+        ...tplCustomFields,
+        _custom_field_defs: tplCustomFieldDefs,
+        _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")),
+        _enabled_fields_all: [...tplEnabledFields],
+      },
     };
-    // Set non-enabled built-in fields to null so they don't get auto-detected
     const builtinKeys = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "description", "tags"];
     for (const bk of builtinKeys) {
       if (!tplEnabledFields.includes(bk)) {
@@ -505,6 +549,7 @@ const AdminAdvertisingPage = () => {
     const storedAllEnabled: string[] = cf._enabled_fields_all || cf._enabled_fields || [];
     delete cf._enabled_fields;
     delete cf._enabled_fields_all;
+    delete cf._custom_field_defs;
     
     const builtinEnabled: string[] = [];
     const values: Record<string, any> = {};
@@ -1560,7 +1605,7 @@ const AdminAdvertisingPage = () => {
               // Check if it's a custom field
               if (key.startsWith("custom_")) {
                 const fdId = key.replace("custom_", "");
-                const fd = fieldDefs.find(f => f.id === fdId);
+                const fd = tplCustomFieldDefs.find(f => f.id === fdId);
                 if (!fd) return null;
                 return (
                   <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
@@ -1600,35 +1645,37 @@ const AdminAdvertisingPage = () => {
               );
             })}
 
-            {tplEnabledFields.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
-                Template em branco. Use o botão abaixo para adicionar campos.
-              </p>
-            )}
+            <div className="border rounded-md p-3 space-y-3 bg-muted/20">
+              <Label className="text-sm">Novo campo personalizado deste template</Label>
+              <div><Input value={tplNewCustomField.name} onChange={e => setTplNewCustomField(prev => ({ ...prev, name: e.target.value }))} placeholder="Ex: SKU, Forma de pagamento" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={tplNewCustomField.field_type} onValueChange={(v: "text" | "number" | "select") => setTplNewCustomField(prev => ({ ...prev, field_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Texto</SelectItem>
+                    <SelectItem value="number">Número</SelectItem>
+                    <SelectItem value="select">Lista suspensa</SelectItem>
+                  </SelectContent>
+                </Select>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={tplNewCustomField.is_required} onChange={e => setTplNewCustomField(prev => ({ ...prev, is_required: e.target.checked }))} /> Obrigatório</label>
+              </div>
+              {tplNewCustomField.field_type === "select" && <Input value={tplNewCustomField.options} onChange={e => setTplNewCustomField(prev => ({ ...prev, options: e.target.value }))} placeholder="Opções separadas por vírgula" />}
+              <Button type="button" variant="outline" onClick={addTplLocalCustomField}><Plus className="h-4 w-4 mr-1" /> Adicionar campo personalizado</Button>
+            </div>
 
             {/* Add field dropdown */}
             {(() => {
               const availableBuiltin = BUILTIN_TPL_FIELDS.filter(f => !tplEnabledFields.includes(f.key));
-              const availableCustom = fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && !tplEnabledFields.includes(`custom_${fd.id}`));
-              const hasAvailable = availableBuiltin.length > 0 || availableCustom.length > 0;
-              if (!hasAvailable) return null;
+              if (availableBuiltin.length === 0) return null;
               return (
                 <Select value="" onValueChange={v => addTplField(v)}>
                   <SelectTrigger className="border-dashed">
-                    <div className="flex items-center gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Adicionar campo</div>
+                    <div className="flex items-center gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Adicionar campo padrão</div>
                   </SelectTrigger>
                   <SelectContent>
-                    {availableBuiltin.length > 0 && availableBuiltin.map(f => (
+                    {availableBuiltin.map(f => (
                       <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
                     ))}
-                    {availableCustom.length > 0 && (
-                      <>
-                        {availableBuiltin.length > 0 && <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Campos Personalizados</div>}
-                        {availableCustom.map(fd => (
-                          <SelectItem key={`custom_${fd.id}`} value={`custom_${fd.id}`}>{fd.name}</SelectItem>
-                        ))}
-                      </>
-                    )}
                   </SelectContent>
                 </Select>
               );
