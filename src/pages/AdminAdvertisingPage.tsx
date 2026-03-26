@@ -485,9 +485,9 @@ const AdminAdvertisingPage = () => {
     setTplEnabledFields(prev => prev.filter(k => k !== `custom_${fieldId}`));
     setTplCustomFields(prev => { const next = { ...prev }; delete next[fieldId]; return next; });
   };
+  const saveTpl = async () => {
     if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
-    // Validate required custom fields that are enabled
-    const requiredTplFields = fieldDefs.filter(fd => fd.is_required && fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && tplEnabledFields.includes(`custom_${fd.id}`));
+    const requiredTplFields = tplCustomFieldDefs.filter(fd => fd.is_required && tplEnabledFields.includes(`custom_${fd.id}`));
     const missingTpl = requiredTplFields.filter(fd => !tplCustomFields[fd.id] || String(tplCustomFields[fd.id]).trim() === "");
     if (missingTpl.length > 0) {
       toast.error(`Preencha os campos obrigatórios: ${missingTpl.map(f => f.name).join(", ")}`);
@@ -507,9 +507,13 @@ const AdminAdvertisingPage = () => {
       content_format: v.content_format || null,
       tags: tagsArr,
       is_active: tplIsActive,
-     custom_fields: { ...tplCustomFields, _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")), _enabled_fields_all: [...tplEnabledFields] },
+      custom_fields: {
+        ...tplCustomFields,
+        _custom_field_defs: tplCustomFieldDefs,
+        _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")),
+        _enabled_fields_all: [...tplEnabledFields],
+      },
     };
-    // Set non-enabled built-in fields to null so they don't get auto-detected
     const builtinKeys = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "description", "tags"];
     for (const bk of builtinKeys) {
       if (!tplEnabledFields.includes(bk)) {
