@@ -1385,6 +1385,7 @@ const AdminAdvertisingPage = () => {
               </div>
             </div>
             <div><Label>Tags</Label><Input value={tplForm.tags} onChange={e => setTplForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: premium, destaque (separadas por vírgula)" /></div>
+            {renderCustomFields("templates", tplCustomFields, setTplCustomFields)}
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={tplForm.is_active} onChange={e => setTplForm(f => ({ ...f, is_active: e.target.checked }))} id="tpl-active" />
               <Label htmlFor="tpl-active">Ativo</Label>
