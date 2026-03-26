@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search, Copy, LayoutTemplate } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
@@ -60,6 +60,22 @@ interface AdPackage {
   duration_months: number;
   display_frequency: string;
   playlist_id: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface AdPackageTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  monthly_value: number;
+  duration_months: number;
+  display_frequency: string;
+  media_type: string | null;
+  screen_position: string | null;
+  display_schedule: string | null;
+  content_format: string | null;
+  tags: string[];
   is_active: boolean;
   created_at: string;
 }
@@ -113,6 +129,12 @@ const AdminAdvertisingPage = () => {
   const [fornecedores, setFornecedores] = useState<string[]>([]);
   const [packageFornecedores, setPackageFornecedores] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<AdPackageTemplate[]>([]);
+
+  // Template form
+  const [tplDialog, setTplDialog] = useState(false);
+  const [editingTpl, setEditingTpl] = useState<AdPackageTemplate | null>(null);
+  const [tplForm, setTplForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
 
   // Package form
   const [pkgDialog, setPkgDialog] = useState(false);
@@ -144,13 +166,14 @@ const AdminAdvertisingPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes] = await Promise.all([
+    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes, tplRes] = await Promise.all([
       supabase.from("ad_packages").select("*").order("created_at", { ascending: false }),
       supabase.from("ad_contracts").select("*, ad_packages(*)").order("created_at", { ascending: false }),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))").order("created_at", { ascending: false }),
       supabase.from("playlists").select("id, name").order("name"),
       supabase.from("user_fornecedores").select("fornecedor"),
       supabase.from("ad_package_fornecedores").select("*"),
+      supabase.from("ad_package_templates").select("*").order("name"),
     ]);
     setPackages(pkgRes.data || []);
     setContracts(contractRes.data || []);
@@ -165,6 +188,7 @@ const AdminAdvertisingPage = () => {
       pfMap[pf.package_id].push(pf.fornecedor);
     });
     setPackageFornecedores(pfMap);
+    setTemplates((tplRes.data || []) as AdPackageTemplate[]);
     setLoading(false);
   };
 
@@ -213,6 +237,59 @@ const AdminAdvertisingPage = () => {
     await supabase.from("ad_packages").delete().eq("id", id);
     toast.success("Pacote excluído");
     fetchAll();
+  };
+
+  // === Template CRUD ===
+  const openTplCreate = () => {
+    setEditingTpl(null);
+    setTplForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
+    setTplDialog(true);
+  };
+  const openTplEdit = (tpl: AdPackageTemplate) => {
+    setEditingTpl(tpl);
+    setTplForm({ name: tpl.name, description: tpl.description || "", monthly_value: String(tpl.monthly_value), duration_months: String(tpl.duration_months), display_frequency: tpl.display_frequency, media_type: tpl.media_type || "video", screen_position: tpl.screen_position || "tela_cheia", display_schedule: tpl.display_schedule || "integral", content_format: tpl.content_format || "16:9", tags: (tpl.tags || []).join(", "), is_active: tpl.is_active });
+    setTplDialog(true);
+  };
+  const saveTpl = async () => {
+    if (!tplForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
+    const tagsArr = tplForm.tags ? tplForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+    const payload = { name: tplForm.name, description: tplForm.description || null, monthly_value: parseFloat(tplForm.monthly_value) || 0, duration_months: parseInt(tplForm.duration_months) || 1, display_frequency: tplForm.display_frequency, media_type: tplForm.media_type, screen_position: tplForm.screen_position, display_schedule: tplForm.display_schedule, content_format: tplForm.content_format, tags: tagsArr, is_active: tplForm.is_active };
+    if (editingTpl) {
+      const { error } = await supabase.from("ad_package_templates").update(payload).eq("id", editingTpl.id);
+      if (error) { toast.error("Erro ao atualizar template"); return; }
+    } else {
+      const { error } = await supabase.from("ad_package_templates").insert(payload);
+      if (error) { toast.error("Erro ao criar template"); return; }
+    }
+    toast.success(editingTpl ? "Template atualizado" : "Template criado");
+    setTplDialog(false);
+    fetchAll();
+  };
+  const deleteTpl = async (id: string) => {
+    if (!confirm("Excluir este template?")) return;
+    await supabase.from("ad_package_templates").delete().eq("id", id);
+    toast.success("Template excluído");
+    fetchAll();
+  };
+  const createPkgFromTemplate = (tpl: AdPackageTemplate) => {
+    setPkgForm({
+      name: tpl.name,
+      description: tpl.description || "",
+      monthly_value: String(tpl.monthly_value),
+      duration_months: String(tpl.duration_months),
+      display_frequency: tpl.display_frequency,
+      media_type: tpl.media_type || "video",
+      screen_position: tpl.screen_position || "tela_cheia",
+      display_schedule: tpl.display_schedule || "integral",
+      content_format: tpl.content_format || "16:9",
+      tags: (tpl.tags || []).join(", "),
+      playlist_id: "",
+      is_active: true,
+    });
+    setEditingPkg(null);
+    setPkgSelectedFornecedores([]);
+    setPkgDialog(true);
+    toast.info("Pacote pré-preenchido a partir do template");
   };
 
   // === Contract CRUD ===
@@ -313,7 +390,7 @@ const AdminAdvertisingPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-foreground">Publicidade TV</h1>
+        <h1 className="text-2xl font-bold text-foreground">Publicidade</h1>
         {allMonths.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
@@ -402,6 +479,7 @@ const AdminAdvertisingPage = () => {
       <Tabs defaultValue="packages" className="w-full">
         <TabsList>
           <TabsTrigger value="packages"><Package className="h-4 w-4 mr-1" /> Pacotes</TabsTrigger>
+          <TabsTrigger value="templates"><LayoutTemplate className="h-4 w-4 mr-1" /> Templates</TabsTrigger>
           <TabsTrigger value="contracts"><FileText className="h-4 w-4 mr-1" /> Contratos</TabsTrigger>
           <TabsTrigger value="payments"><DollarSign className="h-4 w-4 mr-1" /> Pagamentos</TabsTrigger>
         </TabsList>
@@ -482,7 +560,57 @@ const AdminAdvertisingPage = () => {
           })()}
         </TabsContent>
 
-        {/* ===== CONTRATOS ===== */}
+        {/* ===== TEMPLATES ===== */}
+        <TabsContent value="templates" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Templates pré-configurados para criar pacotes rapidamente.</p>
+            <Button onClick={openTplCreate}><Plus className="h-4 w-4 mr-1" /> Novo Template</Button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {templates.map(tpl => (
+              <Card key={tpl.id} className={!tpl.is_active ? "opacity-60" : ""}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{tpl.name}</CardTitle>
+                    <Badge variant={tpl.is_active ? "default" : "secondary"}>{tpl.is_active ? "Ativo" : "Inativo"}</Badge>
+                  </div>
+                  {tpl.description && <p className="text-xs text-muted-foreground">{tpl.description}</p>}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>
+                    <div><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>
+                    <div><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>
+                    <div><span className="text-muted-foreground">Formato:</span> {tpl.content_format || "—"}</div>
+                    <div><span className="text-muted-foreground">Horário:</span> <span className="capitalize">{(tpl.display_schedule || "—").replace("_", " ")}</span></div>
+                  </div>
+                  {tpl.tags?.length > 0 && (
+                    <div className="flex gap-1 flex-wrap">
+                      {tpl.tags.map(t => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="flex-1" onClick={() => createPkgFromTemplate(tpl)}>
+                      <Copy className="h-3 w-3 mr-1" /> Usar Template
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => openTplEdit(tpl)}><Edit className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => deleteTpl(tpl.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {templates.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <LayoutTemplate className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">Nenhum template criado</p>
+                <p className="text-xs text-muted-foreground mt-1">Crie templates para agilizar a criação de pacotes</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+
         <TabsContent value="contracts" className="space-y-4">
           <div className="flex justify-end">
             <Button onClick={openContractCreate}><Plus className="h-4 w-4 mr-1" /> Novo Contrato</Button>
@@ -783,6 +911,81 @@ const AdminAdvertisingPage = () => {
               })}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* === Template Dialog === */}
+      <Dialog open={tplDialog} onOpenChange={setTplDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader><DialogTitle>{editingTpl ? "Editar Template" : "Novo Template"}</DialogTitle></DialogHeader>
+          <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+            <div><Label>Nome</Label><Input value={tplForm.name} onChange={e => setTplForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Premium Tela Cheia" /></div>
+            <div><Label>Descrição</Label><Textarea value={tplForm.description} onChange={e => setTplForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Valor Mensal (R$)</Label><Input type="number" step="0.01" value={tplForm.monthly_value} onChange={e => setTplForm(f => ({ ...f, monthly_value: e.target.value }))} /></div>
+              <div><Label>Duração (meses)</Label><Input type="number" value={tplForm.duration_months} onChange={e => setTplForm(f => ({ ...f, duration_months: e.target.value }))} /></div>
+            </div>
+            <div><Label>Frequência de Exibição</Label><Input value={tplForm.display_frequency} onChange={e => setTplForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo de Mídia</Label>
+                <Select value={tplForm.media_type} onValueChange={v => setTplForm(f => ({ ...f, media_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">Vídeo</SelectItem>
+                    <SelectItem value="banner">Banner</SelectItem>
+                    <SelectItem value="slide">Slide</SelectItem>
+                    <SelectItem value="institucional">Institucional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Posição na Tela</Label>
+                <Select value={tplForm.screen_position} onValueChange={v => setTplForm(f => ({ ...f, screen_position: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tela_cheia">Tela Cheia</SelectItem>
+                    <SelectItem value="rodape">Rodapé</SelectItem>
+                    <SelectItem value="lateral">Lateral</SelectItem>
+                    <SelectItem value="topo">Topo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Horário de Exibição</Label>
+                <Select value={tplForm.display_schedule} onValueChange={v => setTplForm(f => ({ ...f, display_schedule: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="integral">Integral</SelectItem>
+                    <SelectItem value="manha">Manhã</SelectItem>
+                    <SelectItem value="tarde">Tarde</SelectItem>
+                    <SelectItem value="noite">Noite</SelectItem>
+                    <SelectItem value="horario_comercial">Horário Comercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Formato do Conteúdo</Label>
+                <Select value={tplForm.content_format} onValueChange={v => setTplForm(f => ({ ...f, content_format: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="16:9">16:9 (Paisagem)</SelectItem>
+                    <SelectItem value="9:16">9:16 (Retrato)</SelectItem>
+                    <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
+                    <SelectItem value="4:3">4:3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div><Label>Tags</Label><Input value={tplForm.tags} onChange={e => setTplForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: premium, destaque (separadas por vírgula)" /></div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" checked={tplForm.is_active} onChange={e => setTplForm(f => ({ ...f, is_active: e.target.checked }))} id="tpl-active" />
+              <Label htmlFor="tpl-active">Ativo</Label>
+            </div>
+          </div>
+          <Button className="w-full mt-2" onClick={saveTpl}>{editingTpl ? "Salvar" : "Criar"}</Button>
         </DialogContent>
       </Dialog>
     </div>
