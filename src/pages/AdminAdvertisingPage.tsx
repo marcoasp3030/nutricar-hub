@@ -826,58 +826,146 @@ const AdminAdvertisingPage = () => {
 
         {/* ===== PAGAMENTOS ===== */}
         <TabsContent value="payments" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={openPayCreate}>
-              <Plus className="h-4 w-4 mr-1" /> Registrar Pagamento
-            </Button>
-          </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>Pacote</TableHead>
-                  <TableHead>Mês Ref.</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Pago em</TableHead>
-                  <TableHead>Obs.</TableHead>
-                  <TableHead className="w-28">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPayments.map(p => {
-                  const st = PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending;
-                  const METHOD_LABELS: Record<string, string> = { pix: "PIX", transferencia: "Transferência", boleto: "Boleto", dinheiro: "Dinheiro", outro: "Outro" };
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.ad_contracts?.fornecedor || "—"}</TableCell>
-                      <TableCell>{p.ad_contracts?.ad_packages?.name || "—"}</TableCell>
-                      <TableCell>{p.month_ref}</TableCell>
-                      <TableCell>{fmt(p.amount)}</TableCell>
-                      <TableCell className="text-xs">{METHOD_LABELS[(p as any).payment_method] || (p as any).payment_method || "—"}</TableCell>
-                      <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                      <TableCell className="text-xs">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}</TableCell>
-                      <TableCell className="text-xs max-w-[120px] truncate" title={(p as any).notes || ""}>{(p as any).notes || "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => togglePayStatus(p)} title={p.status === "paid" ? "Marcar pendente" : "Marcar pago"}>
-                            {p.status === "paid" ? <XCircle className="h-4 w-4 text-muted-foreground" /> : <CheckCircle className="h-4 w-4 text-primary" />}
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => openPayEdit(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => deletePayment(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {filteredPayments.length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+          {(() => {
+            const METHOD_LABELS: Record<string, string> = { pix: "PIX", transferencia: "Transferência", boleto: "Boleto", dinheiro: "Dinheiro", outro: "Outro" };
+            const payFornecedores = [...new Set(payments.map(p => p.ad_contracts?.fornecedor).filter(Boolean))].sort() as string[];
+            const payMethods = [...new Set(payments.map(p => (p as any).payment_method).filter(Boolean))].filter(m => m && m.trim() !== "").sort() as string[];
+
+            const PAY_EXPORT_COLUMNS: ExportColumn[] = [
+              { key: "fornecedor", label: "Fornecedor" },
+              { key: "pacote", label: "Pacote" },
+              { key: "month_ref", label: "Mês Ref." },
+              { key: "amount", label: "Valor (R$)", format: "currency" },
+              { key: "method", label: "Método" },
+              { key: "status", label: "Status" },
+              { key: "paid_at", label: "Pago em" },
+              { key: "notes", label: "Observações" },
+            ];
+
+            const exportData = filteredPayments.map(p => ({
+              fornecedor: p.ad_contracts?.fornecedor || "—",
+              pacote: p.ad_contracts?.ad_packages?.name || "—",
+              month_ref: p.month_ref,
+              amount: p.amount,
+              method: METHOD_LABELS[(p as any).payment_method] || (p as any).payment_method || "—",
+              status: (PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending).label,
+              paid_at: p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy", { locale: ptBR }) : "—",
+              notes: (p as any).notes || "",
+            }));
+
+            const clearPayFilters = () => {
+              setPayFilterFornecedor("__all__");
+              setPayFilterStatus("__all__");
+              setPayFilterMethod("__all__");
+            };
+
+            const hasActiveFilters = payFilterFornecedor !== "__all__" || payFilterStatus !== "__all__" || payFilterMethod !== "__all__";
+
+            return (
+              <>
+                {/* Filters & Actions Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                  <div className="flex flex-wrap items-end gap-2 flex-1">
+                    <div className="min-w-[150px]">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Fornecedor</Label>
+                      <Select value={payFilterFornecedor} onValueChange={setPayFilterFornecedor}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Todos</SelectItem>
+                          {payFornecedores.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="min-w-[120px]">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Status</Label>
+                      <Select value={payFilterStatus} onValueChange={setPayFilterStatus}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Todos</SelectItem>
+                          {Object.entries(PAY_STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="min-w-[120px]">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Método</Label>
+                      <Select value={payFilterMethod} onValueChange={setPayFilterMethod}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Todos</SelectItem>
+                          {payMethods.map(m => <SelectItem key={m} value={m}>{METHOD_LABELS[m] || m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" onClick={clearPayFilters} className="text-xs h-9">
+                        <XCircle className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{filteredPayments.length} registro(s)</span>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => exportToXLSX(exportData, PAY_EXPORT_COLUMNS, "pagamentos-publicidade")}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> XLSX
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => exportToPDF(exportData, PAY_EXPORT_COLUMNS, "pagamentos-publicidade", "Pagamentos — Publicidade")}>
+                        <FileText className="h-3.5 w-3.5 mr-1" /> PDF
+                      </Button>
+                    </div>
+                    <Button onClick={openPayCreate} size="sm" className="h-9">
+                      <Plus className="h-4 w-4 mr-1" /> Registrar
+                    </Button>
+                  </div>
+                </div>
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead>Pacote</TableHead>
+                        <TableHead>Mês Ref.</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Pago em</TableHead>
+                        <TableHead>Obs.</TableHead>
+                        <TableHead className="w-28">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPayments.map(p => {
+                        const st = PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending;
+                        return (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-medium">{p.ad_contracts?.fornecedor || "—"}</TableCell>
+                            <TableCell>{p.ad_contracts?.ad_packages?.name || "—"}</TableCell>
+                            <TableCell>{p.month_ref}</TableCell>
+                            <TableCell>{fmt(p.amount)}</TableCell>
+                            <TableCell className="text-xs">{METHOD_LABELS[(p as any).payment_method] || (p as any).payment_method || "—"}</TableCell>
+                            <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+                            <TableCell className="text-xs">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}</TableCell>
+                            <TableCell className="text-xs max-w-[120px] truncate" title={(p as any).notes || ""}>{(p as any).notes || "—"}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button size="icon" variant="ghost" onClick={() => togglePayStatus(p)} title={p.status === "paid" ? "Marcar pendente" : "Marcar pago"}>
+                                  {p.status === "paid" ? <XCircle className="h-4 w-4 text-muted-foreground" /> : <CheckCircle className="h-4 w-4 text-primary" />}
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => openPayEdit(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="ghost" onClick={() => deletePayment(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {filteredPayments.length === 0 && (
+                        <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum pagamento encontrado</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
