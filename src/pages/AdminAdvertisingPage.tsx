@@ -560,7 +560,57 @@ const AdminAdvertisingPage = () => {
           })()}
         </TabsContent>
 
-        {/* ===== CONTRATOS ===== */}
+        {/* ===== TEMPLATES ===== */}
+        <TabsContent value="templates" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Templates pré-configurados para criar pacotes rapidamente.</p>
+            <Button onClick={openTplCreate}><Plus className="h-4 w-4 mr-1" /> Novo Template</Button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {templates.map(tpl => (
+              <Card key={tpl.id} className={!tpl.is_active ? "opacity-60" : ""}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{tpl.name}</CardTitle>
+                    <Badge variant={tpl.is_active ? "default" : "secondary"}>{tpl.is_active ? "Ativo" : "Inativo"}</Badge>
+                  </div>
+                  {tpl.description && <p className="text-xs text-muted-foreground">{tpl.description}</p>}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>
+                    <div><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>
+                    <div><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>
+                    <div><span className="text-muted-foreground">Formato:</span> {tpl.content_format || "—"}</div>
+                    <div><span className="text-muted-foreground">Horário:</span> <span className="capitalize">{(tpl.display_schedule || "—").replace("_", " ")}</span></div>
+                  </div>
+                  {tpl.tags?.length > 0 && (
+                    <div className="flex gap-1 flex-wrap">
+                      {tpl.tags.map(t => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="flex-1" onClick={() => createPkgFromTemplate(tpl)}>
+                      <Copy className="h-3 w-3 mr-1" /> Usar Template
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => openTplEdit(tpl)}><Edit className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => deleteTpl(tpl.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {templates.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <LayoutTemplate className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">Nenhum template criado</p>
+                <p className="text-xs text-muted-foreground mt-1">Crie templates para agilizar a criação de pacotes</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+
         <TabsContent value="contracts" className="space-y-4">
           <div className="flex justify-end">
             <Button onClick={openContractCreate}><Plus className="h-4 w-4 mr-1" /> Novo Contrato</Button>
