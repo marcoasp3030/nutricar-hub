@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
+import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, deleteEventJob, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
 import { fetchTemplates, ChecklistTemplate } from "@/lib/checklistApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
