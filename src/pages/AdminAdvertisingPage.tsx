@@ -129,6 +129,12 @@ const AdminAdvertisingPage = () => {
   const [fornecedores, setFornecedores] = useState<string[]>([]);
   const [packageFornecedores, setPackageFornecedores] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<AdPackageTemplate[]>([]);
+
+  // Template form
+  const [tplDialog, setTplDialog] = useState(false);
+  const [editingTpl, setEditingTpl] = useState<AdPackageTemplate | null>(null);
+  const [tplForm, setTplForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
 
   // Package form
   const [pkgDialog, setPkgDialog] = useState(false);
