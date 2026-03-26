@@ -416,7 +416,7 @@ const AdminAdvertisingPage = () => {
     .map(([month, vals]) => ({ month, paid: vals.paid, pending: vals.pending }));
 
   // === Available months for filter ===
-  const allMonths = [...new Set(payments.map(p => p.month_ref))].sort();
+  const allMonths = [...new Set(payments.map(p => p.month_ref))].filter(m => m && m.trim() !== "").sort();
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
