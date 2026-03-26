@@ -64,6 +64,22 @@ interface AdPackage {
   created_at: string;
 }
 
+interface AdPackageTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  monthly_value: number;
+  duration_months: number;
+  display_frequency: string;
+  media_type: string | null;
+  screen_position: string | null;
+  display_schedule: string | null;
+  content_format: string | null;
+  tags: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
 interface AdContract {
   id: string;
   fornecedor: string;
