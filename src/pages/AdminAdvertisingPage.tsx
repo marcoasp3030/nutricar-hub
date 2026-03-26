@@ -1281,82 +1281,67 @@ const AdminAdvertisingPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* === Package Dialog === */}
+      {/* === Package Dialog (dynamic fields) === */}
       <Dialog open={pkgDialog} onOpenChange={setPkgDialog}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>{editingPkg ? "Editar Pacote" : "Novo Pacote"}</DialogTitle></DialogHeader>
           <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-            <div><Label>Nome</Label><Input value={pkgForm.name} onChange={e => setPkgForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>Descrição</Label><Textarea value={pkgForm.description} onChange={e => setPkgForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor Mensal (R$)</Label><Input type="number" step="0.01" value={pkgForm.monthly_value} onChange={e => setPkgForm(f => ({ ...f, monthly_value: e.target.value }))} /></div>
-              <div><Label>Duração (meses)</Label><Input type="number" value={pkgForm.duration_months} onChange={e => setPkgForm(f => ({ ...f, duration_months: e.target.value }))} /></div>
-            </div>
-            <div><Label>Frequência de Exibição</Label><Input value={pkgForm.display_frequency} onChange={e => setPkgForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Tipo de Mídia</Label>
-                <Select value={pkgForm.media_type} onValueChange={v => setPkgForm(f => ({ ...f, media_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+            <div><Label>Nome *</Label><Input value={pkgName} onChange={e => setPkgName(e.target.value)} /></div>
+
+            {/* Dynamic built-in fields */}
+            {pkgEnabledFields.map(key => {
+              const bf = BUILTIN_FIELDS.find(f => f.key === key);
+              if (!bf) return null;
+              // Special handling for playlist_id
+              if (bf.key === "playlist_id") {
+                return (
+                  <div key={key} className="relative group">
+                    <Label>{bf.label}</Label>
+                    <Select value={pkgFieldValues[key] || "none"} onValueChange={v => setPkgFieldValues(prev => ({ ...prev, [key]: v === "none" ? "" : v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar playlist" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <button type="button" className="absolute top-0 right-0 text-muted-foreground hover:text-destructive" onClick={() => removePkgField(key)}><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                );
+              }
+              return (
+                <div key={key} className="relative group">
+                  <Label>{bf.label}</Label>
+                  {bf.type === "textarea" ? (
+                    <Textarea value={pkgFieldValues[key] || ""} onChange={e => setPkgFieldValues(prev => ({ ...prev, [key]: e.target.value }))} rows={2} />
+                  ) : bf.type === "select" && bf.options ? (
+                    <Select value={pkgFieldValues[key] || ""} onValueChange={v => setPkgFieldValues(prev => ({ ...prev, [key]: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        {bf.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input type={bf.type === "number" ? "number" : "text"} step={bf.type === "number" ? "0.01" : undefined} value={pkgFieldValues[key] || ""} onChange={e => setPkgFieldValues(prev => ({ ...prev, [key]: e.target.value }))} placeholder={bf.key === "tags" ? "Ex: destaque, premium (separadas por vírgula)" : undefined} />
+                  )}
+                  <button type="button" className="absolute top-0 right-0 text-muted-foreground hover:text-destructive" onClick={() => removePkgField(key)}><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              );
+            })}
+
+            {/* Add field dropdown */}
+            {(() => {
+              const available = BUILTIN_FIELDS.filter(bf => !pkgEnabledFields.includes(bf.key));
+              if (available.length === 0) return null;
+              return (
+                <Select value="" onValueChange={v => addPkgField(v)}>
+                  <SelectTrigger className="border-dashed"><Plus className="h-4 w-4 mr-1" /><SelectValue placeholder="Adicionar campo" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="video">Vídeo</SelectItem>
-                    <SelectItem value="banner">Banner</SelectItem>
-                    <SelectItem value="slide">Slide</SelectItem>
-                    <SelectItem value="institucional">Institucional</SelectItem>
+                    {available.map(bf => <SelectItem key={bf.key} value={bf.key}>{bf.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label>Posição na Tela</Label>
-                <Select value={pkgForm.screen_position} onValueChange={v => setPkgForm(f => ({ ...f, screen_position: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tela_cheia">Tela Cheia</SelectItem>
-                    <SelectItem value="rodape">Rodapé</SelectItem>
-                    <SelectItem value="lateral">Lateral</SelectItem>
-                    <SelectItem value="topo">Topo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Horário de Exibição</Label>
-                <Select value={pkgForm.display_schedule} onValueChange={v => setPkgForm(f => ({ ...f, display_schedule: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="integral">Integral</SelectItem>
-                    <SelectItem value="manha">Manhã</SelectItem>
-                    <SelectItem value="tarde">Tarde</SelectItem>
-                    <SelectItem value="noite">Noite</SelectItem>
-                    <SelectItem value="horario_comercial">Horário Comercial</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Formato do Conteúdo</Label>
-                <Select value={pkgForm.content_format} onValueChange={v => setPkgForm(f => ({ ...f, content_format: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="16:9">16:9 (Paisagem)</SelectItem>
-                    <SelectItem value="9:16">9:16 (Retrato)</SelectItem>
-                    <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
-                    <SelectItem value="4:3">4:3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Playlist Vinculada</Label>
-              <Select value={pkgForm.playlist_id || "none"} onValueChange={v => setPkgForm(f => ({ ...f, playlist_id: v === "none" ? "" : v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecionar playlist" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
+              );
+            })()}
+
             {renderCustomFields("packages", pkgCustomFields, setPkgCustomFields)}
             <FornecedorSelector
               fornecedores={fornecedores}
@@ -1364,7 +1349,7 @@ const AdminAdvertisingPage = () => {
               onChange={setPkgSelectedFornecedores}
             />
             <div className="flex items-center gap-2">
-              <input type="checkbox" checked={pkgForm.is_active} onChange={e => setPkgForm(f => ({ ...f, is_active: e.target.checked }))} id="pkg-active" />
+              <input type="checkbox" checked={pkgIsActive} onChange={e => setPkgIsActive(e.target.checked)} id="pkg-active" />
               <Label htmlFor="pkg-active">Ativo</Label>
             </div>
           </div>
