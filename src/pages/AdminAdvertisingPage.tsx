@@ -177,10 +177,13 @@ const AdminAdvertisingPage = () => {
   const [tplEnabledFields, setTplEnabledFields] = useState<string[]>([]);
   const [tplFieldValues, setTplFieldValues] = useState<Record<string, any>>({});
 
-  // Package form
+  // Package form - dynamic fields (same pattern as templates)
   const [pkgDialog, setPkgDialog] = useState(false);
   const [editingPkg, setEditingPkg] = useState<AdPackage | null>(null);
-  const [pkgForm, setPkgForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
+  const [pkgName, setPkgName] = useState("");
+  const [pkgIsActive, setPkgIsActive] = useState(true);
+  const [pkgEnabledFields, setPkgEnabledFields] = useState<string[]>([]);
+  const [pkgFieldValues, setPkgFieldValues] = useState<Record<string, any>>({});
   const [pkgSelectedFornecedores, setPkgSelectedFornecedores] = useState<string[]>([]);
 
   // Contract form
