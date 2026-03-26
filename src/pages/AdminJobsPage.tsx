@@ -50,6 +50,7 @@ const AdminJobsPage = () => {
   const [detailJob, setDetailJob] = useState<EventJob | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<EventJob | null>(null);
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["event_jobs", tab],
