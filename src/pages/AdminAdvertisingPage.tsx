@@ -871,6 +871,62 @@ const AdminAdvertisingPage = () => {
               </div>
             )}
           </div>
+
+          {/* === Campos Personalizados === */}
+          <Card className="mt-6">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2"><Plus className="h-4 w-4" /> Campos Personalizados</CardTitle>
+                <Button size="sm" onClick={openFieldDefCreate}><Plus className="h-3.5 w-3.5 mr-1" /> Novo Campo</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Defina campos extras que aparecerão nos formulários de Pacote e Template.</p>
+            </CardHeader>
+            <CardContent>
+              {fieldDefs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum campo personalizado criado ainda.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Opções</TableHead>
+                      <TableHead>Aplica-se a</TableHead>
+                      <TableHead>Obrigatório</TableHead>
+                      <TableHead>Ordem</TableHead>
+                      <TableHead className="w-20">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fieldDefs.map(fd => (
+                      <TableRow key={fd.id}>
+                        <TableCell className="font-medium">{fd.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">
+                            {fd.field_type === "text" ? "Texto" : fd.field_type === "number" ? "Número" : "Lista Suspensa"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate">
+                          {fd.field_type === "select" ? (fd.options || []).join(", ") : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {fd.applies_to === "both" ? "Pacotes & Templates" : fd.applies_to === "packages" ? "Pacotes" : "Templates"}
+                        </TableCell>
+                        <TableCell>{fd.is_required ? <CheckCircle className="h-4 w-4 text-primary" /> : <span className="text-muted-foreground text-xs">Não</span>}</TableCell>
+                        <TableCell className="text-xs">{fd.sort_order}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" onClick={() => openFieldDefEdit(fd)}><Edit className="h-4 w-4" /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => deleteFieldDef(fd.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
 
