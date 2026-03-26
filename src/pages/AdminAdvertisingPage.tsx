@@ -161,6 +161,8 @@ const AdminAdvertisingPage = () => {
   const [payFilterFornecedor, setPayFilterFornecedor] = useState("__all__");
   const [payFilterStatus, setPayFilterStatus] = useState("__all__");
   const [payFilterMethod, setPayFilterMethod] = useState("__all__");
+  const [payFilterFrom, setPayFilterFrom] = useState("__all__");
+  const [payFilterTo, setPayFilterTo] = useState("__all__");
 
   // Tag filter for packages
   const [filterTag, setFilterTag] = useState<string>("__all__");
