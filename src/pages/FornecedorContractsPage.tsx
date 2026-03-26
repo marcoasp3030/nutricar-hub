@@ -224,25 +224,30 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
                     <TableHead>Pacote</TableHead>
                     <TableHead>Mês Ref.</TableHead>
                     <TableHead>Valor</TableHead>
+                    <TableHead>Método</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Pago em</TableHead>
+                    <TableHead>Obs.</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {payments.map(p => {
                     const st = PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending;
+                    const METHOD_LABELS: Record<string, string> = { pix: "PIX", transferencia: "Transferência", boleto: "Boleto", dinheiro: "Dinheiro", outro: "Outro" };
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.ad_contracts?.ad_packages?.name || "—"}</TableCell>
                         <TableCell>{p.month_ref}</TableCell>
                         <TableCell>{fmt(p.amount)}</TableCell>
+                        <TableCell className="text-xs">{METHOD_LABELS[p.payment_method] || p.payment_method || "—"}</TableCell>
                         <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                         <TableCell className="text-xs">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}</TableCell>
+                        <TableCell className="text-xs max-w-[150px] truncate" title={p.notes || ""}>{p.notes || "—"}</TableCell>
                       </TableRow>
                     );
                   })}
                   {payments.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
