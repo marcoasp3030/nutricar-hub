@@ -180,7 +180,7 @@ const AdminAdvertisingPage = () => {
     setContracts(contractRes.data || []);
     setPayments(payRes.data || []);
     setPlaylists(playlistRes.data || []);
-    const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))];
+    const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))].filter(f => f && f.trim() !== "");
     setFornecedores(uniqueF);
     // Build package->fornecedores map
     const pfMap: Record<string, string[]> = {};
@@ -416,7 +416,7 @@ const AdminAdvertisingPage = () => {
     .map(([month, vals]) => ({ month, paid: vals.paid, pending: vals.pending }));
 
   // === Available months for filter ===
-  const allMonths = [...new Set(payments.map(p => p.month_ref))].sort();
+  const allMonths = [...new Set(payments.map(p => p.month_ref))].filter(m => m && m.trim() !== "").sort();
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -520,7 +520,7 @@ const AdminAdvertisingPage = () => {
         {/* ===== PACOTES / PRODUTOS & SERVIÇOS ===== */}
         <TabsContent value="packages" className="space-y-4">
           {(() => {
-            const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].sort();
+            const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].filter(t => t && t.trim() !== "").sort();
             const filtered = filterTag === "__all__" ? packages : packages.filter(p => ((p as any).tags || []).includes(filterTag));
             
             const MEDIA_LABELS: Record<string, string> = { video: "Vídeo", banner: "Banner", slide: "Slide", institucional: "Institucional" };
