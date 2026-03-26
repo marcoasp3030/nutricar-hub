@@ -332,6 +332,14 @@ const AdminAdvertisingPage = () => {
     return { enabled, values };
   };
 
+  const getPkgBuiltinEnabledFields = (pkg: AdPackage) => {
+    const { storedEnabledFields } = extractPackageCustomFieldState((pkg as any).custom_fields);
+    if (storedEnabledFields.length > 0) {
+      return storedEnabledFields.filter(key => BUILTIN_FIELDS.some(field => field.key === key));
+    }
+    return detectPkgEnabledFields(pkg).enabled;
+  };
+
   const openPkgCreate = () => {
     setEditingPkg(null);
     setPkgName("");
@@ -908,6 +916,7 @@ const AdminAdvertisingPage = () => {
                     const totalRevenue = pkgPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
                     const pendingRevenue = pkgPayments.filter(p => p.status !== "paid").reduce((s, p) => s + p.amount, 0);
                     const assignedF = packageFornecedores[pkg.id] || [];
+                    const enabledBuiltinFields = new Set(getPkgBuiltinEnabledFields(pkg));
                     const mediaType = (pkg as any).media_type || "video";
                     const screenPos = (pkg as any).screen_position || "tela_cheia";
                     const schedule = (pkg as any).display_schedule || "integral";
@@ -935,47 +944,67 @@ const AdminAdvertisingPage = () => {
 
                         <CardContent className="space-y-4 pt-0">
                           {/* Pricing */}
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-primary">{fmt(pkg.monthly_value)}</span>
-                            <span className="text-sm text-muted-foreground">/mês</span>
-                            <span className="text-xs text-muted-foreground ml-1">• {pkg.duration_months} mês(es)</span>
-                          </div>
+                          {(enabledBuiltinFields.has("monthly_value") || enabledBuiltinFields.has("duration_months")) && (
+                            <div className="flex items-baseline gap-1 flex-wrap">
+                              {enabledBuiltinFields.has("monthly_value") && (
+                                <>
+                                  <span className="text-2xl font-bold text-primary">{fmt(pkg.monthly_value)}</span>
+                                  <span className="text-sm text-muted-foreground">/mês</span>
+                                </>
+                              )}
+                              {enabledBuiltinFields.has("duration_months") && (
+                                <span className="text-xs text-muted-foreground ml-1">{enabledBuiltinFields.has("monthly_value") ? "• " : ""}{pkg.duration_months} mês(es)</span>
+                              )}
+                            </div>
+                          )}
 
                           {/* Specs grid */}
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                            <div className="flex items-center gap-1.5">
-                              <Tv className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">Mídia:</span>
-                              <span className="font-medium">{MEDIA_LABELS[mediaType] || mediaType}</span>
+                          {(enabledBuiltinFields.has("media_type") || enabledBuiltinFields.has("screen_position") || enabledBuiltinFields.has("display_schedule") || enabledBuiltinFields.has("content_format") || enabledBuiltinFields.has("display_frequency") || (enabledBuiltinFields.has("playlist_id") && pkg.playlist_id)) && (
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                              {enabledBuiltinFields.has("media_type") && (
+                                <div className="flex items-center gap-1.5">
+                                  <Tv className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground">Mídia:</span>
+                                  <span className="font-medium">{MEDIA_LABELS[mediaType] || mediaType}</span>
+                                </div>
+                              )}
+                              {enabledBuiltinFields.has("screen_position") && (
+                                <div className="flex items-center gap-1.5">
+                                  <Monitor className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground">Posição:</span>
+                                  <span className="font-medium">{POSITION_LABELS[screenPos] || screenPos}</span>
+                                </div>
+                              )}
+                              {enabledBuiltinFields.has("display_schedule") && (
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground">Horário:</span>
+                                  <span className="font-medium">{SCHEDULE_LABELS[schedule] || schedule}</span>
+                                </div>
+                              )}
+                              {enabledBuiltinFields.has("content_format") && (
+                                <div className="flex items-center gap-1.5">
+                                  <Grid3X3 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground">Formato:</span>
+                                  <span className="font-medium">{contentFmt}</span>
+                                </div>
+                              )}
+                              {enabledBuiltinFields.has("display_frequency") && (
+                                <div className="flex items-center gap-1.5 col-span-2">
+                                  <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground">Frequência:</span>
+                                  <span className="font-medium">{pkg.display_frequency}</span>
+                                </div>
+                              )}
+                              {enabledBuiltinFields.has("playlist_id") && pkg.playlist_id && (
+                                <div className="flex items-center gap-1.5 col-span-2">
+                                  <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground">Playlist:</span>
+                                  <span className="font-medium truncate">{playlists.find(p => p.id === pkg.playlist_id)?.name || "—"}</span>
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <Monitor className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">Posição:</span>
-                              <span className="font-medium">{POSITION_LABELS[screenPos] || screenPos}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">Horário:</span>
-                              <span className="font-medium">{SCHEDULE_LABELS[schedule] || schedule}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Grid3X3 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">Formato:</span>
-                              <span className="font-medium">{contentFmt}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 col-span-2">
-                              <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">Frequência:</span>
-                              <span className="font-medium">{pkg.display_frequency}</span>
-                            </div>
-                            {pkg.playlist_id && (
-                              <div className="flex items-center gap-1.5 col-span-2">
-                                <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <span className="text-muted-foreground">Playlist:</span>
-                                <span className="font-medium truncate">{playlists.find(p => p.id === pkg.playlist_id)?.name || "—"}</span>
-                              </div>
-                            )}
-                          </div>
+                          )}
 
                           {/* Revenue metrics */}
                           <div className="grid grid-cols-3 gap-2">
