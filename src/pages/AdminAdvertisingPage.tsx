@@ -326,20 +326,69 @@ const AdminAdvertisingPage = () => {
   // === Template CRUD ===
   const openTplCreate = () => {
     setEditingTpl(null);
-    setTplForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
+    setTplName("");
+    setTplIsActive(true);
+    setTplEnabledFields([]);
+    setTplFieldValues({});
     setTplCustomFields({});
     setTplDialog(true);
   };
   const openTplEdit = (tpl: AdPackageTemplate) => {
     setEditingTpl(tpl);
-    setTplForm({ name: tpl.name, description: tpl.description || "", monthly_value: String(tpl.monthly_value), duration_months: String(tpl.duration_months), display_frequency: tpl.display_frequency, media_type: tpl.media_type || "video", screen_position: tpl.screen_position || "tela_cheia", display_schedule: tpl.display_schedule || "integral", content_format: tpl.content_format || "16:9", tags: (tpl.tags || []).join(", "), is_active: tpl.is_active });
-    setTplCustomFields((tpl as any).custom_fields || {});
+    setTplName(tpl.name);
+    setTplIsActive(tpl.is_active);
+    // Detect which built-in fields have values
+    const enabled: string[] = [];
+    const vals: Record<string, any> = {};
+    if (tpl.description) { enabled.push("description"); vals.description = tpl.description; }
+    if (tpl.monthly_value) { enabled.push("monthly_value"); vals.monthly_value = String(tpl.monthly_value); }
+    if (tpl.duration_months && tpl.duration_months !== 1) { enabled.push("duration_months"); vals.duration_months = String(tpl.duration_months); }
+    if (tpl.display_frequency && tpl.display_frequency !== "30s a cada 5 min") { enabled.push("display_frequency"); vals.display_frequency = tpl.display_frequency; }
+    if (tpl.media_type) { enabled.push("media_type"); vals.media_type = tpl.media_type; }
+    if (tpl.screen_position) { enabled.push("screen_position"); vals.screen_position = tpl.screen_position; }
+    if (tpl.display_schedule) { enabled.push("display_schedule"); vals.display_schedule = tpl.display_schedule; }
+    if (tpl.content_format) { enabled.push("content_format"); vals.content_format = tpl.content_format; }
+    if (tpl.tags && tpl.tags.length > 0) { enabled.push("tags"); vals.tags = tpl.tags.join(", "); }
+    // Also enable custom field defs that have values
+    const cf = (tpl as any).custom_fields || {};
+    Object.keys(cf).forEach(k => { if (cf[k]) enabled.push(`custom_${k}`); });
+    setTplEnabledFields(enabled);
+    setTplFieldValues(vals);
+    setTplCustomFields(cf);
     setTplDialog(true);
   };
+  const addTplField = (key: string) => {
+    if (!tplEnabledFields.includes(key)) {
+      setTplEnabledFields(prev => [...prev, key]);
+    }
+  };
+  const removeTplField = (key: string) => {
+    setTplEnabledFields(prev => prev.filter(k => k !== key));
+    if (key.startsWith("custom_")) {
+      const fdId = key.replace("custom_", "");
+      setTplCustomFields((prev: Record<string, any>) => { const n = { ...prev }; delete n[fdId]; return n; });
+    } else {
+      setTplFieldValues((prev: Record<string, any>) => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  };
   const saveTpl = async () => {
-    if (!tplForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
-    const tagsArr = tplForm.tags ? tplForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    const payload: any = { name: tplForm.name, description: tplForm.description || null, monthly_value: parseFloat(tplForm.monthly_value) || 0, duration_months: parseInt(tplForm.duration_months) || 1, display_frequency: tplForm.display_frequency, media_type: tplForm.media_type, screen_position: tplForm.screen_position, display_schedule: tplForm.display_schedule, content_format: tplForm.content_format, tags: tagsArr, is_active: tplForm.is_active, custom_fields: tplCustomFields };
+    if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
+    const v = tplFieldValues;
+    const tagsArr = v.tags ? String(v.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+    const payload: any = {
+      name: tplName,
+      description: v.description || null,
+      monthly_value: parseFloat(v.monthly_value) || 0,
+      duration_months: parseInt(v.duration_months) || 1,
+      display_frequency: v.display_frequency || "30s a cada 5 min",
+      media_type: v.media_type || null,
+      screen_position: v.screen_position || null,
+      display_schedule: v.display_schedule || null,
+      content_format: v.content_format || null,
+      tags: tagsArr,
+      is_active: tplIsActive,
+      custom_fields: tplCustomFields,
+    };
     if (editingTpl) {
       const { error } = await supabase.from("ad_package_templates").update(payload).eq("id", editingTpl.id);
       if (error) { toast.error("Erro ao atualizar template"); return; }
