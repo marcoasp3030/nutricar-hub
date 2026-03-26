@@ -92,7 +92,21 @@ interface AdPackageTemplate {
   tags: string[];
   is_active: boolean;
   created_at: string;
+  custom_fields?: any;
 }
+
+// Built-in fields available for templates
+const BUILTIN_TPL_FIELDS: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] }[] = [
+  { key: "description", label: "Descrição", type: "textarea" },
+  { key: "monthly_value", label: "Valor Mensal (R$)", type: "number" },
+  { key: "duration_months", label: "Duração (meses)", type: "number" },
+  { key: "display_frequency", label: "Frequência de Exibição", type: "text" },
+  { key: "media_type", label: "Tipo de Mídia", type: "select", options: [{ value: "video", label: "Vídeo" }, { value: "banner", label: "Banner" }, { value: "slide", label: "Slide" }, { value: "institucional", label: "Institucional" }] },
+  { key: "screen_position", label: "Posição na Tela", type: "select", options: [{ value: "tela_cheia", label: "Tela Cheia" }, { value: "rodape", label: "Rodapé" }, { value: "lateral", label: "Lateral" }, { value: "topo", label: "Topo" }] },
+  { key: "display_schedule", label: "Horário de Exibição", type: "select", options: [{ value: "integral", label: "Integral" }, { value: "manha", label: "Manhã" }, { value: "tarde", label: "Tarde" }, { value: "noite", label: "Noite" }, { value: "horario_comercial", label: "Horário Comercial" }] },
+  { key: "content_format", label: "Formato do Conteúdo", type: "select", options: [{ value: "16:9", label: "16:9 (Paisagem)" }, { value: "9:16", label: "9:16 (Retrato)" }, { value: "1:1", label: "1:1 (Quadrado)" }, { value: "4:3", label: "4:3" }] },
+  { key: "tags", label: "Tags", type: "text" },
+];
 
 interface AdContract {
   id: string;
@@ -151,10 +165,13 @@ const AdminAdvertisingPage = () => {
   const [pkgCustomFields, setPkgCustomFields] = useState<Record<string, any>>({});
   const [tplCustomFields, setTplCustomFields] = useState<Record<string, any>>({});
 
-  // Template form
+  // Template form - dynamic fields
   const [tplDialog, setTplDialog] = useState(false);
   const [editingTpl, setEditingTpl] = useState<AdPackageTemplate | null>(null);
-  const [tplForm, setTplForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
+  const [tplName, setTplName] = useState("");
+  const [tplIsActive, setTplIsActive] = useState(true);
+  const [tplEnabledFields, setTplEnabledFields] = useState<string[]>([]);
+  const [tplFieldValues, setTplFieldValues] = useState<Record<string, any>>({});
 
   // Package form
   const [pkgDialog, setPkgDialog] = useState(false);
@@ -309,20 +326,69 @@ const AdminAdvertisingPage = () => {
   // === Template CRUD ===
   const openTplCreate = () => {
     setEditingTpl(null);
-    setTplForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
+    setTplName("");
+    setTplIsActive(true);
+    setTplEnabledFields([]);
+    setTplFieldValues({});
     setTplCustomFields({});
     setTplDialog(true);
   };
   const openTplEdit = (tpl: AdPackageTemplate) => {
     setEditingTpl(tpl);
-    setTplForm({ name: tpl.name, description: tpl.description || "", monthly_value: String(tpl.monthly_value), duration_months: String(tpl.duration_months), display_frequency: tpl.display_frequency, media_type: tpl.media_type || "video", screen_position: tpl.screen_position || "tela_cheia", display_schedule: tpl.display_schedule || "integral", content_format: tpl.content_format || "16:9", tags: (tpl.tags || []).join(", "), is_active: tpl.is_active });
-    setTplCustomFields((tpl as any).custom_fields || {});
+    setTplName(tpl.name);
+    setTplIsActive(tpl.is_active);
+    // Detect which built-in fields have values
+    const enabled: string[] = [];
+    const vals: Record<string, any> = {};
+    if (tpl.description) { enabled.push("description"); vals.description = tpl.description; }
+    if (tpl.monthly_value) { enabled.push("monthly_value"); vals.monthly_value = String(tpl.monthly_value); }
+    if (tpl.duration_months && tpl.duration_months !== 1) { enabled.push("duration_months"); vals.duration_months = String(tpl.duration_months); }
+    if (tpl.display_frequency && tpl.display_frequency !== "30s a cada 5 min") { enabled.push("display_frequency"); vals.display_frequency = tpl.display_frequency; }
+    if (tpl.media_type) { enabled.push("media_type"); vals.media_type = tpl.media_type; }
+    if (tpl.screen_position) { enabled.push("screen_position"); vals.screen_position = tpl.screen_position; }
+    if (tpl.display_schedule) { enabled.push("display_schedule"); vals.display_schedule = tpl.display_schedule; }
+    if (tpl.content_format) { enabled.push("content_format"); vals.content_format = tpl.content_format; }
+    if (tpl.tags && tpl.tags.length > 0) { enabled.push("tags"); vals.tags = tpl.tags.join(", "); }
+    // Also enable custom field defs that have values
+    const cf = (tpl as any).custom_fields || {};
+    Object.keys(cf).forEach(k => { if (cf[k]) enabled.push(`custom_${k}`); });
+    setTplEnabledFields(enabled);
+    setTplFieldValues(vals);
+    setTplCustomFields(cf);
     setTplDialog(true);
   };
+  const addTplField = (key: string) => {
+    if (!tplEnabledFields.includes(key)) {
+      setTplEnabledFields(prev => [...prev, key]);
+    }
+  };
+  const removeTplField = (key: string) => {
+    setTplEnabledFields(prev => prev.filter(k => k !== key));
+    if (key.startsWith("custom_")) {
+      const fdId = key.replace("custom_", "");
+      setTplCustomFields((prev: Record<string, any>) => { const n = { ...prev }; delete n[fdId]; return n; });
+    } else {
+      setTplFieldValues((prev: Record<string, any>) => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  };
   const saveTpl = async () => {
-    if (!tplForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
-    const tagsArr = tplForm.tags ? tplForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    const payload: any = { name: tplForm.name, description: tplForm.description || null, monthly_value: parseFloat(tplForm.monthly_value) || 0, duration_months: parseInt(tplForm.duration_months) || 1, display_frequency: tplForm.display_frequency, media_type: tplForm.media_type, screen_position: tplForm.screen_position, display_schedule: tplForm.display_schedule, content_format: tplForm.content_format, tags: tagsArr, is_active: tplForm.is_active, custom_fields: tplCustomFields };
+    if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
+    const v = tplFieldValues;
+    const tagsArr = v.tags ? String(v.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+    const payload: any = {
+      name: tplName,
+      description: v.description || null,
+      monthly_value: parseFloat(v.monthly_value) || 0,
+      duration_months: parseInt(v.duration_months) || 1,
+      display_frequency: v.display_frequency || "30s a cada 5 min",
+      media_type: v.media_type || null,
+      screen_position: v.screen_position || null,
+      display_schedule: v.display_schedule || null,
+      content_format: v.content_format || null,
+      tags: tagsArr,
+      is_active: tplIsActive,
+      custom_fields: tplCustomFields,
+    };
     if (editingTpl) {
       const { error } = await supabase.from("ad_package_templates").update(payload).eq("id", editingTpl.id);
       if (error) { toast.error("Erro ao atualizar template"); return; }
@@ -1380,70 +1446,87 @@ const AdminAdvertisingPage = () => {
         <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>{editingTpl ? "Editar Template" : "Novo Template"}</DialogTitle></DialogHeader>
           <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-            <div><Label>Nome</Label><Input value={tplForm.name} onChange={e => setTplForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Premium Tela Cheia" /></div>
-            <div><Label>Descrição</Label><Textarea value={tplForm.description} onChange={e => setTplForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor Mensal (R$)</Label><Input type="number" step="0.01" value={tplForm.monthly_value} onChange={e => setTplForm(f => ({ ...f, monthly_value: e.target.value }))} /></div>
-              <div><Label>Duração (meses)</Label><Input type="number" value={tplForm.duration_months} onChange={e => setTplForm(f => ({ ...f, duration_months: e.target.value }))} /></div>
-            </div>
-            <div><Label>Frequência de Exibição</Label><Input value={tplForm.display_frequency} onChange={e => setTplForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Tipo de Mídia</Label>
-                <Select value={tplForm.media_type} onValueChange={v => setTplForm(f => ({ ...f, media_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+            <div><Label>Nome *</Label><Input value={tplName} onChange={e => setTplName(e.target.value)} placeholder="Ex: Premium Tela Cheia" /></div>
+
+            {/* Enabled fields */}
+            {tplEnabledFields.map(key => {
+              // Check if it's a custom field
+              if (key.startsWith("custom_")) {
+                const fdId = key.replace("custom_", "");
+                const fd = fieldDefs.find(f => f.id === fdId);
+                if (!fd) return null;
+                return (
+                  <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
+                    <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full" onClick={() => removeTplField(key)}><Trash2 className="h-3 w-3" /></Button>
+                    <Label>{fd.name}</Label>
+                    {fd.field_type === "select" ? (
+                      <Select value={tplCustomFields[fdId] || ""} onValueChange={v => setTplCustomFields((prev: Record<string, any>) => ({ ...prev, [fdId]: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>{(fd.options || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                      </Select>
+                    ) : (
+                      <Input type={fd.field_type === "number" ? "number" : "text"} value={tplCustomFields[fdId] || ""} onChange={e => setTplCustomFields((prev: Record<string, any>) => ({ ...prev, [fdId]: e.target.value }))} />
+                    )}
+                  </div>
+                );
+              }
+              // Built-in field
+              const fieldDef = BUILTIN_TPL_FIELDS.find(f => f.key === key);
+              if (!fieldDef) return null;
+              return (
+                <div key={key} className="relative group border rounded-md p-3 bg-muted/30">
+                  <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full" onClick={() => removeTplField(key)}><Trash2 className="h-3 w-3" /></Button>
+                  <Label>{fieldDef.label}</Label>
+                  {fieldDef.type === "textarea" ? (
+                    <Textarea value={tplFieldValues[key] || ""} onChange={e => setTplFieldValues(prev => ({ ...prev, [key]: e.target.value }))} rows={2} />
+                  ) : fieldDef.type === "select" ? (
+                    <Select value={tplFieldValues[key] || ""} onValueChange={v => setTplFieldValues(prev => ({ ...prev, [key]: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>{fieldDef.options!.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  ) : (
+                    <Input type={fieldDef.type === "number" ? "number" : "text"} step={key === "monthly_value" ? "0.01" : undefined} value={tplFieldValues[key] || ""} onChange={e => setTplFieldValues(prev => ({ ...prev, [key]: e.target.value }))} />
+                  )}
+                </div>
+              );
+            })}
+
+            {tplEnabledFields.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
+                Template em branco. Use o botão abaixo para adicionar campos.
+              </p>
+            )}
+
+            {/* Add field dropdown */}
+            {(() => {
+              const availableBuiltin = BUILTIN_TPL_FIELDS.filter(f => !tplEnabledFields.includes(f.key));
+              const availableCustom = fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && !tplEnabledFields.includes(`custom_${fd.id}`));
+              const hasAvailable = availableBuiltin.length > 0 || availableCustom.length > 0;
+              if (!hasAvailable) return null;
+              return (
+                <Select value="" onValueChange={v => addTplField(v)}>
+                  <SelectTrigger className="border-dashed">
+                    <div className="flex items-center gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Adicionar campo</div>
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="video">Vídeo</SelectItem>
-                    <SelectItem value="banner">Banner</SelectItem>
-                    <SelectItem value="slide">Slide</SelectItem>
-                    <SelectItem value="institucional">Institucional</SelectItem>
+                    {availableBuiltin.length > 0 && availableBuiltin.map(f => (
+                      <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
+                    ))}
+                    {availableCustom.length > 0 && (
+                      <>
+                        {availableBuiltin.length > 0 && <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Campos Personalizados</div>}
+                        {availableCustom.map(fd => (
+                          <SelectItem key={`custom_${fd.id}`} value={`custom_${fd.id}`}>{fd.name}</SelectItem>
+                        ))}
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label>Posição na Tela</Label>
-                <Select value={tplForm.screen_position} onValueChange={v => setTplForm(f => ({ ...f, screen_position: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tela_cheia">Tela Cheia</SelectItem>
-                    <SelectItem value="rodape">Rodapé</SelectItem>
-                    <SelectItem value="lateral">Lateral</SelectItem>
-                    <SelectItem value="topo">Topo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Horário de Exibição</Label>
-                <Select value={tplForm.display_schedule} onValueChange={v => setTplForm(f => ({ ...f, display_schedule: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="integral">Integral</SelectItem>
-                    <SelectItem value="manha">Manhã</SelectItem>
-                    <SelectItem value="tarde">Tarde</SelectItem>
-                    <SelectItem value="noite">Noite</SelectItem>
-                    <SelectItem value="horario_comercial">Horário Comercial</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Formato do Conteúdo</Label>
-                <Select value={tplForm.content_format} onValueChange={v => setTplForm(f => ({ ...f, content_format: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="16:9">16:9 (Paisagem)</SelectItem>
-                    <SelectItem value="9:16">9:16 (Retrato)</SelectItem>
-                    <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
-                    <SelectItem value="4:3">4:3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div><Label>Tags</Label><Input value={tplForm.tags} onChange={e => setTplForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: premium, destaque (separadas por vírgula)" /></div>
-            {renderCustomFields("templates", tplCustomFields, setTplCustomFields)}
+              );
+            })()}
+
             <div className="flex items-center gap-2">
-              <input type="checkbox" checked={tplForm.is_active} onChange={e => setTplForm(f => ({ ...f, is_active: e.target.checked }))} id="tpl-active" />
+              <input type="checkbox" checked={tplIsActive} onChange={e => setTplIsActive(e.target.checked)} id="tpl-active" />
               <Label htmlFor="tpl-active">Ativo</Label>
             </div>
           </div>
