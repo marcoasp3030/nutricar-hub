@@ -49,7 +49,7 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Mídia TV - Financeiro</h1>
+      <h1 className="text-2xl font-bold text-foreground">Publicidade - Financeiro</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
