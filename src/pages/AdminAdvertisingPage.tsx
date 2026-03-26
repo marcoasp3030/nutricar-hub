@@ -75,7 +75,7 @@ interface AdPackage {
   playlist_id: string | null;
   is_active: boolean;
   created_at: string;
-  custom_fields?: Record<string, any>;
+  custom_fields?: any;
 }
 
 interface AdPackageTemplate {
