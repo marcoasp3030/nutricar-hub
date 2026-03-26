@@ -223,17 +223,55 @@ const AdminAdvertisingPage = () => {
 
   useEffect(() => { fetchAll(); }, []);
 
+  // === Field Definition CRUD ===
+  const openFieldDefCreate = () => {
+    setEditingFieldDef(null);
+    setFieldDefForm({ name: "", field_type: "text", options: "", applies_to: "both", is_required: false, sort_order: "0" });
+    setFieldDefDialog(true);
+  };
+  const openFieldDefEdit = (fd: FieldDefinition) => {
+    setEditingFieldDef(fd);
+    setFieldDefForm({ name: fd.name, field_type: fd.field_type, options: (fd.options || []).join(", "), applies_to: fd.applies_to, is_required: fd.is_required, sort_order: String(fd.sort_order) });
+    setFieldDefDialog(true);
+  };
+  const saveFieldDef = async () => {
+    if (!fieldDefForm.name.trim()) { toast.error("Nome do campo é obrigatório"); return; }
+    const optionsArr = fieldDefForm.field_type === "select" ? fieldDefForm.options.split(",").map(o => o.trim()).filter(Boolean) : [];
+    const payload = { name: fieldDefForm.name, field_type: fieldDefForm.field_type, options: optionsArr, applies_to: fieldDefForm.applies_to, is_required: fieldDefForm.is_required, sort_order: parseInt(fieldDefForm.sort_order) || 0, is_active: true };
+    if (editingFieldDef) {
+      const { error } = await supabase.from("ad_field_definitions").update(payload).eq("id", editingFieldDef.id);
+      if (error) { toast.error("Erro ao atualizar campo"); return; }
+    } else {
+      const { error } = await supabase.from("ad_field_definitions").insert(payload);
+      if (error) { toast.error("Erro ao criar campo"); return; }
+    }
+    toast.success(editingFieldDef ? "Campo atualizado" : "Campo criado");
+    setFieldDefDialog(false);
+    fetchAll();
+  };
+  const deleteFieldDef = async (id: string) => {
+    if (!confirm("Excluir este campo personalizado?")) return;
+    await supabase.from("ad_field_definitions").delete().eq("id", id);
+    toast.success("Campo excluído");
+    fetchAll();
+  };
+
+  // Helper: get field defs for a target
+  const getFieldsFor = (target: "packages" | "templates") => fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === target));
+
   // === Package CRUD ===
   const openPkgCreate = () => {
     setEditingPkg(null);
     setPkgForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
     setPkgSelectedFornecedores([]);
+    setPkgCustomFields({});
     setPkgDialog(true);
   };
   const openPkgEdit = (pkg: AdPackage) => {
     setEditingPkg(pkg);
     setPkgForm({ name: pkg.name, description: pkg.description || "", monthly_value: String(pkg.monthly_value), duration_months: String(pkg.duration_months), display_frequency: pkg.display_frequency, playlist_id: pkg.playlist_id || "", is_active: pkg.is_active, media_type: (pkg as any).media_type || "video", screen_position: (pkg as any).screen_position || "tela_cheia", display_schedule: (pkg as any).display_schedule || "integral", content_format: (pkg as any).content_format || "16:9", tags: ((pkg as any).tags || []).join(", ") });
     setPkgSelectedFornecedores(packageFornecedores[pkg.id] || []);
+    setPkgCustomFields((pkg as any).custom_fields || {});
     setPkgDialog(true);
   };
   const savePkg = async () => {
