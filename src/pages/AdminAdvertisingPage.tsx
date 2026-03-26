@@ -520,7 +520,7 @@ const AdminAdvertisingPage = () => {
         {/* ===== PACOTES / PRODUTOS & SERVIÇOS ===== */}
         <TabsContent value="packages" className="space-y-4">
           {(() => {
-            const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].sort();
+            const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].filter(t => t && t.trim() !== "").sort();
             const filtered = filterTag === "__all__" ? packages : packages.filter(p => ((p as any).tags || []).includes(filterTag));
             
             const MEDIA_LABELS: Record<string, string> = { video: "Vídeo", banner: "Banner", slide: "Slide", institucional: "Institucional" };
