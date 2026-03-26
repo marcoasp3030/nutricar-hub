@@ -480,7 +480,8 @@ const AdminAdvertisingPage = () => {
     for (const bk of builtinKeys) {
       if (!tplEnabledFields.includes(bk)) {
         if (bk === "monthly_value") payload[bk] = 0;
-        else if (bk === "duration_months") payload[bk] = 0;
+        else if (bk === "duration_months") payload[bk] = 1;
+        else if (bk === "display_frequency") payload[bk] = "30s a cada 5 min";
         else if (bk === "tags") payload[bk] = [];
         else payload[bk] = null;
       }
@@ -490,7 +491,7 @@ const AdminAdvertisingPage = () => {
       if (error) { toast.error("Erro ao atualizar template"); return; }
     } else {
       const { error } = await supabase.from("ad_package_templates").insert(payload);
-      if (error) { toast.error("Erro ao criar template"); return; }
+      if (error) { console.error("Erro ao criar template:", error); toast.error("Erro ao criar template"); return; }
     }
     toast.success(editingTpl ? "Template atualizado" : "Template criado");
     setTplDialog(false);
