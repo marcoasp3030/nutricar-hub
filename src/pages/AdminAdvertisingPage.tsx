@@ -381,6 +381,13 @@ const AdminAdvertisingPage = () => {
   };
   const saveTpl = async () => {
     if (!tplName.trim()) { toast.error("Nome é obrigatório"); return; }
+    // Validate required custom fields that are enabled
+    const requiredTplFields = fieldDefs.filter(fd => fd.is_required && fd.is_active && (fd.applies_to === "both" || fd.applies_to === "templates") && tplEnabledFields.includes(`custom_${fd.id}`));
+    const missingTpl = requiredTplFields.filter(fd => !tplCustomFields[fd.id] || String(tplCustomFields[fd.id]).trim() === "");
+    if (missingTpl.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${missingTpl.map(f => f.name).join(", ")}`);
+      return;
+    }
     const v = tplFieldValues;
     const tagsArr = v.tags ? String(v.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [];
     const payload: any = {
