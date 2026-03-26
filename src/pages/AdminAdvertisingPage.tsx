@@ -549,6 +549,7 @@ const AdminAdvertisingPage = () => {
     const storedAllEnabled: string[] = cf._enabled_fields_all || cf._enabled_fields || [];
     delete cf._enabled_fields;
     delete cf._enabled_fields_all;
+    delete cf._custom_field_defs;
     
     const builtinEnabled: string[] = [];
     const values: Record<string, any> = {};
