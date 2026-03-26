@@ -161,6 +161,8 @@ const AdminAdvertisingPage = () => {
   const [payFilterFornecedor, setPayFilterFornecedor] = useState("__all__");
   const [payFilterStatus, setPayFilterStatus] = useState("__all__");
   const [payFilterMethod, setPayFilterMethod] = useState("__all__");
+  const [payFilterFrom, setPayFilterFrom] = useState("__all__");
+  const [payFilterTo, setPayFilterTo] = useState("__all__");
 
   // Tag filter for packages
   const [filterTag, setFilterTag] = useState<string>("__all__");
@@ -400,8 +402,8 @@ const AdminAdvertisingPage = () => {
 
   // === Filtered payments ===
   const filteredPayments = payments.filter(p => {
-    if (filterFrom && p.month_ref < filterFrom) return false;
-    if (filterTo && p.month_ref > filterTo) return false;
+    if (payFilterFrom !== "__all__" && p.month_ref < payFilterFrom) return false;
+    if (payFilterTo !== "__all__" && p.month_ref > payFilterTo) return false;
     if (payFilterFornecedor !== "__all__" && p.ad_contracts?.fornecedor !== payFilterFornecedor) return false;
     if (payFilterStatus !== "__all__" && p.status !== payFilterStatus) return false;
     if (payFilterMethod !== "__all__" && (p as any).payment_method !== payFilterMethod) return false;
@@ -857,9 +859,11 @@ const AdminAdvertisingPage = () => {
               setPayFilterFornecedor("__all__");
               setPayFilterStatus("__all__");
               setPayFilterMethod("__all__");
+              setPayFilterFrom("__all__");
+              setPayFilterTo("__all__");
             };
 
-            const hasActiveFilters = payFilterFornecedor !== "__all__" || payFilterStatus !== "__all__" || payFilterMethod !== "__all__";
+            const hasActiveFilters = payFilterFornecedor !== "__all__" || payFilterStatus !== "__all__" || payFilterMethod !== "__all__" || payFilterFrom !== "__all__" || payFilterTo !== "__all__";
 
             return (
               <>
@@ -893,6 +897,26 @@ const AdminAdvertisingPage = () => {
                         <SelectContent>
                           <SelectItem value="__all__">Todos</SelectItem>
                           {payMethods.map(m => <SelectItem key={m} value={m}>{METHOD_LABELS[m] || m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="min-w-[120px]">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Período de</Label>
+                      <Select value={payFilterFrom} onValueChange={setPayFilterFrom}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Início</SelectItem>
+                          {allMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="min-w-[120px]">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Período até</Label>
+                      <Select value={payFilterTo} onValueChange={setPayFilterTo}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Fim</SelectItem>
+                          {allMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
