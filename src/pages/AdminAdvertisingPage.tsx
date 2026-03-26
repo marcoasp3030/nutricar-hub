@@ -175,6 +175,7 @@ const AdminAdvertisingPage = () => {
   const [editingFieldDef, setEditingFieldDef] = useState<FieldDefinition | null>(null);
   const [fieldDefForm, setFieldDefForm] = useState({ name: "", field_type: "text", options: "", applies_to: "both", is_required: false, sort_order: "0" });
   const [pkgCustomFields, setPkgCustomFields] = useState<Record<string, any>>({});
+  const [pkgCustomFieldDefs, setPkgCustomFieldDefs] = useState<LocalCustomFieldDefinition[]>([]);
   const [tplCustomFields, setTplCustomFields] = useState<Record<string, any>>({});
   const [tplCustomFieldDefs, setTplCustomFieldDefs] = useState<LocalCustomFieldDefinition[]>([]);
   const [tplNewCustomField, setTplNewCustomField] = useState({ name: "", field_type: "text" as "text" | "number" | "select", options: "", is_required: false });
@@ -293,6 +294,25 @@ const AdminAdvertisingPage = () => {
   // Helper: get field defs for a target
   const getFieldsFor = (target: "packages" | "templates") => fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === target));
 
+  const extractPackageCustomFieldState = (rawCustomFields: Record<string, any> | null | undefined) => {
+    const cf = { ...(rawCustomFields || {}) };
+    const localFieldDefs: LocalCustomFieldDefinition[] = Array.isArray(cf._custom_field_defs) ? cf._custom_field_defs : [];
+    const allowedIds = new Set(localFieldDefs.map(fd => fd.id));
+    const storedEnabledFields: string[] = Array.isArray(cf._enabled_fields) ? cf._enabled_fields : [];
+
+    delete cf._enabled_fields;
+    delete cf._enabled_fields_all;
+    delete cf._custom_field_defs;
+
+    const customValues = Object.fromEntries(Object.entries(cf).filter(([key]) => allowedIds.has(key)));
+
+    return {
+      customValues,
+      localFieldDefs,
+      storedEnabledFields,
+    };
+  };
+
   // === Package CRUD (dynamic fields) ===
   const detectPkgEnabledFields = (pkg: any) => {
     const enabled: string[] = [];
@@ -320,17 +340,20 @@ const AdminAdvertisingPage = () => {
     setPkgFieldValues({});
     setPkgSelectedFornecedores([]);
     setPkgCustomFields({});
+    setPkgCustomFieldDefs([]);
     setPkgDialog(true);
   };
   const openPkgEdit = (pkg: AdPackage) => {
     setEditingPkg(pkg);
     setPkgName(pkg.name);
     setPkgIsActive(pkg.is_active);
+    const { customValues, localFieldDefs, storedEnabledFields } = extractPackageCustomFieldState((pkg as any).custom_fields);
     const { enabled, values } = detectPkgEnabledFields(pkg);
-    setPkgEnabledFields(enabled);
+    setPkgEnabledFields(storedEnabledFields.length > 0 ? storedEnabledFields : enabled);
     setPkgFieldValues(values);
     setPkgSelectedFornecedores(packageFornecedores[pkg.id] || []);
-    setPkgCustomFields((pkg as any).custom_fields || {});
+    setPkgCustomFields(customValues);
+    setPkgCustomFieldDefs(localFieldDefs);
     setPkgDialog(true);
   };
   const addPkgField = (key: string) => {
@@ -343,7 +366,7 @@ const AdminAdvertisingPage = () => {
   const savePkg = async () => {
     if (!pkgName.trim()) { toast.error("Nome é obrigatório"); return; }
     // Validate required custom fields
-    const requiredPkgFields = getFieldsFor("packages").filter(fd => fd.is_required);
+    const requiredPkgFields = pkgCustomFieldDefs.filter(fd => fd.is_required);
     const missingPkg = requiredPkgFields.filter(fd => !pkgCustomFields[fd.id] || String(pkgCustomFields[fd.id]).trim() === "");
     if (missingPkg.length > 0) {
       toast.error(`Preencha os campos obrigatórios: ${missingPkg.map(f => f.name).join(", ")}`);
@@ -364,7 +387,11 @@ const AdminAdvertisingPage = () => {
       display_schedule: v.display_schedule || null,
       content_format: v.content_format || null,
       tags: tagsArr,
-      custom_fields: pkgCustomFields,
+      custom_fields: {
+        ...pkgCustomFields,
+        _custom_field_defs: pkgCustomFieldDefs,
+        _enabled_fields: [...pkgEnabledFields],
+      },
     };
     let pkgId = editingPkg?.id;
     if (editingPkg) {
@@ -547,6 +574,8 @@ const AdminAdvertisingPage = () => {
     setPkgIsActive(true);
     const cf = { ...((tpl as any).custom_fields || {}) };
     const storedAllEnabled: string[] = cf._enabled_fields_all || cf._enabled_fields || [];
+    const localFieldDefs: LocalCustomFieldDefinition[] = Array.isArray(cf._custom_field_defs) ? cf._custom_field_defs : [];
+    const allowedIds = new Set(localFieldDefs.map(fd => fd.id));
     delete cf._enabled_fields;
     delete cf._enabled_fields_all;
     delete cf._custom_field_defs;
@@ -570,7 +599,8 @@ const AdminAdvertisingPage = () => {
     setPkgEnabledFields(builtinEnabled);
     setPkgFieldValues(values);
     setPkgSelectedFornecedores([]);
-    setPkgCustomFields(cf);
+    setPkgCustomFields(Object.fromEntries(Object.entries(cf).filter(([key]) => allowedIds.has(key))));
+    setPkgCustomFieldDefs(localFieldDefs);
     setPkgDialog(true);
     toast.info("Pacote pré-preenchido a partir do template");
   };
@@ -706,8 +736,7 @@ const AdminAdvertisingPage = () => {
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   // === Dynamic custom fields renderer ===
-  const renderCustomFields = (target: "packages" | "templates", values: Record<string, any>, onChange: (vals: Record<string, any>) => void) => {
-    const fields = getFieldsFor(target);
+  const renderCustomFields = (fields: LocalCustomFieldDefinition[], values: Record<string, any>, onChange: (vals: Record<string, any>) => void) => {
     if (fields.length === 0) return null;
     return (
       <div className="space-y-3 border-t border-border pt-3">
@@ -967,15 +996,17 @@ const AdminAdvertisingPage = () => {
                           {/* Custom fields */}
                           {(() => {
                             const cf = (pkg as any).custom_fields || {};
-                            const entries = Object.entries(cf).filter(([, v]) => v !== "" && v !== null && v !== undefined);
+                            const localFieldDefs: LocalCustomFieldDefinition[] = Array.isArray(cf._custom_field_defs) ? cf._custom_field_defs : [];
+                            const entries = localFieldDefs
+                              .map(fd => [fd, cf[fd.id]] as const)
+                              .filter(([, v]) => v !== "" && v !== null && v !== undefined);
                             if (entries.length === 0) return null;
                             return (
                               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border rounded-md p-2 bg-muted/30">
-                                {entries.map(([k, v]) => {
-                                  const fd = fieldDefs.find(f => f.id === k);
+                                {entries.map(([fd, v]) => {
                                   return (
-                                    <div key={k} className="flex flex-col">
-                                      <span className="text-muted-foreground text-[10px] font-medium">{fd?.name || k}</span>
+                                    <div key={fd.id} className="flex flex-col">
+                                      <span className="text-muted-foreground text-[10px] font-medium">{fd.name}</span>
                                       <span className="font-medium truncate">{String(v)}</span>
                                     </div>
                                   );
@@ -1016,11 +1047,13 @@ const AdminAdvertisingPage = () => {
                               setEditingPkg(null);
                               setPkgName(`${pkg.name} (Cópia)`);
                               setPkgIsActive(true);
+                              const { customValues, localFieldDefs, storedEnabledFields } = extractPackageCustomFieldState((pkg as any).custom_fields);
                               const { enabled, values } = detectPkgEnabledFields(pkg);
-                              setPkgEnabledFields(enabled);
+                              setPkgEnabledFields(storedEnabledFields.length > 0 ? storedEnabledFields : enabled);
                               setPkgFieldValues(values);
                               setPkgSelectedFornecedores(assignedF);
-                              setPkgCustomFields((pkg as any).custom_fields || {});
+                              setPkgCustomFields(customValues);
+                              setPkgCustomFieldDefs(localFieldDefs);
                               setPkgDialog(true);
                             }}>
                               <Copy className="h-3.5 w-3.5" />
@@ -1429,7 +1462,7 @@ const AdminAdvertisingPage = () => {
               );
             })()}
 
-            {renderCustomFields("packages", pkgCustomFields, setPkgCustomFields)}
+            {renderCustomFields(pkgCustomFieldDefs, pkgCustomFields, setPkgCustomFields)}
             <FornecedorSelector
               fornecedores={fornecedores}
               selected={pkgSelectedFornecedores}
