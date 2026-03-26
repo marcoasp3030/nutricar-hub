@@ -165,10 +165,13 @@ const AdminAdvertisingPage = () => {
   const [pkgCustomFields, setPkgCustomFields] = useState<Record<string, any>>({});
   const [tplCustomFields, setTplCustomFields] = useState<Record<string, any>>({});
 
-  // Template form
+  // Template form - dynamic fields
   const [tplDialog, setTplDialog] = useState(false);
   const [editingTpl, setEditingTpl] = useState<AdPackageTemplate | null>(null);
-  const [tplForm, setTplForm] = useState({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
+  const [tplName, setTplName] = useState("");
+  const [tplIsActive, setTplIsActive] = useState(true);
+  const [tplEnabledFields, setTplEnabledFields] = useState<string[]>([]);
+  const [tplFieldValues, setTplFieldValues] = useState<Record<string, any>>({});
 
   // Package form
   const [pkgDialog, setPkgDialog] = useState(false);
