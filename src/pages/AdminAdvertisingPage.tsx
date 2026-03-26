@@ -283,23 +283,55 @@ const AdminAdvertisingPage = () => {
   // Helper: get field defs for a target
   const getFieldsFor = (target: "packages" | "templates") => fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === target));
 
-  // === Package CRUD ===
+  // === Package CRUD (dynamic fields) ===
+  const detectPkgEnabledFields = (pkg: any) => {
+    const enabled: string[] = [];
+    const values: Record<string, any> = {};
+    for (const bf of BUILTIN_FIELDS) {
+      const val = pkg[bf.key];
+      if (bf.key === "tags") {
+        const tags = pkg.tags || [];
+        if (tags.length > 0) { enabled.push(bf.key); values[bf.key] = tags.join(", "); }
+      } else if (bf.key === "playlist_id") {
+        if (val) { enabled.push(bf.key); values[bf.key] = val; }
+      } else if (val !== null && val !== undefined && String(val).trim() !== "" && val !== 0) {
+        enabled.push(bf.key);
+        values[bf.key] = String(val);
+      }
+    }
+    return { enabled, values };
+  };
+
   const openPkgCreate = () => {
     setEditingPkg(null);
-    setPkgForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
+    setPkgName("");
+    setPkgIsActive(true);
+    setPkgEnabledFields([]);
+    setPkgFieldValues({});
     setPkgSelectedFornecedores([]);
     setPkgCustomFields({});
     setPkgDialog(true);
   };
   const openPkgEdit = (pkg: AdPackage) => {
     setEditingPkg(pkg);
-    setPkgForm({ name: pkg.name, description: pkg.description || "", monthly_value: String(pkg.monthly_value), duration_months: String(pkg.duration_months), display_frequency: pkg.display_frequency, playlist_id: pkg.playlist_id || "", is_active: pkg.is_active, media_type: (pkg as any).media_type || "video", screen_position: (pkg as any).screen_position || "tela_cheia", display_schedule: (pkg as any).display_schedule || "integral", content_format: (pkg as any).content_format || "16:9", tags: ((pkg as any).tags || []).join(", ") });
+    setPkgName(pkg.name);
+    setPkgIsActive(pkg.is_active);
+    const { enabled, values } = detectPkgEnabledFields(pkg);
+    setPkgEnabledFields(enabled);
+    setPkgFieldValues(values);
     setPkgSelectedFornecedores(packageFornecedores[pkg.id] || []);
     setPkgCustomFields((pkg as any).custom_fields || {});
     setPkgDialog(true);
   };
+  const addPkgField = (key: string) => {
+    if (!pkgEnabledFields.includes(key)) setPkgEnabledFields(prev => [...prev, key]);
+  };
+  const removePkgField = (key: string) => {
+    setPkgEnabledFields(prev => prev.filter(k => k !== key));
+    setPkgFieldValues(prev => { const n = { ...prev }; delete n[key]; return n; });
+  };
   const savePkg = async () => {
-    if (!pkgForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
+    if (!pkgName.trim()) { toast.error("Nome é obrigatório"); return; }
     // Validate required custom fields
     const requiredPkgFields = getFieldsFor("packages").filter(fd => fd.is_required);
     const missingPkg = requiredPkgFields.filter(fd => !pkgCustomFields[fd.id] || String(pkgCustomFields[fd.id]).trim() === "");
@@ -307,8 +339,23 @@ const AdminAdvertisingPage = () => {
       toast.error(`Preencha os campos obrigatórios: ${missingPkg.map(f => f.name).join(", ")}`);
       return;
     }
-    const tagsArr = pkgForm.tags ? pkgForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    const payload: any = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr, custom_fields: pkgCustomFields };
+    const v = pkgFieldValues;
+    const tagsArr = v.tags ? String(v.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+    const payload: any = {
+      name: pkgName,
+      description: v.description || null,
+      monthly_value: parseFloat(v.monthly_value) || 0,
+      duration_months: parseInt(v.duration_months) || 1,
+      display_frequency: v.display_frequency || "30s a cada 5 min",
+      playlist_id: v.playlist_id || null,
+      is_active: pkgIsActive,
+      media_type: v.media_type || null,
+      screen_position: v.screen_position || null,
+      display_schedule: v.display_schedule || null,
+      content_format: v.content_format || null,
+      tags: tagsArr,
+      custom_fields: pkgCustomFields,
+    };
     let pkgId = editingPkg?.id;
     if (editingPkg) {
       const { error } = await supabase.from("ad_packages").update(payload).eq("id", editingPkg.id);
