@@ -144,6 +144,12 @@ const AdminAdvertisingPage = () => {
   const [packageFornecedores, setPackageFornecedores] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<AdPackageTemplate[]>([]);
+  const [fieldDefs, setFieldDefs] = useState<FieldDefinition[]>([]);
+  const [fieldDefDialog, setFieldDefDialog] = useState(false);
+  const [editingFieldDef, setEditingFieldDef] = useState<FieldDefinition | null>(null);
+  const [fieldDefForm, setFieldDefForm] = useState({ name: "", field_type: "text", options: "", applies_to: "both", is_required: false, sort_order: "0" });
+  const [pkgCustomFields, setPkgCustomFields] = useState<Record<string, any>>({});
+  const [tplCustomFields, setTplCustomFields] = useState<Record<string, any>>({});
 
   // Template form
   const [tplDialog, setTplDialog] = useState(false);
