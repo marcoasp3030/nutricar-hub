@@ -458,7 +458,7 @@ const AdminAdvertisingPage = () => {
       content_format: v.content_format || null,
       tags: tagsArr,
       is_active: tplIsActive,
-     custom_fields: { ...tplCustomFields, _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")) },
+     custom_fields: { ...tplCustomFields, _enabled_fields: tplEnabledFields.filter(k => !k.startsWith("custom_")), _enabled_fields_all: [...tplEnabledFields] },
     };
     // Set non-enabled built-in fields to null so they don't get auto-detected
     const builtinKeys = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "description", "tags"];
