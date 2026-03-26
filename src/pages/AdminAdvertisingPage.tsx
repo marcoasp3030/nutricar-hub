@@ -1163,6 +1163,7 @@ const AdminAdvertisingPage = () => {
               </Select>
             </div>
             <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
+            {renderCustomFields("packages", pkgCustomFields, setPkgCustomFields)}
             <FornecedorSelector
               fornecedores={fornecedores}
               selected={pkgSelectedFornecedores}
