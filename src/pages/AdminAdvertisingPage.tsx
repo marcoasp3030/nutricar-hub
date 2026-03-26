@@ -913,6 +913,81 @@ const AdminAdvertisingPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* === Template Dialog === */}
+      <Dialog open={tplDialog} onOpenChange={setTplDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader><DialogTitle>{editingTpl ? "Editar Template" : "Novo Template"}</DialogTitle></DialogHeader>
+          <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+            <div><Label>Nome</Label><Input value={tplForm.name} onChange={e => setTplForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Premium Tela Cheia" /></div>
+            <div><Label>Descrição</Label><Textarea value={tplForm.description} onChange={e => setTplForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Valor Mensal (R$)</Label><Input type="number" step="0.01" value={tplForm.monthly_value} onChange={e => setTplForm(f => ({ ...f, monthly_value: e.target.value }))} /></div>
+              <div><Label>Duração (meses)</Label><Input type="number" value={tplForm.duration_months} onChange={e => setTplForm(f => ({ ...f, duration_months: e.target.value }))} /></div>
+            </div>
+            <div><Label>Frequência de Exibição</Label><Input value={tplForm.display_frequency} onChange={e => setTplForm(f => ({ ...f, display_frequency: e.target.value }))} placeholder="Ex: 30s a cada 5 min" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo de Mídia</Label>
+                <Select value={tplForm.media_type} onValueChange={v => setTplForm(f => ({ ...f, media_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">Vídeo</SelectItem>
+                    <SelectItem value="banner">Banner</SelectItem>
+                    <SelectItem value="slide">Slide</SelectItem>
+                    <SelectItem value="institucional">Institucional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Posição na Tela</Label>
+                <Select value={tplForm.screen_position} onValueChange={v => setTplForm(f => ({ ...f, screen_position: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tela_cheia">Tela Cheia</SelectItem>
+                    <SelectItem value="rodape">Rodapé</SelectItem>
+                    <SelectItem value="lateral">Lateral</SelectItem>
+                    <SelectItem value="topo">Topo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Horário de Exibição</Label>
+                <Select value={tplForm.display_schedule} onValueChange={v => setTplForm(f => ({ ...f, display_schedule: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="integral">Integral</SelectItem>
+                    <SelectItem value="manha">Manhã</SelectItem>
+                    <SelectItem value="tarde">Tarde</SelectItem>
+                    <SelectItem value="noite">Noite</SelectItem>
+                    <SelectItem value="horario_comercial">Horário Comercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Formato do Conteúdo</Label>
+                <Select value={tplForm.content_format} onValueChange={v => setTplForm(f => ({ ...f, content_format: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="16:9">16:9 (Paisagem)</SelectItem>
+                    <SelectItem value="9:16">9:16 (Retrato)</SelectItem>
+                    <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
+                    <SelectItem value="4:3">4:3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div><Label>Tags</Label><Input value={tplForm.tags} onChange={e => setTplForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: premium, destaque (separadas por vírgula)" /></div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" checked={tplForm.is_active} onChange={e => setTplForm(f => ({ ...f, is_active: e.target.checked }))} id="tpl-active" />
+              <Label htmlFor="tpl-active">Ativo</Label>
+            </div>
+          </div>
+          <Button className="w-full mt-2" onClick={saveTpl}>{editingTpl ? "Salvar" : "Criar"}</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
