@@ -194,7 +194,7 @@ const AdminAdvertisingPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes, tplRes] = await Promise.all([
+    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes, tplRes, fdRes] = await Promise.all([
       supabase.from("ad_packages").select("*").order("created_at", { ascending: false }),
       supabase.from("ad_contracts").select("*, ad_packages(*)").order("created_at", { ascending: false }),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))").order("created_at", { ascending: false }),
@@ -202,14 +202,14 @@ const AdminAdvertisingPage = () => {
       supabase.from("user_fornecedores").select("fornecedor"),
       supabase.from("ad_package_fornecedores").select("*"),
       supabase.from("ad_package_templates").select("*").order("name"),
+      supabase.from("ad_field_definitions").select("*").order("sort_order"),
     ]);
-    setPackages(pkgRes.data || []);
-    setContracts(contractRes.data || []);
-    setPayments(payRes.data || []);
+    setPackages(pkgRes.data as any || []);
+    setContracts(contractRes.data as any || []);
+    setPayments(payRes.data as any || []);
     setPlaylists(playlistRes.data || []);
     const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))].filter(f => f && f.trim() !== "");
     setFornecedores(uniqueF);
-    // Build package->fornecedores map
     const pfMap: Record<string, string[]> = {};
     (pkgFornRes.data || []).forEach((pf: any) => {
       if (!pfMap[pf.package_id]) pfMap[pf.package_id] = [];
@@ -217,6 +217,7 @@ const AdminAdvertisingPage = () => {
     });
     setPackageFornecedores(pfMap);
     setTemplates((tplRes.data || []) as AdPackageTemplate[]);
+    setFieldDefs((fdRes.data || []) as FieldDefinition[]);
     setLoading(false);
   };
 
