@@ -53,6 +53,18 @@ const FornecedorSelector = ({ fornecedores, selected, onChange }: { fornecedores
   );
 };
 
+interface FieldDefinition {
+  id: string;
+  name: string;
+  field_type: string;
+  options: string[];
+  applies_to: string;
+  is_required: boolean;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 interface AdPackage {
   id: string;
   name: string;
@@ -63,6 +75,7 @@ interface AdPackage {
   playlist_id: string | null;
   is_active: boolean;
   created_at: string;
+  custom_fields?: any;
 }
 
 interface AdPackageTemplate {
@@ -131,6 +144,12 @@ const AdminAdvertisingPage = () => {
   const [packageFornecedores, setPackageFornecedores] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<AdPackageTemplate[]>([]);
+  const [fieldDefs, setFieldDefs] = useState<FieldDefinition[]>([]);
+  const [fieldDefDialog, setFieldDefDialog] = useState(false);
+  const [editingFieldDef, setEditingFieldDef] = useState<FieldDefinition | null>(null);
+  const [fieldDefForm, setFieldDefForm] = useState({ name: "", field_type: "text", options: "", applies_to: "both", is_required: false, sort_order: "0" });
+  const [pkgCustomFields, setPkgCustomFields] = useState<Record<string, any>>({});
+  const [tplCustomFields, setTplCustomFields] = useState<Record<string, any>>({});
 
   // Template form
   const [tplDialog, setTplDialog] = useState(false);
@@ -175,7 +194,7 @@ const AdminAdvertisingPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes, tplRes] = await Promise.all([
+    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes, tplRes, fdRes] = await Promise.all([
       supabase.from("ad_packages").select("*").order("created_at", { ascending: false }),
       supabase.from("ad_contracts").select("*, ad_packages(*)").order("created_at", { ascending: false }),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))").order("created_at", { ascending: false }),
@@ -183,14 +202,14 @@ const AdminAdvertisingPage = () => {
       supabase.from("user_fornecedores").select("fornecedor"),
       supabase.from("ad_package_fornecedores").select("*"),
       supabase.from("ad_package_templates").select("*").order("name"),
+      supabase.from("ad_field_definitions").select("*").order("sort_order"),
     ]);
-    setPackages(pkgRes.data || []);
-    setContracts(contractRes.data || []);
-    setPayments(payRes.data || []);
+    setPackages(pkgRes.data as any || []);
+    setContracts(contractRes.data as any || []);
+    setPayments(payRes.data as any || []);
     setPlaylists(playlistRes.data || []);
     const uniqueF = [...new Set((fornRes.data || []).map((f: any) => f.fornecedor))].filter(f => f && f.trim() !== "");
     setFornecedores(uniqueF);
-    // Build package->fornecedores map
     const pfMap: Record<string, string[]> = {};
     (pkgFornRes.data || []).forEach((pf: any) => {
       if (!pfMap[pf.package_id]) pfMap[pf.package_id] = [];
@@ -198,27 +217,66 @@ const AdminAdvertisingPage = () => {
     });
     setPackageFornecedores(pfMap);
     setTemplates((tplRes.data || []) as AdPackageTemplate[]);
+    setFieldDefs((fdRes.data || []) as FieldDefinition[]);
     setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  // === Field Definition CRUD ===
+  const openFieldDefCreate = () => {
+    setEditingFieldDef(null);
+    setFieldDefForm({ name: "", field_type: "text", options: "", applies_to: "both", is_required: false, sort_order: "0" });
+    setFieldDefDialog(true);
+  };
+  const openFieldDefEdit = (fd: FieldDefinition) => {
+    setEditingFieldDef(fd);
+    setFieldDefForm({ name: fd.name, field_type: fd.field_type, options: (fd.options || []).join(", "), applies_to: fd.applies_to, is_required: fd.is_required, sort_order: String(fd.sort_order) });
+    setFieldDefDialog(true);
+  };
+  const saveFieldDef = async () => {
+    if (!fieldDefForm.name.trim()) { toast.error("Nome do campo é obrigatório"); return; }
+    const optionsArr = fieldDefForm.field_type === "select" ? fieldDefForm.options.split(",").map(o => o.trim()).filter(Boolean) : [];
+    const payload = { name: fieldDefForm.name, field_type: fieldDefForm.field_type, options: optionsArr, applies_to: fieldDefForm.applies_to, is_required: fieldDefForm.is_required, sort_order: parseInt(fieldDefForm.sort_order) || 0, is_active: true };
+    if (editingFieldDef) {
+      const { error } = await supabase.from("ad_field_definitions").update(payload).eq("id", editingFieldDef.id);
+      if (error) { toast.error("Erro ao atualizar campo"); return; }
+    } else {
+      const { error } = await supabase.from("ad_field_definitions").insert(payload);
+      if (error) { toast.error("Erro ao criar campo"); return; }
+    }
+    toast.success(editingFieldDef ? "Campo atualizado" : "Campo criado");
+    setFieldDefDialog(false);
+    fetchAll();
+  };
+  const deleteFieldDef = async (id: string) => {
+    if (!confirm("Excluir este campo personalizado?")) return;
+    await supabase.from("ad_field_definitions").delete().eq("id", id);
+    toast.success("Campo excluído");
+    fetchAll();
+  };
+
+  // Helper: get field defs for a target
+  const getFieldsFor = (target: "packages" | "templates") => fieldDefs.filter(fd => fd.is_active && (fd.applies_to === "both" || fd.applies_to === target));
 
   // === Package CRUD ===
   const openPkgCreate = () => {
     setEditingPkg(null);
     setPkgForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", playlist_id: "", is_active: true, media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "" });
     setPkgSelectedFornecedores([]);
+    setPkgCustomFields({});
     setPkgDialog(true);
   };
   const openPkgEdit = (pkg: AdPackage) => {
     setEditingPkg(pkg);
     setPkgForm({ name: pkg.name, description: pkg.description || "", monthly_value: String(pkg.monthly_value), duration_months: String(pkg.duration_months), display_frequency: pkg.display_frequency, playlist_id: pkg.playlist_id || "", is_active: pkg.is_active, media_type: (pkg as any).media_type || "video", screen_position: (pkg as any).screen_position || "tela_cheia", display_schedule: (pkg as any).display_schedule || "integral", content_format: (pkg as any).content_format || "16:9", tags: ((pkg as any).tags || []).join(", ") });
     setPkgSelectedFornecedores(packageFornecedores[pkg.id] || []);
+    setPkgCustomFields((pkg as any).custom_fields || {});
     setPkgDialog(true);
   };
   const savePkg = async () => {
     const tagsArr = pkgForm.tags ? pkgForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    const payload = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr };
+    const payload: any = { name: pkgForm.name, description: pkgForm.description || null, monthly_value: parseFloat(pkgForm.monthly_value) || 0, duration_months: parseInt(pkgForm.duration_months) || 1, display_frequency: pkgForm.display_frequency, playlist_id: pkgForm.playlist_id || null, is_active: pkgForm.is_active, media_type: pkgForm.media_type, screen_position: pkgForm.screen_position, display_schedule: pkgForm.display_schedule, content_format: pkgForm.content_format, tags: tagsArr, custom_fields: pkgCustomFields };
     let pkgId = editingPkg?.id;
     if (editingPkg) {
       const { error } = await supabase.from("ad_packages").update(payload).eq("id", editingPkg.id);
@@ -252,17 +310,19 @@ const AdminAdvertisingPage = () => {
   const openTplCreate = () => {
     setEditingTpl(null);
     setTplForm({ name: "", description: "", monthly_value: "", duration_months: "1", display_frequency: "30s a cada 5 min", media_type: "video", screen_position: "tela_cheia", display_schedule: "integral", content_format: "16:9", tags: "", is_active: true });
+    setTplCustomFields({});
     setTplDialog(true);
   };
   const openTplEdit = (tpl: AdPackageTemplate) => {
     setEditingTpl(tpl);
     setTplForm({ name: tpl.name, description: tpl.description || "", monthly_value: String(tpl.monthly_value), duration_months: String(tpl.duration_months), display_frequency: tpl.display_frequency, media_type: tpl.media_type || "video", screen_position: tpl.screen_position || "tela_cheia", display_schedule: tpl.display_schedule || "integral", content_format: tpl.content_format || "16:9", tags: (tpl.tags || []).join(", "), is_active: tpl.is_active });
+    setTplCustomFields((tpl as any).custom_fields || {});
     setTplDialog(true);
   };
   const saveTpl = async () => {
     if (!tplForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
     const tagsArr = tplForm.tags ? tplForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    const payload = { name: tplForm.name, description: tplForm.description || null, monthly_value: parseFloat(tplForm.monthly_value) || 0, duration_months: parseInt(tplForm.duration_months) || 1, display_frequency: tplForm.display_frequency, media_type: tplForm.media_type, screen_position: tplForm.screen_position, display_schedule: tplForm.display_schedule, content_format: tplForm.content_format, tags: tagsArr, is_active: tplForm.is_active };
+    const payload: any = { name: tplForm.name, description: tplForm.description || null, monthly_value: parseFloat(tplForm.monthly_value) || 0, duration_months: parseInt(tplForm.duration_months) || 1, display_frequency: tplForm.display_frequency, media_type: tplForm.media_type, screen_position: tplForm.screen_position, display_schedule: tplForm.display_schedule, content_format: tplForm.content_format, tags: tagsArr, is_active: tplForm.is_active, custom_fields: tplCustomFields };
     if (editingTpl) {
       const { error } = await supabase.from("ad_package_templates").update(payload).eq("id", editingTpl.id);
       if (error) { toast.error("Erro ao atualizar template"); return; }
@@ -297,6 +357,7 @@ const AdminAdvertisingPage = () => {
     });
     setEditingPkg(null);
     setPkgSelectedFornecedores([]);
+    setPkgCustomFields((tpl as any).custom_fields || {});
     setPkgDialog(true);
     toast.info("Pacote pré-preenchido a partir do template");
   };
@@ -430,6 +491,39 @@ const AdminAdvertisingPage = () => {
   const allMonths = [...new Set(payments.map(p => p.month_ref))].filter(m => m && m.trim() !== "").sort();
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  // === Dynamic custom fields renderer ===
+  const renderCustomFields = (target: "packages" | "templates", values: Record<string, any>, onChange: (vals: Record<string, any>) => void) => {
+    const fields = getFieldsFor(target);
+    if (fields.length === 0) return null;
+    return (
+      <div className="space-y-3 border-t border-border pt-3">
+        <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Campos Personalizados</Label>
+        {fields.map(fd => (
+          <div key={fd.id}>
+            <Label>{fd.name}{fd.is_required && <span className="text-destructive ml-0.5">*</span>}</Label>
+            {fd.field_type === "text" && (
+              <Input value={values[fd.id] || ""} onChange={e => onChange({ ...values, [fd.id]: e.target.value })} />
+            )}
+            {fd.field_type === "number" && (
+              <Input type="number" step="any" value={values[fd.id] || ""} onChange={e => onChange({ ...values, [fd.id]: e.target.value })} />
+            )}
+            {fd.field_type === "select" && (
+              <Select value={values[fd.id] || "__none__"} onValueChange={v => onChange({ ...values, [fd.id]: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Selecionar —</SelectItem>
+                  {(fd.options || []).filter(o => o && o.trim() !== "").map(opt => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -777,6 +871,62 @@ const AdminAdvertisingPage = () => {
               </div>
             )}
           </div>
+
+          {/* === Campos Personalizados === */}
+          <Card className="mt-6">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2"><Plus className="h-4 w-4" /> Campos Personalizados</CardTitle>
+                <Button size="sm" onClick={openFieldDefCreate}><Plus className="h-3.5 w-3.5 mr-1" /> Novo Campo</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Defina campos extras que aparecerão nos formulários de Pacote e Template.</p>
+            </CardHeader>
+            <CardContent>
+              {fieldDefs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum campo personalizado criado ainda.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Opções</TableHead>
+                      <TableHead>Aplica-se a</TableHead>
+                      <TableHead>Obrigatório</TableHead>
+                      <TableHead>Ordem</TableHead>
+                      <TableHead className="w-20">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fieldDefs.map(fd => (
+                      <TableRow key={fd.id}>
+                        <TableCell className="font-medium">{fd.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">
+                            {fd.field_type === "text" ? "Texto" : fd.field_type === "number" ? "Número" : "Lista Suspensa"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate">
+                          {fd.field_type === "select" ? (fd.options || []).join(", ") : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {fd.applies_to === "both" ? "Pacotes & Templates" : fd.applies_to === "packages" ? "Pacotes" : "Templates"}
+                        </TableCell>
+                        <TableCell>{fd.is_required ? <CheckCircle className="h-4 w-4 text-primary" /> : <span className="text-muted-foreground text-xs">Não</span>}</TableCell>
+                        <TableCell className="text-xs">{fd.sort_order}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" onClick={() => openFieldDefEdit(fd)}><Edit className="h-4 w-4" /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => deleteFieldDef(fd.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
 
@@ -1069,6 +1219,7 @@ const AdminAdvertisingPage = () => {
               </Select>
             </div>
             <div><Label>Tags</Label><Input value={pkgForm.tags} onChange={e => setPkgForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: destaque, premium, promo (separadas por vírgula)" /></div>
+            {renderCustomFields("packages", pkgCustomFields, setPkgCustomFields)}
             <FornecedorSelector
               fornecedores={fornecedores}
               selected={pkgSelectedFornecedores}
@@ -1290,12 +1441,58 @@ const AdminAdvertisingPage = () => {
               </div>
             </div>
             <div><Label>Tags</Label><Input value={tplForm.tags} onChange={e => setTplForm(f => ({ ...f, tags: e.target.value }))} placeholder="Ex: premium, destaque (separadas por vírgula)" /></div>
+            {renderCustomFields("templates", tplCustomFields, setTplCustomFields)}
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={tplForm.is_active} onChange={e => setTplForm(f => ({ ...f, is_active: e.target.checked }))} id="tpl-active" />
               <Label htmlFor="tpl-active">Ativo</Label>
             </div>
           </div>
           <Button className="w-full mt-2" onClick={saveTpl}>{editingTpl ? "Salvar" : "Criar"}</Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Field Definition Dialog === */}
+      <Dialog open={fieldDefDialog} onOpenChange={setFieldDefDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{editingFieldDef ? "Editar Campo" : "Novo Campo Personalizado"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome do Campo</Label><Input value={fieldDefForm.name} onChange={e => setFieldDefForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Resolução do Vídeo" /></div>
+            <div>
+              <Label>Tipo</Label>
+              <Select value={fieldDefForm.field_type} onValueChange={v => setFieldDefForm(f => ({ ...f, field_type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Texto Livre</SelectItem>
+                  <SelectItem value="number">Número</SelectItem>
+                  <SelectItem value="select">Lista Suspensa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {fieldDefForm.field_type === "select" && (
+              <div>
+                <Label>Opções da Lista</Label>
+                <Input value={fieldDefForm.options} onChange={e => setFieldDefForm(f => ({ ...f, options: e.target.value }))} placeholder="Opção 1, Opção 2, Opção 3 (separadas por vírgula)" />
+                <p className="text-xs text-muted-foreground mt-1">Separe as opções por vírgula</p>
+              </div>
+            )}
+            <div>
+              <Label>Aplica-se a</Label>
+              <Select value={fieldDefForm.applies_to} onValueChange={v => setFieldDefForm(f => ({ ...f, applies_to: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="both">Pacotes & Templates</SelectItem>
+                  <SelectItem value="packages">Apenas Pacotes</SelectItem>
+                  <SelectItem value="templates">Apenas Templates</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Ordem de Exibição</Label><Input type="number" value={fieldDefForm.sort_order} onChange={e => setFieldDefForm(f => ({ ...f, sort_order: e.target.value }))} /></div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" checked={fieldDefForm.is_required} onChange={e => setFieldDefForm(f => ({ ...f, is_required: e.target.checked }))} id="fd-required" />
+              <Label htmlFor="fd-required">Campo Obrigatório</Label>
+            </div>
+            <Button className="w-full" onClick={saveFieldDef}>{editingFieldDef ? "Salvar" : "Criar"}</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
