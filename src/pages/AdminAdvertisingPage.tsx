@@ -53,6 +53,18 @@ const FornecedorSelector = ({ fornecedores, selected, onChange }: { fornecedores
   );
 };
 
+interface FieldDefinition {
+  id: string;
+  name: string;
+  field_type: string;
+  options: string[];
+  applies_to: string;
+  is_required: boolean;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 interface AdPackage {
   id: string;
   name: string;
@@ -63,6 +75,7 @@ interface AdPackage {
   playlist_id: string | null;
   is_active: boolean;
   created_at: string;
+  custom_fields?: Record<string, any>;
 }
 
 interface AdPackageTemplate {
