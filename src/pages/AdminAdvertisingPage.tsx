@@ -412,7 +412,24 @@ const AdminAdvertisingPage = () => {
     if (tpl.content_format) { enabled.push("content_format"); vals.content_format = tpl.content_format; }
     if (tpl.tags && tpl.tags.length > 0) { enabled.push("tags"); vals.tags = tpl.tags.join(", "); }
     // Also enable custom field defs that have values
-    const cf = (tpl as any).custom_fields || {};
+    const cf = { ...((tpl as any).custom_fields || {}) };
+    const storedEnabled: string[] = cf._enabled_fields || [];
+    delete cf._enabled_fields;
+    // If we have stored enabled fields, use those; otherwise fall back to detection
+    if (storedEnabled.length > 0) {
+      // Merge stored builtin enabled with detected custom enabled
+      enabled.length = 0;
+      enabled.push(...storedEnabled);
+      // Rebuild values from stored enabled
+      Object.keys(vals).forEach(k => delete vals[k]);
+      for (const key of storedEnabled) {
+        if (key === "description" && tpl.description) vals.description = tpl.description;
+        else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
+        else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
+        else if (key === "tags" && tpl.tags?.length) vals.tags = tpl.tags.join(", ");
+        else if ((tpl as any)[key]) vals[key] = (tpl as any)[key];
+      }
+    }
     Object.keys(cf).forEach(k => { if (cf[k]) enabled.push(`custom_${k}`); });
     setTplEnabledFields(enabled);
     setTplFieldValues(vals);
