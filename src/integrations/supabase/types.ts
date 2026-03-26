@@ -96,6 +96,42 @@ export type Database = {
           },
         ]
       }
+      ad_field_definitions: {
+        Row: {
+          applies_to: string
+          created_at: string
+          field_type: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          name: string
+          options: string[] | null
+          sort_order: number
+        }
+        Insert: {
+          applies_to?: string
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          name: string
+          options?: string[] | null
+          sort_order?: number
+        }
+        Update: {
+          applies_to?: string
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          name?: string
+          options?: string[] | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
       ad_package_fornecedores: {
         Row: {
           created_at: string
@@ -129,6 +165,7 @@ export type Database = {
         Row: {
           content_format: string | null
           created_at: string
+          custom_fields: Json | null
           description: string | null
           display_frequency: string
           display_schedule: string | null
@@ -145,6 +182,7 @@ export type Database = {
         Insert: {
           content_format?: string | null
           created_at?: string
+          custom_fields?: Json | null
           description?: string | null
           display_frequency?: string
           display_schedule?: string | null
@@ -161,6 +199,7 @@ export type Database = {
         Update: {
           content_format?: string | null
           created_at?: string
+          custom_fields?: Json | null
           description?: string | null
           display_frequency?: string
           display_schedule?: string | null
@@ -180,6 +219,7 @@ export type Database = {
         Row: {
           content_format: string | null
           created_at: string
+          custom_fields: Json | null
           description: string | null
           display_frequency: string
           display_schedule: string | null
@@ -197,6 +237,7 @@ export type Database = {
         Insert: {
           content_format?: string | null
           created_at?: string
+          custom_fields?: Json | null
           description?: string | null
           display_frequency?: string
           display_schedule?: string | null
@@ -214,6 +255,7 @@ export type Database = {
         Update: {
           content_format?: string | null
           created_at?: string
+          custom_fields?: Json | null
           description?: string | null
           display_frequency?: string
           display_schedule?: string | null
