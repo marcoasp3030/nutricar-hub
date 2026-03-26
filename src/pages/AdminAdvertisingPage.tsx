@@ -818,7 +818,7 @@ const AdminAdvertisingPage = () => {
         {/* ===== PAGAMENTOS ===== */}
         <TabsContent value="payments" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => { setPayForm({ contract_id: "", month_ref: "", amount: "", status: "pending" }); setPayDialog(true); }}>
+            <Button onClick={openPayCreate}>
               <Plus className="h-4 w-4 mr-1" /> Registrar Pagamento
             </Button>
           </div>
@@ -830,27 +830,33 @@ const AdminAdvertisingPage = () => {
                   <TableHead>Pacote</TableHead>
                   <TableHead>Mês Ref.</TableHead>
                   <TableHead>Valor</TableHead>
+                  <TableHead>Método</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Pago em</TableHead>
-                  <TableHead className="w-24">Ações</TableHead>
+                  <TableHead>Obs.</TableHead>
+                  <TableHead className="w-28">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPayments.map(p => {
                   const st = PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending;
+                  const METHOD_LABELS: Record<string, string> = { pix: "PIX", transferencia: "Transferência", boleto: "Boleto", dinheiro: "Dinheiro", outro: "Outro" };
                   return (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.ad_contracts?.fornecedor || "—"}</TableCell>
                       <TableCell>{p.ad_contracts?.ad_packages?.name || "—"}</TableCell>
                       <TableCell>{p.month_ref}</TableCell>
                       <TableCell>{fmt(p.amount)}</TableCell>
+                      <TableCell className="text-xs">{METHOD_LABELS[(p as any).payment_method] || (p as any).payment_method || "—"}</TableCell>
                       <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                       <TableCell className="text-xs">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}</TableCell>
+                      <TableCell className="text-xs max-w-[120px] truncate" title={(p as any).notes || ""}>{(p as any).notes || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => togglePayStatus(p)} title={p.status === "paid" ? "Marcar pendente" : "Marcar pago"}>
                             {p.status === "paid" ? <XCircle className="h-4 w-4 text-muted-foreground" /> : <CheckCircle className="h-4 w-4 text-primary" />}
                           </Button>
+                          <Button size="icon" variant="ghost" onClick={() => openPayEdit(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => deletePayment(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
                       </TableCell>
@@ -858,7 +864,7 @@ const AdminAdvertisingPage = () => {
                   );
                 })}
                 {filteredPayments.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
