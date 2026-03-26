@@ -414,14 +414,15 @@ const AdminAdvertisingPage = () => {
     const cf = { ...((tpl as any).custom_fields || {}) };
     const storedBuiltinEnabled: string[] = cf._enabled_fields || [];
     const storedAllEnabled: string[] = cf._enabled_fields_all || storedBuiltinEnabled;
+    const localFieldDefs: LocalCustomFieldDefinition[] = cf._custom_field_defs || [];
     delete cf._enabled_fields;
     delete cf._enabled_fields_all;
-    
-    // Use stored enabled fields; for old templates without _enabled_fields, start empty
+    delete cf._custom_field_defs;
+
     const enabled: string[] = [...storedAllEnabled];
     const vals: Record<string, any> = {};
     for (const key of storedAllEnabled) {
-      if (key.startsWith("custom_")) continue; // custom fields handled via tplCustomFields
+      if (key.startsWith("custom_")) continue;
       if (key === "description" && tpl.description) vals.description = tpl.description;
       else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
       else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
@@ -431,6 +432,8 @@ const AdminAdvertisingPage = () => {
     setTplEnabledFields(enabled);
     setTplFieldValues(vals);
     setTplCustomFields(cf);
+    setTplCustomFieldDefs(localFieldDefs);
+    setTplNewCustomField({ name: "", field_type: "text", options: "", is_required: false });
     setTplDialog(true);
   };
   const addTplField = (key: string) => {
