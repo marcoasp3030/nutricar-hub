@@ -92,7 +92,21 @@ interface AdPackageTemplate {
   tags: string[];
   is_active: boolean;
   created_at: string;
+  custom_fields?: any;
 }
+
+// Built-in fields available for templates
+const BUILTIN_TPL_FIELDS: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] }[] = [
+  { key: "description", label: "Descrição", type: "textarea" },
+  { key: "monthly_value", label: "Valor Mensal (R$)", type: "number" },
+  { key: "duration_months", label: "Duração (meses)", type: "number" },
+  { key: "display_frequency", label: "Frequência de Exibição", type: "text" },
+  { key: "media_type", label: "Tipo de Mídia", type: "select", options: [{ value: "video", label: "Vídeo" }, { value: "banner", label: "Banner" }, { value: "slide", label: "Slide" }, { value: "institucional", label: "Institucional" }] },
+  { key: "screen_position", label: "Posição na Tela", type: "select", options: [{ value: "tela_cheia", label: "Tela Cheia" }, { value: "rodape", label: "Rodapé" }, { value: "lateral", label: "Lateral" }, { value: "topo", label: "Topo" }] },
+  { key: "display_schedule", label: "Horário de Exibição", type: "select", options: [{ value: "integral", label: "Integral" }, { value: "manha", label: "Manhã" }, { value: "tarde", label: "Tarde" }, { value: "noite", label: "Noite" }, { value: "horario_comercial", label: "Horário Comercial" }] },
+  { key: "content_format", label: "Formato do Conteúdo", type: "select", options: [{ value: "16:9", label: "16:9 (Paisagem)" }, { value: "9:16", label: "9:16 (Retrato)" }, { value: "1:1", label: "1:1 (Quadrado)" }, { value: "4:3", label: "4:3" }] },
+  { key: "tags", label: "Tags", type: "text" },
+];
 
 interface AdContract {
   id: string;
