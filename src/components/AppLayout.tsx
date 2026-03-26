@@ -28,7 +28,7 @@ const allNavItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard" },
   { to: "/produtos", label: "Produtos", icon: ShoppingBasket, permission: "produtos" },
   { to: "/relatorios", label: "Relatórios", icon: FileText, permission: "relatorios" },
-  { to: "/contratos", label: "Mídia TV", icon: Megaphone, permission: "contratos" },
+  { to: "/contratos", label: "Publicidade", icon: Megaphone, permission: "contratos" },
   { to: "/checklists", label: "Checklists", icon: ClipboardList, permission: "checklists" },
   { to: "/meus-dados", label: "Meus Dados", icon: Shield, permission: "meus_dados" },
   // Admin items — grouped
