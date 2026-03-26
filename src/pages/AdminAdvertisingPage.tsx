@@ -492,6 +492,39 @@ const AdminAdvertisingPage = () => {
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  // === Dynamic custom fields renderer ===
+  const renderCustomFields = (target: "packages" | "templates", values: Record<string, any>, onChange: (vals: Record<string, any>) => void) => {
+    const fields = getFieldsFor(target);
+    if (fields.length === 0) return null;
+    return (
+      <div className="space-y-3 border-t border-border pt-3">
+        <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Campos Personalizados</Label>
+        {fields.map(fd => (
+          <div key={fd.id}>
+            <Label>{fd.name}{fd.is_required && <span className="text-destructive ml-0.5">*</span>}</Label>
+            {fd.field_type === "text" && (
+              <Input value={values[fd.id] || ""} onChange={e => onChange({ ...values, [fd.id]: e.target.value })} />
+            )}
+            {fd.field_type === "number" && (
+              <Input type="number" step="any" value={values[fd.id] || ""} onChange={e => onChange({ ...values, [fd.id]: e.target.value })} />
+            )}
+            {fd.field_type === "select" && (
+              <Select value={values[fd.id] || "__none__"} onValueChange={v => onChange({ ...values, [fd.id]: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Selecionar —</SelectItem>
+                  {(fd.options || []).filter(o => o && o.trim() !== "").map(opt => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
