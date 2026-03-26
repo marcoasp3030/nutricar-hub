@@ -166,13 +166,14 @@ const AdminAdvertisingPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes] = await Promise.all([
+    const [pkgRes, contractRes, payRes, playlistRes, fornRes, pkgFornRes, tplRes] = await Promise.all([
       supabase.from("ad_packages").select("*").order("created_at", { ascending: false }),
       supabase.from("ad_contracts").select("*, ad_packages(*)").order("created_at", { ascending: false }),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))").order("created_at", { ascending: false }),
       supabase.from("playlists").select("id, name").order("name"),
       supabase.from("user_fornecedores").select("fornecedor"),
       supabase.from("ad_package_fornecedores").select("*"),
+      supabase.from("ad_package_templates").select("*").order("name"),
     ]);
     setPackages(pkgRes.data || []);
     setContracts(contractRes.data || []);
