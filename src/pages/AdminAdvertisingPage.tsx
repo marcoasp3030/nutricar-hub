@@ -479,6 +479,7 @@ const AdminAdvertisingPage = () => {
       <Tabs defaultValue="packages" className="w-full">
         <TabsList>
           <TabsTrigger value="packages"><Package className="h-4 w-4 mr-1" /> Pacotes</TabsTrigger>
+          <TabsTrigger value="templates"><LayoutTemplate className="h-4 w-4 mr-1" /> Templates</TabsTrigger>
           <TabsTrigger value="contracts"><FileText className="h-4 w-4 mr-1" /> Contratos</TabsTrigger>
           <TabsTrigger value="payments"><DollarSign className="h-4 w-4 mr-1" /> Pagamentos</TabsTrigger>
         </TabsList>
