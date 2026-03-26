@@ -339,11 +339,43 @@ const AdminAdvertisingPage = () => {
   };
 
   // === Payment CRUD ===
+  const openPayCreate = () => {
+    setEditingPay(null);
+    setPayForm({ contract_id: "", month_ref: "", amount: "", status: "pending", payment_method: "pix", notes: "", paid_at: "" });
+    setPayDialog(true);
+  };
+  const openPayEdit = (pay: AdPayment) => {
+    setEditingPay(pay);
+    setPayForm({
+      contract_id: pay.contract_id,
+      month_ref: pay.month_ref,
+      amount: String(pay.amount),
+      status: pay.status,
+      payment_method: (pay as any).payment_method || "pix",
+      notes: (pay as any).notes || "",
+      paid_at: pay.paid_at ? pay.paid_at.slice(0, 10) : "",
+    });
+    setPayDialog(true);
+  };
   const savePayment = async () => {
-    const payload = { contract_id: payForm.contract_id, month_ref: payForm.month_ref, amount: parseFloat(payForm.amount) || 0, status: payForm.status, paid_at: payForm.status === "paid" ? new Date().toISOString() : null };
-    const { error } = await supabase.from("ad_payments").insert(payload);
-    if (error) { toast.error("Erro ao registrar pagamento"); return; }
-    toast.success("Pagamento registrado");
+    const payload: any = {
+      contract_id: payForm.contract_id,
+      month_ref: payForm.month_ref,
+      amount: parseFloat(payForm.amount) || 0,
+      status: payForm.status,
+      payment_method: payForm.payment_method,
+      notes: payForm.notes || null,
+      paid_at: payForm.status === "paid" ? (payForm.paid_at ? new Date(payForm.paid_at).toISOString() : new Date().toISOString()) : null,
+    };
+    if (editingPay) {
+      const { error } = await supabase.from("ad_payments").update(payload).eq("id", editingPay.id);
+      if (error) { toast.error("Erro ao atualizar pagamento"); return; }
+      toast.success("Pagamento atualizado");
+    } else {
+      const { error } = await supabase.from("ad_payments").insert(payload);
+      if (error) { toast.error("Erro ao registrar pagamento"); return; }
+      toast.success("Pagamento registrado");
+    }
     setPayDialog(false);
     fetchAll();
   };
