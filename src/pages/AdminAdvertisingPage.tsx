@@ -817,6 +817,26 @@ const AdminAdvertisingPage = () => {
                             </div>
                           </div>
 
+                          {/* Custom fields */}
+                          {(() => {
+                            const cf = (pkg as any).custom_fields || {};
+                            const entries = Object.entries(cf).filter(([, v]) => v !== "" && v !== null && v !== undefined);
+                            if (entries.length === 0) return null;
+                            return (
+                              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border rounded-md p-2 bg-muted/30">
+                                {entries.map(([k, v]) => {
+                                  const fd = fieldDefs.find(f => f.id === k);
+                                  return (
+                                    <div key={k} className="flex flex-col">
+                                      <span className="text-muted-foreground text-[10px] font-medium">{fd?.name || k}</span>
+                                      <span className="font-medium truncate">{String(v)}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+
                           {/* Tags */}
                           {tags.length > 0 && (
                             <div className="flex gap-1 flex-wrap">
