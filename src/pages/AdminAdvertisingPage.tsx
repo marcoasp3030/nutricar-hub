@@ -489,11 +489,31 @@ const AdminAdvertisingPage = () => {
     setEditingPkg(null);
     setPkgName(tpl.name);
     setPkgIsActive(true);
-    const { enabled, values } = detectPkgEnabledFields(tpl);
-    setPkgEnabledFields(enabled);
+    // Use stored enabled fields from template instead of auto-detecting
+    const cf = (tpl as any).custom_fields || {};
+    const storedEnabled: string[] = cf._enabled_fields || [];
+    const values: Record<string, any> = {};
+    for (const key of storedEnabled) {
+      const bf = BUILTIN_FIELDS.find(b => b.key === key);
+      if (bf) {
+        const val = (tpl as any)[key];
+        if (key === "tags") {
+          const tags = (tpl as any).tags || [];
+          if (tags.length > 0) values[key] = tags.join(", ");
+        } else if (val !== null && val !== undefined) {
+          values[key] = String(val);
+        }
+      }
+    }
+    // Also add custom field entries
+    const customFieldEntries = { ...cf };
+    delete customFieldEntries._enabled_fields;
+    const customEnabled = Object.keys(customFieldEntries).filter(k => customFieldEntries[k]);
+    const allEnabled = [...storedEnabled, ...customEnabled.map(k => `custom_${k}`)];
+    setPkgEnabledFields(storedEnabled);
     setPkgFieldValues(values);
     setPkgSelectedFornecedores([]);
-    setPkgCustomFields((tpl as any).custom_fields || {});
+    setPkgCustomFields(customFieldEntries);
     setPkgDialog(true);
     toast.info("Pacote pré-preenchido a partir do template");
   };
