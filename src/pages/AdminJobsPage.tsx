@@ -109,6 +109,29 @@ const AdminJobsPage = () => {
     onSuccess: () => toast({ title: "Pagamento criado!" }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteEventJob(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event_jobs"] });
+      toast({ title: "Evento excluído!" });
+      setDeleteConfirm(null);
+      setDetailJob(null);
+    },
+    onError: (e: any) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
+  });
+
+  const duplicateJob = (job: EventJob) => {
+    const { id, created_at, updated_at, event_type, ...rest } = job as any;
+    setForm({
+      ...rest,
+      title: `${rest.title} (cópia)`,
+      status: "rascunho",
+      start_date: rest.start_date?.split("T")[0],
+      end_date: rest.end_date?.split("T")[0],
+    });
+    setFormOpen(true);
+  };
+
   const openNewJob = () => {
     setForm({
       title: "", event_type_id: "", description: "", requirements: "", uniform_notes: "",
