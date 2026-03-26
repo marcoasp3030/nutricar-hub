@@ -125,6 +125,57 @@ export type Database = {
           },
         ]
       }
+      ad_package_templates: {
+        Row: {
+          content_format: string | null
+          created_at: string
+          description: string | null
+          display_frequency: string
+          display_schedule: string | null
+          duration_months: number
+          id: string
+          is_active: boolean
+          media_type: string | null
+          monthly_value: number
+          name: string
+          screen_position: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          content_format?: string | null
+          created_at?: string
+          description?: string | null
+          display_frequency?: string
+          display_schedule?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          media_type?: string | null
+          monthly_value?: number
+          name: string
+          screen_position?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          content_format?: string | null
+          created_at?: string
+          description?: string | null
+          display_frequency?: string
+          display_schedule?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          media_type?: string | null
+          monthly_value?: number
+          name?: string
+          screen_position?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ad_packages: {
         Row: {
           content_format: string | null
