@@ -1007,17 +1007,17 @@ const AdminAdvertisingPage = () => {
       {/* === Payment Dialog === */}
       <Dialog open={payDialog} onOpenChange={setPayDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Registrar Pagamento</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingPay ? "Editar Pagamento" : "Registrar Pagamento"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Contrato</Label>
               <Select value={payForm.contract_id} onValueChange={v => {
                 const c = contracts.find(c => c.id === v);
                 setPayForm(f => ({ ...f, contract_id: v, amount: String(c?.ad_packages?.monthly_value || "") }));
-              }}>
+              }} disabled={!!editingPay}>
                 <SelectTrigger><SelectValue placeholder="Selecionar contrato" /></SelectTrigger>
                 <SelectContent>
-                  {contracts.filter(c => c.status === "active").map(c => (
+                  {contracts.filter(c => c.status === "active" || c.id === payForm.contract_id).map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.fornecedor} — {c.ad_packages?.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1027,16 +1027,41 @@ const AdminAdvertisingPage = () => {
               <div><Label>Mês Referência</Label><Input value={payForm.month_ref} onChange={e => setPayForm(f => ({ ...f, month_ref: e.target.value }))} placeholder="Ex: 02/2026" /></div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} /></div>
             </div>
-            <div>
-              <Label>Status</Label>
-              <Select value={payForm.status} onValueChange={v => setPayForm(f => ({ ...f, status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PAY_STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Status</Label>
+                <Select value={payForm.status} onValueChange={v => setPayForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PAY_STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Método</Label>
+                <Select value={payForm.payment_method} onValueChange={v => setPayForm(f => ({ ...f, payment_method: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="transferencia">Transferência</SelectItem>
+                    <SelectItem value="boleto">Boleto</SelectItem>
+                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Button className="w-full" onClick={savePayment}>Registrar</Button>
+            {payForm.status === "paid" && (
+              <div>
+                <Label>Data do Pagamento</Label>
+                <Input type="date" value={payForm.paid_at} onChange={e => setPayForm(f => ({ ...f, paid_at: e.target.value }))} />
+              </div>
+            )}
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Ex: Comprovante recebido via WhatsApp" />
+            </div>
+            <Button className="w-full" onClick={savePayment}>{editingPay ? "Salvar" : "Registrar"}</Button>
           </div>
         </DialogContent>
       </Dialog>
