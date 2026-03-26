@@ -149,7 +149,8 @@ const AdminAdvertisingPage = () => {
 
   // Payment form
   const [payDialog, setPayDialog] = useState(false);
-  const [payForm, setPayForm] = useState({ contract_id: "", month_ref: "", amount: "", status: "pending" });
+  const [editingPay, setEditingPay] = useState<AdPayment | null>(null);
+  const [payForm, setPayForm] = useState({ contract_id: "", month_ref: "", amount: "", status: "pending", payment_method: "pix", notes: "", paid_at: "" });
 
   // Period filter
   const [filterFrom, setFilterFrom] = useState("");
@@ -338,11 +339,43 @@ const AdminAdvertisingPage = () => {
   };
 
   // === Payment CRUD ===
+  const openPayCreate = () => {
+    setEditingPay(null);
+    setPayForm({ contract_id: "", month_ref: "", amount: "", status: "pending", payment_method: "pix", notes: "", paid_at: "" });
+    setPayDialog(true);
+  };
+  const openPayEdit = (pay: AdPayment) => {
+    setEditingPay(pay);
+    setPayForm({
+      contract_id: pay.contract_id,
+      month_ref: pay.month_ref,
+      amount: String(pay.amount),
+      status: pay.status,
+      payment_method: (pay as any).payment_method || "pix",
+      notes: (pay as any).notes || "",
+      paid_at: pay.paid_at ? pay.paid_at.slice(0, 10) : "",
+    });
+    setPayDialog(true);
+  };
   const savePayment = async () => {
-    const payload = { contract_id: payForm.contract_id, month_ref: payForm.month_ref, amount: parseFloat(payForm.amount) || 0, status: payForm.status, paid_at: payForm.status === "paid" ? new Date().toISOString() : null };
-    const { error } = await supabase.from("ad_payments").insert(payload);
-    if (error) { toast.error("Erro ao registrar pagamento"); return; }
-    toast.success("Pagamento registrado");
+    const payload: any = {
+      contract_id: payForm.contract_id,
+      month_ref: payForm.month_ref,
+      amount: parseFloat(payForm.amount) || 0,
+      status: payForm.status,
+      payment_method: payForm.payment_method,
+      notes: payForm.notes || null,
+      paid_at: payForm.status === "paid" ? (payForm.paid_at ? new Date(payForm.paid_at).toISOString() : new Date().toISOString()) : null,
+    };
+    if (editingPay) {
+      const { error } = await supabase.from("ad_payments").update(payload).eq("id", editingPay.id);
+      if (error) { toast.error("Erro ao atualizar pagamento"); return; }
+      toast.success("Pagamento atualizado");
+    } else {
+      const { error } = await supabase.from("ad_payments").insert(payload);
+      if (error) { toast.error("Erro ao registrar pagamento"); return; }
+      toast.success("Pagamento registrado");
+    }
     setPayDialog(false);
     fetchAll();
   };
@@ -785,7 +818,7 @@ const AdminAdvertisingPage = () => {
         {/* ===== PAGAMENTOS ===== */}
         <TabsContent value="payments" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => { setPayForm({ contract_id: "", month_ref: "", amount: "", status: "pending" }); setPayDialog(true); }}>
+            <Button onClick={openPayCreate}>
               <Plus className="h-4 w-4 mr-1" /> Registrar Pagamento
             </Button>
           </div>
@@ -797,27 +830,33 @@ const AdminAdvertisingPage = () => {
                   <TableHead>Pacote</TableHead>
                   <TableHead>Mês Ref.</TableHead>
                   <TableHead>Valor</TableHead>
+                  <TableHead>Método</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Pago em</TableHead>
-                  <TableHead className="w-24">Ações</TableHead>
+                  <TableHead>Obs.</TableHead>
+                  <TableHead className="w-28">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPayments.map(p => {
                   const st = PAY_STATUS_MAP[p.status] || PAY_STATUS_MAP.pending;
+                  const METHOD_LABELS: Record<string, string> = { pix: "PIX", transferencia: "Transferência", boleto: "Boleto", dinheiro: "Dinheiro", outro: "Outro" };
                   return (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.ad_contracts?.fornecedor || "—"}</TableCell>
                       <TableCell>{p.ad_contracts?.ad_packages?.name || "—"}</TableCell>
                       <TableCell>{p.month_ref}</TableCell>
                       <TableCell>{fmt(p.amount)}</TableCell>
+                      <TableCell className="text-xs">{METHOD_LABELS[(p as any).payment_method] || (p as any).payment_method || "—"}</TableCell>
                       <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                       <TableCell className="text-xs">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}</TableCell>
+                      <TableCell className="text-xs max-w-[120px] truncate" title={(p as any).notes || ""}>{(p as any).notes || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => togglePayStatus(p)} title={p.status === "paid" ? "Marcar pendente" : "Marcar pago"}>
                             {p.status === "paid" ? <XCircle className="h-4 w-4 text-muted-foreground" /> : <CheckCircle className="h-4 w-4 text-primary" />}
                           </Button>
+                          <Button size="icon" variant="ghost" onClick={() => openPayEdit(p)} title="Editar"><Edit className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => deletePayment(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
                       </TableCell>
@@ -825,7 +864,7 @@ const AdminAdvertisingPage = () => {
                   );
                 })}
                 {filteredPayments.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -968,17 +1007,17 @@ const AdminAdvertisingPage = () => {
       {/* === Payment Dialog === */}
       <Dialog open={payDialog} onOpenChange={setPayDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Registrar Pagamento</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingPay ? "Editar Pagamento" : "Registrar Pagamento"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Contrato</Label>
               <Select value={payForm.contract_id} onValueChange={v => {
                 const c = contracts.find(c => c.id === v);
                 setPayForm(f => ({ ...f, contract_id: v, amount: String(c?.ad_packages?.monthly_value || "") }));
-              }}>
+              }} disabled={!!editingPay}>
                 <SelectTrigger><SelectValue placeholder="Selecionar contrato" /></SelectTrigger>
                 <SelectContent>
-                  {contracts.filter(c => c.status === "active").map(c => (
+                  {contracts.filter(c => c.status === "active" || c.id === payForm.contract_id).map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.fornecedor} — {c.ad_packages?.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -988,16 +1027,41 @@ const AdminAdvertisingPage = () => {
               <div><Label>Mês Referência</Label><Input value={payForm.month_ref} onChange={e => setPayForm(f => ({ ...f, month_ref: e.target.value }))} placeholder="Ex: 02/2026" /></div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} /></div>
             </div>
-            <div>
-              <Label>Status</Label>
-              <Select value={payForm.status} onValueChange={v => setPayForm(f => ({ ...f, status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PAY_STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Status</Label>
+                <Select value={payForm.status} onValueChange={v => setPayForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PAY_STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Método</Label>
+                <Select value={payForm.payment_method} onValueChange={v => setPayForm(f => ({ ...f, payment_method: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="transferencia">Transferência</SelectItem>
+                    <SelectItem value="boleto">Boleto</SelectItem>
+                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Button className="w-full" onClick={savePayment}>Registrar</Button>
+            {payForm.status === "paid" && (
+              <div>
+                <Label>Data do Pagamento</Label>
+                <Input type="date" value={payForm.paid_at} onChange={e => setPayForm(f => ({ ...f, paid_at: e.target.value }))} />
+              </div>
+            )}
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Ex: Comprovante recebido via WhatsApp" />
+            </div>
+            <Button className="w-full" onClick={savePayment}>{editingPay ? "Salvar" : "Registrar"}</Button>
           </div>
         </DialogContent>
       </Dialog>
