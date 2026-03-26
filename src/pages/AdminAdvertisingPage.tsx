@@ -176,6 +176,8 @@ const AdminAdvertisingPage = () => {
   const [fieldDefForm, setFieldDefForm] = useState({ name: "", field_type: "text", options: "", applies_to: "both", is_required: false, sort_order: "0" });
   const [pkgCustomFields, setPkgCustomFields] = useState<Record<string, any>>({});
   const [tplCustomFields, setTplCustomFields] = useState<Record<string, any>>({});
+  const [tplCustomFieldDefs, setTplCustomFieldDefs] = useState<LocalCustomFieldDefinition[]>([]);
+  const [tplNewCustomField, setTplNewCustomField] = useState({ name: "", field_type: "text" as "text" | "number" | "select", options: "", is_required: false });
 
   // Template form - dynamic fields
   const [tplDialog, setTplDialog] = useState(false);
