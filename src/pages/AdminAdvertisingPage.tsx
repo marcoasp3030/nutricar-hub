@@ -149,7 +149,8 @@ const AdminAdvertisingPage = () => {
 
   // Payment form
   const [payDialog, setPayDialog] = useState(false);
-  const [payForm, setPayForm] = useState({ contract_id: "", month_ref: "", amount: "", status: "pending" });
+  const [editingPay, setEditingPay] = useState<AdPayment | null>(null);
+  const [payForm, setPayForm] = useState({ contract_id: "", month_ref: "", amount: "", status: "pending", payment_method: "pix", notes: "", paid_at: "" });
 
   // Period filter
   const [filterFrom, setFilterFrom] = useState("");
