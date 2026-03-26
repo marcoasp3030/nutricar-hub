@@ -399,38 +399,23 @@ const AdminAdvertisingPage = () => {
     setEditingTpl(tpl);
     setTplName(tpl.name);
     setTplIsActive(tpl.is_active);
-    // Detect which built-in fields have values
-    const enabled: string[] = [];
-    const vals: Record<string, any> = {};
-    if (tpl.description) { enabled.push("description"); vals.description = tpl.description; }
-    if (tpl.monthly_value) { enabled.push("monthly_value"); vals.monthly_value = String(tpl.monthly_value); }
-    if (tpl.duration_months && tpl.duration_months !== 1) { enabled.push("duration_months"); vals.duration_months = String(tpl.duration_months); }
-    if (tpl.display_frequency && tpl.display_frequency !== "30s a cada 5 min") { enabled.push("display_frequency"); vals.display_frequency = tpl.display_frequency; }
-    if (tpl.media_type) { enabled.push("media_type"); vals.media_type = tpl.media_type; }
-    if (tpl.screen_position) { enabled.push("screen_position"); vals.screen_position = tpl.screen_position; }
-    if (tpl.display_schedule) { enabled.push("display_schedule"); vals.display_schedule = tpl.display_schedule; }
-    if (tpl.content_format) { enabled.push("content_format"); vals.content_format = tpl.content_format; }
-    if (tpl.tags && tpl.tags.length > 0) { enabled.push("tags"); vals.tags = tpl.tags.join(", "); }
-    // Also enable custom field defs that have values
     const cf = { ...((tpl as any).custom_fields || {}) };
-    const storedEnabled: string[] = cf._enabled_fields || [];
+    const storedBuiltinEnabled: string[] = cf._enabled_fields || [];
+    const storedAllEnabled: string[] = cf._enabled_fields_all || storedBuiltinEnabled;
     delete cf._enabled_fields;
-    // If we have stored enabled fields, use those; otherwise fall back to detection
-    if (storedEnabled.length > 0) {
-      // Merge stored builtin enabled with detected custom enabled
-      enabled.length = 0;
-      enabled.push(...storedEnabled);
-      // Rebuild values from stored enabled
-      Object.keys(vals).forEach(k => delete vals[k]);
-      for (const key of storedEnabled) {
-        if (key === "description" && tpl.description) vals.description = tpl.description;
-        else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
-        else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
-        else if (key === "tags" && tpl.tags?.length) vals.tags = tpl.tags.join(", ");
-        else if ((tpl as any)[key]) vals[key] = (tpl as any)[key];
-      }
+    delete cf._enabled_fields_all;
+    
+    // Use stored enabled fields; for old templates without _enabled_fields, start empty
+    const enabled: string[] = [...storedAllEnabled];
+    const vals: Record<string, any> = {};
+    for (const key of storedAllEnabled) {
+      if (key.startsWith("custom_")) continue; // custom fields handled via tplCustomFields
+      if (key === "description" && tpl.description) vals.description = tpl.description;
+      else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
+      else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
+      else if (key === "tags" && tpl.tags?.length) vals.tags = tpl.tags.join(", ");
+      else if ((tpl as any)[key]) vals[key] = (tpl as any)[key];
     }
-    Object.keys(cf).forEach(k => { if (cf[k]) enabled.push(`custom_${k}`); });
     setTplEnabledFields(enabled);
     setTplFieldValues(vals);
     setTplCustomFields(cf);
