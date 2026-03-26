@@ -145,6 +145,9 @@ const ReportsPage = ({ tableName, fornecedor }: ReportsPageProps) => {
           <p className="text-sm text-muted-foreground">{total.toLocaleString("pt-BR")} registros encontrados</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading} className="gap-2">
+            <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+          </Button>
           <Button variant="outline" size="sm" onClick={() => exportAllData("xlsx")} disabled={exporting} className="gap-2">
             <FileSpreadsheet className="h-4 w-4" /> Excel
           </Button>
