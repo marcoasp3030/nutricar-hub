@@ -188,6 +188,7 @@ const AdminAdvertisingPage = () => {
       pfMap[pf.package_id].push(pf.fornecedor);
     });
     setPackageFornecedores(pfMap);
+    setTemplates((tplRes.data || []) as AdPackageTemplate[]);
     setLoading(false);
   };
 
