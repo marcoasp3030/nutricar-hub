@@ -402,8 +402,8 @@ const AdminAdvertisingPage = () => {
 
   // === Filtered payments ===
   const filteredPayments = payments.filter(p => {
-    if (filterFrom && p.month_ref < filterFrom) return false;
-    if (filterTo && p.month_ref > filterTo) return false;
+    if (payFilterFrom !== "__all__" && p.month_ref < payFilterFrom) return false;
+    if (payFilterTo !== "__all__" && p.month_ref > payFilterTo) return false;
     if (payFilterFornecedor !== "__all__" && p.ad_contracts?.fornecedor !== payFilterFornecedor) return false;
     if (payFilterStatus !== "__all__" && p.status !== payFilterStatus) return false;
     if (payFilterMethod !== "__all__" && (p as any).payment_method !== payFilterMethod) return false;
