@@ -218,8 +218,10 @@ const AdminAdvertisingPage = () => {
   const [payFilterFrom, setPayFilterFrom] = useState("__all__");
   const [payFilterTo, setPayFilterTo] = useState("__all__");
 
-  // Tag filter for packages
+  // Filters for packages
   const [filterTag, setFilterTag] = useState<string>("__all__");
+  const [filterPkgName, setFilterPkgName] = useState("");
+  const [filterPkgFornecedor, setFilterPkgFornecedor] = useState<string>("__all__");
 
   // History
   const [historyDialog, setHistoryDialog] = useState(false);
