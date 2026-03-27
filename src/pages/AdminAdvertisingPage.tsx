@@ -1127,14 +1127,21 @@ const AdminAdvertisingPage = () => {
                   {tpl.description && <p className="text-xs text-muted-foreground">{tpl.description}</p>}
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>
-                    <div><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>
-                    <div><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>
-                    <div><span className="text-muted-foreground">Formato:</span> {tpl.content_format || "—"}</div>
-                    <div><span className="text-muted-foreground">Horário:</span> <span className="capitalize">{(tpl.display_schedule || "—").replace("_", " ")}</span></div>
-                  </div>
+                  {(() => {
+                    const cf = (tpl as any).custom_fields || {};
+                    const storedEnabled = Array.isArray(cf._enabled_fields_all) ? cf._enabled_fields_all : (Array.isArray(cf._enabled_fields) ? cf._enabled_fields : []);
+                    const enabledSet = new Set(storedEnabled);
+                    const hasAny = storedEnabled.length > 0;
+                    const show = (key: string) => !hasAny || enabledSet.has(key);
+                    const items: React.ReactNode[] = [];
+                    if (show("monthly_value")) items.push(<div key="mv"><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>);
+                    if (show("duration_months")) items.push(<div key="dm"><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>);
+                    if (show("media_type")) items.push(<div key="mt"><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>);
+                    if (show("screen_position")) items.push(<div key="sp"><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>);
+                    if (show("content_format")) items.push(<div key="cf"><span className="text-muted-foreground">Formato:</span> {tpl.content_format || "—"}</div>);
+                    if (show("display_schedule")) items.push(<div key="ds"><span className="text-muted-foreground">Horário:</span> <span className="capitalize">{(tpl.display_schedule || "—").replace("_", " ")}</span></div>);
+                    return items.length > 0 ? <div className="grid grid-cols-2 gap-2 text-xs">{items}</div> : null;
+                  })()}
                   {tpl.tags?.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
                       {tpl.tags.map(t => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
