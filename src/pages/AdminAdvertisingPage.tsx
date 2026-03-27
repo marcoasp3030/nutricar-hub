@@ -218,8 +218,10 @@ const AdminAdvertisingPage = () => {
   const [payFilterFrom, setPayFilterFrom] = useState("__all__");
   const [payFilterTo, setPayFilterTo] = useState("__all__");
 
-  // Tag filter for packages
+  // Filters for packages
   const [filterTag, setFilterTag] = useState<string>("__all__");
+  const [filterPkgName, setFilterPkgName] = useState("");
+  const [filterPkgFornecedor, setFilterPkgFornecedor] = useState<string>("__all__");
 
   // History
   const [historyDialog, setHistoryDialog] = useState(false);
@@ -876,7 +878,11 @@ const AdminAdvertisingPage = () => {
         <TabsContent value="packages" className="space-y-4">
           {(() => {
             const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].filter(t => t && t.trim() !== "").sort();
-            const filtered = filterTag === "__all__" ? packages : packages.filter(p => ((p as any).tags || []).includes(filterTag));
+            const allPkgFornecedores = [...new Set(Object.values(packageFornecedores).flat())].sort();
+            let filtered = packages;
+            if (filterTag !== "__all__") filtered = filtered.filter(p => ((p as any).tags || []).includes(filterTag));
+            if (filterPkgName.trim()) filtered = filtered.filter(p => p.name.toLowerCase().includes(filterPkgName.trim().toLowerCase()));
+            if (filterPkgFornecedor !== "__all__") filtered = filtered.filter(p => (packageFornecedores[p.id] || []).includes(filterPkgFornecedor));
             
             const MEDIA_LABELS: Record<string, string> = { video: "Vídeo", banner: "Banner", slide: "Slide", institucional: "Institucional" };
             const POSITION_LABELS: Record<string, string> = { tela_cheia: "Tela Cheia", rodape: "Rodapé", lateral: "Lateral", topo: "Topo" };
@@ -884,28 +890,45 @@ const AdminAdvertisingPage = () => {
 
             return (
               <>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <p className="text-sm text-muted-foreground">
                       {filtered.length} produto(s) cadastrado(s) • {filtered.filter(p => p.is_active).length} ativo(s)
                     </p>
+                    <Button onClick={openPkgCreate}><Plus className="h-4 w-4 mr-1" /> Novo Produto</Button>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input className="pl-8 h-8 text-xs w-48" placeholder="Buscar por nome..." value={filterPkgName} onChange={e => setFilterPkgName(e.target.value)} />
+                    </div>
+                    {allPkgFornecedores.length > 0 && (
+                      <Select value={filterPkgFornecedor} onValueChange={setFilterPkgFornecedor}>
+                        <SelectTrigger className="w-48 h-8 text-xs">
+                          <SelectValue placeholder="Filtrar por fornecedor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Todos os fornecedores</SelectItem>
+                          {allPkgFornecedores.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
                     {allTags.length > 0 && (
-                      <>
-                        <span className="text-border">|</span>
-                        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                        <Select value={filterTag} onValueChange={setFilterTag}>
-                          <SelectTrigger className="w-40 h-8 text-xs">
-                            <SelectValue placeholder="Filtrar por tag" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">Todas as tags</SelectItem>
-                            {allTags.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </>
+                      <Select value={filterTag} onValueChange={setFilterTag}>
+                        <SelectTrigger className="w-40 h-8 text-xs">
+                          <SelectValue placeholder="Filtrar por tag" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">Todas as tags</SelectItem>
+                          {allTags.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {(filterPkgName || filterPkgFornecedor !== "__all__" || filterTag !== "__all__") && (
+                      <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterPkgName(""); setFilterPkgFornecedor("__all__"); setFilterTag("__all__"); }}>Limpar filtros</Button>
                     )}
                   </div>
-                  <Button onClick={openPkgCreate}><Plus className="h-4 w-4 mr-1" /> Novo Produto</Button>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
