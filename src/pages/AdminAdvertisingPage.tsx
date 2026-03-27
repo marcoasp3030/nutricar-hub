@@ -936,9 +936,9 @@ const AdminAdvertisingPage = () => {
                           return assignedF.map(f => ({ Pacote: pkg.name, Status: pkg.is_active ? "Ativo" : "Inativo", Fornecedor: f }));
                         });
                         const cols: ExportColumn[] = [
-                          { header: "Pacote", accessor: (r: any) => r.Pacote },
-                          { header: "Status", accessor: (r: any) => r.Status },
-                          { header: "Fornecedor", accessor: (r: any) => r.Fornecedor },
+                          { key: "Pacote", label: "Pacote" },
+                          { key: "Status", label: "Status" },
+                          { key: "Fornecedor", label: "Fornecedor" },
                         ];
                         exportToXLSX(rows, cols, "pacotes_fornecedores");
                       }}>
