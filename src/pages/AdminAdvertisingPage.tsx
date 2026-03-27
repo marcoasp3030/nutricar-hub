@@ -878,7 +878,11 @@ const AdminAdvertisingPage = () => {
         <TabsContent value="packages" className="space-y-4">
           {(() => {
             const allTags = [...new Set(packages.flatMap(p => (p as any).tags || []))].filter(t => t && t.trim() !== "").sort();
-            const filtered = filterTag === "__all__" ? packages : packages.filter(p => ((p as any).tags || []).includes(filterTag));
+            const allPkgFornecedores = [...new Set(Object.values(packageFornecedores).flat())].sort();
+            let filtered = packages;
+            if (filterTag !== "__all__") filtered = filtered.filter(p => ((p as any).tags || []).includes(filterTag));
+            if (filterPkgName.trim()) filtered = filtered.filter(p => p.name.toLowerCase().includes(filterPkgName.trim().toLowerCase()));
+            if (filterPkgFornecedor !== "__all__") filtered = filtered.filter(p => (packageFornecedores[p.id] || []).includes(filterPkgFornecedor));
             
             const MEDIA_LABELS: Record<string, string> = { video: "Vídeo", banner: "Banner", slide: "Slide", institucional: "Institucional" };
             const POSITION_LABELS: Record<string, string> = { tela_cheia: "Tela Cheia", rodape: "Rodapé", lateral: "Lateral", topo: "Topo" };
