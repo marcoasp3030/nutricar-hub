@@ -1208,6 +1208,24 @@ const AdminAdvertisingPage = () => {
                     if (show("display_schedule")) items.push(<div key="ds"><span className="text-muted-foreground">Horário:</span> <span className="capitalize">{(tpl.display_schedule || "—").replace("_", " ")}</span></div>);
                     return items.length > 0 ? <div className="grid grid-cols-2 gap-2 text-xs">{items}</div> : null;
                   })()}
+                  {/* Custom fields indicator */}
+                  {(() => {
+                    const cf = (tpl as any).custom_fields || {};
+                    const customEntries = Object.entries(cf).filter(([k]) => !k.startsWith("_"));
+                    if (customEntries.length === 0) return null;
+                    return (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Campos personalizados</span>
+                        <div className="flex gap-1 flex-wrap">
+                          {customEntries.map(([key, val]) => (
+                            <Badge key={key} variant="outline" className="text-[10px] gap-1 bg-accent/50">
+                              <span className="font-medium">{key}:</span> <span className="truncate max-w-[80px]">{String(val || "—")}</span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {tpl.tags?.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
                       {tpl.tags.map(t => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
