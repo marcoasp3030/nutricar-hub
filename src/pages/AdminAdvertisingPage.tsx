@@ -928,8 +928,51 @@ const AdminAdvertisingPage = () => {
                     {(filterPkgName || filterPkgFornecedor !== "__all__" || filterTag !== "__all__") && (
                       <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterPkgName(""); setFilterPkgFornecedor("__all__"); setFilterTag("__all__"); }}>Limpar filtros</Button>
                     )}
+                    {filtered.length > 0 && (
+                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
+                        const rows = filtered.flatMap(pkg => {
+                          const assignedF = packageFornecedores[pkg.id] || [];
+                          if (assignedF.length === 0) return [{ Pacote: pkg.name, Status: pkg.is_active ? "Ativo" : "Inativo", Fornecedor: "(Todos - sem restrição)" }];
+                          return assignedF.map(f => ({ Pacote: pkg.name, Status: pkg.is_active ? "Ativo" : "Inativo", Fornecedor: f }));
+                        });
+                        const cols: ExportColumn[] = [
+                          { key: "Pacote", label: "Pacote" },
+                          { key: "Status", label: "Status" },
+                          { key: "Fornecedor", label: "Fornecedor" },
+                        ];
+                        exportToXLSX(rows, cols, "pacotes_fornecedores");
+                      }}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> Exportar
+                      </Button>
+                    )}
                   </div>
                 </div>
+
+                {/* Fornecedores summary panel when filtering */}
+                {(filterPkgName || filterPkgFornecedor !== "__all__" || filterTag !== "__all__") && filtered.length > 0 && (() => {
+                  const allAssigned = filtered.flatMap(pkg => (packageFornecedores[pkg.id] || []).map(f => ({ fornecedor: f, pacote: pkg.name })));
+                  const uniqueF = [...new Set(allAssigned.map(a => a.fornecedor))].sort();
+                  if (uniqueF.length === 0 && filtered.every(p => (packageFornecedores[p.id] || []).length === 0)) return null;
+                  return (
+                    <Card className="border-dashed">
+                      <CardHeader className="pb-2 pt-3">
+                        <CardTitle className="text-sm flex items-center gap-1.5"><Users className="h-4 w-4 text-primary" /> Fornecedores Vinculados ({uniqueF.length})</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        {uniqueF.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Nenhum fornecedor vinculado aos pacotes filtrados.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {uniqueF.map(f => {
+                              const count = allAssigned.filter(a => a.fornecedor === f).length;
+                              return <Badge key={f} variant="secondary" className="text-xs">{f} <span className="ml-1 opacity-60">({count} pacote{count > 1 ? "s" : ""})</span></Badge>;
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {filtered.map(pkg => {
