@@ -386,6 +386,38 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Cancellation request dialog */}
+      <Dialog open={cancelDialog.open} onOpenChange={(open) => { if (!open) { setCancelDialog({ open: false, contract: null }); setCancelReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Solicitar cancelamento do pacote</DialogTitle>
+            <DialogDescription>
+              {cancelDialog.contract?.ad_packages?.name && (
+                <span className="block font-medium text-foreground mb-1">{cancelDialog.contract.ad_packages.name}</span>
+              )}
+              A solicitação será enviada ao administrador para aprovação. O pacote permanece ativo até a aprovação.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Motivo do cancelamento *</label>
+            <Textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Descreva o motivo da solicitação..."
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCancelDialog({ open: false, contract: null }); setCancelReason(""); }}>
+              Voltar
+            </Button>
+            <Button variant="destructive" onClick={submitCancellation} disabled={submittingCancel}>
+              {submittingCancel ? "Enviando..." : "Enviar solicitação"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
