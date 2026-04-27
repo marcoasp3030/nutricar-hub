@@ -593,6 +593,19 @@ const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assi
                     {a.checkout_at && <span>Check-out: {format(new Date(a.checkout_at), "dd/MM HH:mm")}</span>}
                   </div>
 
+                  {/* Cancellation info */}
+                  {a.status === "cancelado" && (a.cancelled_at || a.cancellation_reason) && (
+                    <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-xs space-y-0.5">
+                      <p className="font-medium text-destructive">
+                        Cancelado pela promotora
+                        {a.cancelled_at && <span className="text-muted-foreground font-normal"> · {format(new Date(a.cancelled_at), "dd/MM/yyyy HH:mm")}</span>}
+                      </p>
+                      {a.cancellation_reason && (
+                        <p className="text-muted-foreground italic">Motivo: {a.cancellation_reason}</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Evidence photos */}
                   {a.evidence_urls && a.evidence_urls.length > 0 && (
                     <div>
