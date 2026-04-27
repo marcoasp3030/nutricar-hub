@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Star, MapPin, Check, X, Briefcase, Calendar, Search, Trophy, DollarSign, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Star, MapPin, Check, X, Briefcase, Calendar, Search, Trophy, DollarSign, Download, FileSpreadsheet, FileText, Crown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { format as dateFmt } from "date-fns";
 import { exportToXLSX, exportToPDF, ExportColumn } from "@/lib/exportUtils";
@@ -60,7 +61,7 @@ const AdminPromotersPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("job_assignments")
-        .select("*, job:event_jobs(title, start_date, cache_value), promoter:promoter_profiles(stage_name, city, state)")
+        .select("*, job:event_jobs(title, start_date, cache_value, leader_bonus), promoter:promoter_profiles(stage_name, city, state, is_leader)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -102,6 +103,19 @@ const AdminPromotersPage = () => {
       qc.invalidateQueries({ queryKey: ["promoter_profiles"] });
       toast({ title: "Status atualizado!" });
       setSelected(null);
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const leaderMutation = useMutation({
+    mutationFn: async ({ id, is_leader }: { id: string; is_leader: boolean }) => {
+      const { error } = await supabase.from("promoter_profiles").update({ is_leader } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["promoter_profiles"] });
+      setSelected(prev => prev ? { ...prev, is_leader: vars.is_leader } : prev);
+      toast({ title: vars.is_leader ? "Promotora marcada como líder" : "Líder removida" });
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -151,7 +165,9 @@ const AdminPromotersPage = () => {
     if (assignmentsWithPayment.has(a.id)) return;
     const promoterId = a.promoter_id;
     const name = a.promoter?.stage_name || "Desconhecida";
-    const cache = Number(a.job?.cache_value || 0);
+    const isLeader = !!a.promoter?.is_leader;
+    const bonus = isLeader ? Number(a.job?.leader_bonus || 0) : 0;
+    const cache = Number(a.job?.cache_value || 0) + bonus;
     if (!promoterId || cache <= 0) return;
     if (!paymentsByPromoter[promoterId]) paymentsByPromoter[promoterId] = { name, pago: 0, pendente: 0 };
     paymentsByPromoter[promoterId].pendente += cache;
@@ -299,7 +315,10 @@ const AdminPromotersPage = () => {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-foreground truncate">{p.stage_name || "Sem nome"}</h3>
+                            <h3 className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                              {p.stage_name || "Sem nome"}
+                              {p.is_leader && <Crown className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                            </h3>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <MapPin className="h-3 w-3" />
                               {p.city || "—"}{p.state ? `, ${p.state}` : ""}
@@ -539,7 +558,12 @@ const AdminPromotersPage = () => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-semibold">{selected.stage_name || "Sem nome"}</h3>
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    {selected.stage_name || "Sem nome"}
+                    {selected.is_leader && (
+                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 gap-1"><Crown className="h-3 w-3" /> Líder</Badge>
+                    )}
+                  </h3>
                   <p className="text-sm text-muted-foreground">{selected.city}{selected.state ? `, ${selected.state}` : ""}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <RatingStars value={Math.round(Number(selected.avg_rating))} />
@@ -622,6 +646,22 @@ const AdminPromotersPage = () => {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <Separator />
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-amber-600" />
+                  <div>
+                    <p className="text-sm font-medium">Promotora Líder</p>
+                    <p className="text-xs text-muted-foreground">Recebe o bônus de líder definido em cada evento</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={!!selected.is_leader}
+                  onCheckedChange={(v) => leaderMutation.mutate({ id: selected.id, is_leader: v })}
+                  disabled={leaderMutation.isPending}
+                />
               </div>
 
               <div className="flex gap-2">

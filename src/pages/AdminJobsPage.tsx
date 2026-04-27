@@ -138,6 +138,7 @@ const AdminJobsPage = () => {
       address: "", store_unit: "", map_link: "",
       start_date: "", end_date: "", start_time: "", end_time: "",
       promoter_slots: 1, cache_value: 0, cache_type: "fechado",
+      leader_bonus: 0,
       travel_allowance: 0, has_transport: false, has_meals: false,
       visibility: "aberto", status: "rascunho", response_deadline_hours: 24,
       photo_urls: [], attachment_urls: [],
@@ -388,6 +389,10 @@ const AdminJobsPage = () => {
               <div>
                 <Label>Ajuda de custo (R$)</Label>
                 <Input type="number" value={form.travel_allowance || 0} onChange={(e) => setForm({ ...form, travel_allowance: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label>Bônus de líder (R$) <span className="text-xs text-muted-foreground">(somado ao cachê para promotoras líderes)</span></Label>
+                <Input type="number" value={form.leader_bonus || 0} onChange={(e) => setForm({ ...form, leader_bonus: Number(e.target.value) })} />
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={form.has_transport || false} onCheckedChange={(v) => setForm({ ...form, has_transport: v })} />
