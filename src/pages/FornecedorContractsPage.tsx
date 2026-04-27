@@ -29,6 +29,39 @@ const MEDIA_LABELS: Record<string, string> = { video: "Vídeo", banner: "Banner"
 const POSITION_LABELS: Record<string, string> = { tela_cheia: "Tela Cheia", rodape: "Rodapé", lateral: "Lateral", topo: "Topo" };
 const SCHEDULE_LABELS: Record<string, string> = { integral: "Integral", manha: "Manhã", tarde: "Tarde", noite: "Noite", horario_comercial: "Horário Comercial" };
 
+// Mirror of admin logic — determines which built-in fields were explicitly enabled
+// for this package (so non-media packages don't show media specs by accident).
+const BUILTIN_KEYS = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "playlist_id", "tags"];
+const BUILTIN_DB_DEFAULTS: Record<string, string> = {
+  media_type: "video",
+  screen_position: "tela_cheia",
+  display_schedule: "integral",
+  content_format: "16:9",
+  display_frequency: "30s a cada 5 min",
+};
+const getEnabledBuiltinFields = (pkg: any): Set<string> => {
+  if (!pkg) return new Set();
+  const cf = pkg.custom_fields || {};
+  const stored: string[] = Array.isArray(cf._enabled_fields) ? cf._enabled_fields : [];
+  if (stored.length > 0) {
+    return new Set(stored.filter((k: string) => BUILTIN_KEYS.includes(k)));
+  }
+  // Auto-detect: include only fields with non-default explicit values
+  const enabled: string[] = [];
+  for (const key of BUILTIN_KEYS) {
+    const val = pkg[key];
+    if (key === "tags") {
+      if ((pkg.tags || []).length > 0) enabled.push(key);
+    } else if (key === "playlist_id") {
+      if (val) enabled.push(key);
+    } else if (val !== null && val !== undefined && String(val).trim() !== "" && val !== 0) {
+      if (BUILTIN_DB_DEFAULTS[key] !== undefined && String(val) === BUILTIN_DB_DEFAULTS[key]) continue;
+      enabled.push(key);
+    }
+  }
+  return new Set(enabled);
+};
+
 const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const [contracts, setContracts] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
