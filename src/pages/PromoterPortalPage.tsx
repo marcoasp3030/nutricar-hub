@@ -503,7 +503,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
             size="sm"
             variant="outline"
             className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => { setCancelReason(""); setShowCancel(true); }}
+            onClick={() => { setCancelReason(""); setCancelError(null); setShowCancel(true); }}
             disabled={cancelAssignmentMutation.isPending}
           >
             <X className="h-3 w-3 mr-1" /> Cancelar Participação
