@@ -129,6 +129,9 @@ interface AdContract {
   end_date: string | null;
   notes: string | null;
   created_at: string;
+  cancellation_requested?: boolean;
+  cancellation_reason?: string | null;
+  cancellation_requested_at?: string | null;
   ad_packages?: AdPackage;
 }
 
