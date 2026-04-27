@@ -304,6 +304,7 @@ const PromoterPortalPage = () => {
               assignment={a}
               checkinMutation={checkinMutation}
               checkoutMutation={checkoutMutation}
+              cancelAssignmentMutation={cancelAssignmentMutation}
               qc={qc}
             />
           ))}
