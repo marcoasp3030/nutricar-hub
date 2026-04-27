@@ -621,20 +621,37 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
     </Card>
 
     {/* Cancel participation dialog */}
-    <Dialog open={showCancel} onOpenChange={setShowCancel}>
+    <Dialog open={showCancel} onOpenChange={(o) => { setShowCancel(o); if (!o) setCancelError(null); }}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Cancelar participação</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Informe o motivo do cancelamento. Esta informação será visível para o administrador.
           </p>
-          <Label className="text-xs">Motivo *</Label>
-          <Textarea
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Ex.: imprevisto pessoal, conflito de agenda..."
-            className="min-h-[80px]"
-          />
+          <div className="space-y-1">
+            <Label htmlFor="cancel-reason" className="text-xs">Motivo *</Label>
+            <Textarea
+              id="cancel-reason"
+              value={cancelReason}
+              onChange={(e) => {
+                setCancelReason(e.target.value);
+                if (cancelError) setCancelError(null);
+              }}
+              placeholder="Ex.: imprevisto pessoal, conflito de agenda..."
+              maxLength={MAX_REASON_LEN}
+              aria-invalid={!!cancelError}
+              aria-describedby="cancel-reason-error"
+              className={`min-h-[80px] ${cancelError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+            />
+            <div className="flex items-center justify-between text-[11px]">
+              <span id="cancel-reason-error" className="text-destructive">
+                {cancelError || ""}
+              </span>
+              <span className="text-muted-foreground">
+                {cancelReason.length}/{MAX_REASON_LEN}
+              </span>
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1" onClick={() => setShowCancel(false)}>
               Voltar
@@ -642,10 +659,24 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
             <Button
               variant="destructive"
               className="flex-1"
-              disabled={!cancelReason.trim() || cancelAssignmentMutation.isPending}
+              disabled={cancelAssignmentMutation.isPending}
               onClick={() => {
+                const trimmed = cancelReason.trim();
+                if (!trimmed) {
+                  setCancelError("Informe o motivo do cancelamento.");
+                  return;
+                }
+                if (trimmed.length < MIN_REASON_LEN) {
+                  setCancelError(`O motivo deve ter pelo menos ${MIN_REASON_LEN} caracteres.`);
+                  return;
+                }
+                if (trimmed.length > MAX_REASON_LEN) {
+                  setCancelError(`O motivo deve ter no máximo ${MAX_REASON_LEN} caracteres.`);
+                  return;
+                }
+                setCancelError(null);
                 cancelAssignmentMutation.mutate(
-                  { id: a.id, reason: cancelReason.trim() },
+                  { id: a.id, reason: trimmed },
                   { onSuccess: () => setShowCancel(false) }
                 );
               }}
