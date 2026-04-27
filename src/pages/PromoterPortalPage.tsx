@@ -487,6 +487,23 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
         {a.checkin_at && <p className="text-xs text-muted-foreground">Check-in: {format(new Date(a.checkin_at), "dd/MM HH:mm")}</p>}
         {a.checkout_at && <p className="text-xs text-muted-foreground">Check-out: {format(new Date(a.checkout_at), "dd/MM HH:mm")}</p>}
 
+        {/* Cancelar participação - disponível antes do check-in */}
+        {!a.checkin_at && a.status !== "cancelado" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => {
+              if (confirm("Tem certeza que deseja cancelar sua participação neste evento?")) {
+                cancelAssignmentMutation.mutate(a.id);
+              }
+            }}
+            disabled={cancelAssignmentMutation.isPending}
+          >
+            <X className="h-3 w-3 mr-1" /> Cancelar Participação
+          </Button>
+        )}
+
         {/* Evidence photos */}
         {a.evidence_urls && a.evidence_urls.length > 0 && (
           <div>
