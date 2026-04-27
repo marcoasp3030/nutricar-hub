@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search, Copy, LayoutTemplate, Eye, Monitor, CalendarDays, Tv, Play, Grid3X3, Link2, ToggleLeft, ToggleRight, ShoppingBag, Download, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, FileText, Package, CheckCircle, Clock, XCircle, BarChart3, Filter, History, Users, Search, Copy, LayoutTemplate, Eye, Monitor, CalendarDays, Tv, Play, Grid3X3, Link2, ToggleLeft, ToggleRight, ShoppingBag, Download, ArrowUp, ArrowDown, GripVertical, AlertTriangle, Ban, Check } from "lucide-react";
 import { exportToXLSX, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -129,6 +129,9 @@ interface AdContract {
   end_date: string | null;
   notes: string | null;
   created_at: string;
+  cancellation_requested?: boolean;
+  cancellation_reason?: string | null;
+  cancellation_requested_at?: string | null;
   ad_packages?: AdPackage;
 }
 
@@ -660,6 +663,28 @@ const AdminAdvertisingPage = () => {
     if (!confirm("Excluir este contrato?")) return;
     await supabase.from("ad_contracts").delete().eq("id", id);
     toast.success("Contrato excluído");
+    fetchAll();
+  };
+
+  const approveCancellation = async (c: AdContract) => {
+    if (!confirm(`Aprovar cancelamento do pacote "${c.ad_packages?.name || ''}" do fornecedor ${c.fornecedor}?`)) return;
+    const { error } = await supabase
+      .from("ad_contracts")
+      .update({ status: "cancelled", cancellation_requested: false })
+      .eq("id", c.id);
+    if (error) { toast.error("Erro ao aprovar cancelamento"); return; }
+    toast.success("Cancelamento aprovado");
+    fetchAll();
+  };
+
+  const rejectCancellation = async (c: AdContract) => {
+    if (!confirm("Rejeitar a solicitação de cancelamento?")) return;
+    const { error } = await supabase
+      .from("ad_contracts")
+      .update({ cancellation_requested: false, cancellation_reason: null, cancellation_requested_at: null })
+      .eq("id", c.id);
+    if (error) { toast.error("Erro ao rejeitar"); return; }
+    toast.success("Solicitação rejeitada");
     fetchAll();
   };
 
@@ -1351,16 +1376,35 @@ const AdminAdvertisingPage = () => {
               <TableBody>
                 {contracts.map(c => {
                   const st = STATUS_MAP[c.status] || STATUS_MAP.pending;
+                  const cancelPending = !!c.cancellation_requested && c.status !== "cancelled";
                   return (
-                    <TableRow key={c.id}>
+                    <TableRow key={c.id} className={cancelPending ? "bg-amber-500/10" : ""}>
                       <TableCell className="font-medium">{c.fornecedor}</TableCell>
-                      <TableCell>{c.ad_packages?.name || "—"}</TableCell>
+                      <TableCell>
+                        {c.ad_packages?.name || "—"}
+                        {cancelPending && (
+                          <div className="mt-1 flex items-start gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                            <span><span className="font-semibold">Cancelamento solicitado:</span> {c.cancellation_reason || "—"}</span>
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>{fmt(c.ad_packages?.monthly_value || 0)}/mês</TableCell>
                       <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                       <TableCell className="text-xs">{c.start_date || "—"}</TableCell>
                       <TableCell className="text-xs">{c.end_date || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          {cancelPending && (
+                            <>
+                              <Button size="icon" variant="ghost" onClick={() => approveCancellation(c)} title="Aprovar cancelamento">
+                                <Check className="h-4 w-4 text-destructive" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => rejectCancellation(c)} title="Rejeitar solicitação">
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                           <Button size="icon" variant="ghost" onClick={() => openHistory(c.id)} title="Histórico"><History className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => openContractEdit(c)}><Edit className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => deleteContract(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
