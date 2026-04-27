@@ -666,6 +666,28 @@ const AdminAdvertisingPage = () => {
     fetchAll();
   };
 
+  const approveCancellation = async (c: AdContract) => {
+    if (!confirm(`Aprovar cancelamento do pacote "${c.ad_packages?.name || ''}" do fornecedor ${c.fornecedor}?`)) return;
+    const { error } = await supabase
+      .from("ad_contracts")
+      .update({ status: "cancelled", cancellation_requested: false })
+      .eq("id", c.id);
+    if (error) { toast.error("Erro ao aprovar cancelamento"); return; }
+    toast.success("Cancelamento aprovado");
+    fetchAll();
+  };
+
+  const rejectCancellation = async (c: AdContract) => {
+    if (!confirm("Rejeitar a solicitação de cancelamento?")) return;
+    const { error } = await supabase
+      .from("ad_contracts")
+      .update({ cancellation_requested: false, cancellation_reason: null, cancellation_requested_at: null })
+      .eq("id", c.id);
+    if (error) { toast.error("Erro ao rejeitar"); return; }
+    toast.success("Solicitação rejeitada");
+    fetchAll();
+  };
+
   const openHistory = async (contractId: string) => {
     setHistoryContractId(contractId);
     setHistoryDialog(true);
