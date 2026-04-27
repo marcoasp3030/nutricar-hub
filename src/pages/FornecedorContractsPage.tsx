@@ -70,6 +70,9 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const [contracts, setContracts] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; contract: any | null }>({ open: false, contract: null });
+  const [cancelReason, setCancelReason] = useState("");
+  const [submittingCancel, setSubmittingCancel] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
