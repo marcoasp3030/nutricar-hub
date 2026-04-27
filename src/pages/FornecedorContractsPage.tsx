@@ -167,53 +167,96 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
                     </CardHeader>
 
                     <CardContent className="space-y-4 pt-0">
-                      {/* Price */}
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold text-primary">{fmt(pkg?.monthly_value || 0)}</span>
-                        <span className="text-sm text-muted-foreground">/mês</span>
-                      </div>
+                      {(() => {
+                        const enabled = getEnabledBuiltinFields(pkg);
+                        const cf = (pkg as any)?.custom_fields || {};
+                        const localDefs: any[] = Array.isArray(cf._custom_field_defs) ? cf._custom_field_defs : [];
+                        const customEntries = localDefs
+                          .map(def => ({ def, value: cf[def.id] }))
+                          .filter(({ value }) => value !== undefined && value !== null && String(value).trim() !== "");
+                        const hasSpecsRow = enabled.has("media_type") || enabled.has("screen_position") || enabled.has("display_schedule") || enabled.has("content_format") || enabled.has("display_frequency");
+                        return (
+                          <>
+                            {/* Price */}
+                            {enabled.has("monthly_value") && (
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-bold text-primary">{fmt(pkg?.monthly_value || 0)}</span>
+                                <span className="text-sm text-muted-foreground">/mês</span>
+                                {enabled.has("duration_months") && (
+                                  <span className="text-xs text-muted-foreground ml-1">• {pkg.duration_months} mês(es)</span>
+                                )}
+                              </div>
+                            )}
 
-                      {/* Package specs */}
-                      {pkg && (
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <Tv className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">Mídia:</span>
-                            <span className="font-medium">{MEDIA_LABELS[pkg.media_type] || pkg.media_type || "—"}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Monitor className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">Posição:</span>
-                            <span className="font-medium">{POSITION_LABELS[pkg.screen_position] || pkg.screen_position || "—"}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">Horário:</span>
-                            <span className="font-medium">{SCHEDULE_LABELS[pkg.display_schedule] || pkg.display_schedule || "—"}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Grid3X3 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">Formato:</span>
-                            <span className="font-medium">{pkg.content_format || "—"}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 col-span-2">
-                            <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">Frequência:</span>
-                            <span className="font-medium">{pkg.display_frequency}</span>
-                          </div>
-                        </div>
-                      )}
+                            {/* Package specs */}
+                            {hasSpecsRow && (
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                {enabled.has("media_type") && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Tv className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground">Mídia:</span>
+                                    <span className="font-medium">{MEDIA_LABELS[pkg.media_type] || pkg.media_type || "—"}</span>
+                                  </div>
+                                )}
+                                {enabled.has("screen_position") && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Monitor className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground">Posição:</span>
+                                    <span className="font-medium">{POSITION_LABELS[pkg.screen_position] || pkg.screen_position || "—"}</span>
+                                  </div>
+                                )}
+                                {enabled.has("display_schedule") && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground">Horário:</span>
+                                    <span className="font-medium">{SCHEDULE_LABELS[pkg.display_schedule] || pkg.display_schedule || "—"}</span>
+                                  </div>
+                                )}
+                                {enabled.has("content_format") && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Grid3X3 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground">Formato:</span>
+                                    <span className="font-medium">{pkg.content_format || "—"}</span>
+                                  </div>
+                                )}
+                                {enabled.has("display_frequency") && (
+                                  <div className="flex items-center gap-1.5 col-span-2">
+                                    <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground">Frequência:</span>
+                                    <span className="font-medium">{pkg.display_frequency}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Custom fields */}
+                            {customEntries.length > 0 && (
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                {customEntries.map(({ def, value }) => (
+                                  <div key={def.id} className="flex items-center gap-1.5 col-span-2">
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground">{def.name}:</span>
+                                    <span className="font-medium truncate">{String(value)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
 
                       {/* Contract period */}
-                      <div className="flex items-center gap-2 text-xs">
-                        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground">Vigência:</span>
-                        <span className="font-medium">
-                          {c.start_date ? format(new Date(c.start_date), "dd/MM/yyyy", { locale: ptBR }) : "—"}
-                          {" → "}
-                          {c.end_date ? format(new Date(c.end_date), "dd/MM/yyyy", { locale: ptBR }) : "—"}
-                        </span>
-                      </div>
+                      {(c.start_date || c.end_date) && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-muted-foreground">Vigência:</span>
+                          <span className="font-medium">
+                            {c.start_date ? format(new Date(c.start_date), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                            {" → "}
+                            {c.end_date ? format(new Date(c.end_date), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Payment summary */}
                       <div className="grid grid-cols-3 gap-2">
