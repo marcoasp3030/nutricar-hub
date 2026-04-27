@@ -643,6 +643,22 @@ const AdminPromotersPage = () => {
                 )}
               </div>
 
+              <Separator />
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-amber-600" />
+                  <div>
+                    <p className="text-sm font-medium">Promotora Líder</p>
+                    <p className="text-xs text-muted-foreground">Recebe o bônus de líder definido em cada evento</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={!!selected.is_leader}
+                  onCheckedChange={(v) => leaderMutation.mutate({ id: selected.id, is_leader: v })}
+                  disabled={leaderMutation.isPending}
+                />
+              </div>
+
               <div className="flex gap-2">
                 {selected.status !== "aprovado" && (
                   <Button className="flex-1" onClick={() => statusMutation.mutate({ id: selected.id, status: "aprovado" })}>
