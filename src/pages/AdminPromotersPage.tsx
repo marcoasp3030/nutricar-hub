@@ -553,7 +553,12 @@ const AdminPromotersPage = () => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-semibold">{selected.stage_name || "Sem nome"}</h3>
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    {selected.stage_name || "Sem nome"}
+                    {selected.is_leader && (
+                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 gap-1"><Crown className="h-3 w-3" /> Líder</Badge>
+                    )}
+                  </h3>
                   <p className="text-sm text-muted-foreground">{selected.city}{selected.state ? `, ${selected.state}` : ""}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <RatingStars value={Math.round(Number(selected.avg_rating))} />
