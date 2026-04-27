@@ -169,7 +169,9 @@ const PromoterPortalPage = () => {
       
       const total = monthAssignments.reduce((sum, a) => {
         const job = a.job as any;
-        return sum + (job ? Number(job.cache_value || 0) : 0);
+        if (!job) return sum;
+        const bonus = profile?.is_leader ? Number(job.leader_bonus || 0) : 0;
+        return sum + Number(job.cache_value || 0) + bonus;
       }, 0);
 
       // Also check payments
@@ -418,7 +420,7 @@ const PromoterPortalPage = () => {
 };
 
 // Assignment card with evidence upload and promoter rating
-const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, cancelAssignmentMutation, qc }: any) => {
+const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, cancelAssignmentMutation, qc, isLeader }: any) => {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -474,7 +476,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
             <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(jobData.start_date), "dd/MM/yyyy")} - {format(new Date(jobData.end_date), "dd/MM/yyyy")}</div>
             {jobData.start_time && <div className="flex items-center gap-1"><Clock className="h-3 w-3" /> {jobData.start_time} - {jobData.end_time || "—"}</div>}
             <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {jobData.address || "—"}</div>
-            <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number(jobData.cache_value || 0).toFixed(2)} ({cacheTypeLabels[jobData.cache_type] || jobData.cache_type})</div>
+            <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {(Number(jobData.cache_value || 0) + (isLeader ? Number(jobData.leader_bonus || 0) : 0)).toFixed(2)} ({cacheTypeLabels[jobData.cache_type] || jobData.cache_type})</div>
           </div>
         )}
 
@@ -722,7 +724,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
             <div className="space-y-2">
               <h4 className="text-sm font-semibold flex items-center gap-1.5"><DollarSign className="h-4 w-4 text-primary" /> Remuneração</h4>
               <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
-                <p><span className="text-muted-foreground">Cachê:</span> <span className="font-semibold">R$ {Number(jobData.cache_value || 0).toFixed(2)}</span> ({cacheTypeLabels[jobData.cache_type] || jobData.cache_type})</p>
+                <p><span className="text-muted-foreground">Cachê:</span> <span className="font-semibold">R$ {(Number(jobData.cache_value || 0) + (isLeader ? Number(jobData.leader_bonus || 0) : 0)).toFixed(2)}</span> ({cacheTypeLabels[jobData.cache_type] || jobData.cache_type})</p>
                 {jobData.travel_allowance > 0 && <p><span className="text-muted-foreground">Auxílio transporte:</span> R$ {Number(jobData.travel_allowance).toFixed(2)}</p>}
               </div>
             </div>
@@ -806,7 +808,7 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
 
 // Sub-components
 
-const JobCard = ({ job, onClick, actionLabel, disabled }: { job: EventJob; onClick: () => void; actionLabel: string; disabled?: boolean }) => (
+const JobCard = ({ job, onClick, actionLabel, disabled, isLeader }: { job: EventJob; onClick: () => void; actionLabel: string; disabled?: boolean; isLeader?: boolean }) => (
   <Card className={`transition-shadow ${disabled ? "opacity-60" : "cursor-pointer hover:shadow-md"}`} onClick={disabled ? undefined : onClick}>
     <CardContent className="pt-4 space-y-2">
       <div className="flex items-center justify-between">
@@ -819,7 +821,7 @@ const JobCard = ({ job, onClick, actionLabel, disabled }: { job: EventJob; onCli
         <span className="flex items-center gap-1"><User className="h-3 w-3" /> {job.promoter_slots} vaga(s)</span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-primary flex items-center gap-1"><DollarSign className="h-4 w-4" /> R$ {Number(job.cache_value).toFixed(2)}</span>
+        <span className="text-sm font-bold text-primary flex items-center gap-1"><DollarSign className="h-4 w-4" /> R$ {(Number(job.cache_value) + (isLeader ? Number(job.leader_bonus || 0) : 0)).toFixed(2)}</span>
         <div className="flex gap-1">
           {disabled && <Badge variant="secondary" className="text-xs">Já candidatada</Badge>}
           {job.has_transport && <Badge variant="secondary" className="text-xs">🚗</Badge>}
