@@ -1214,14 +1214,21 @@ const AdminAdvertisingPage = () => {
                     const storedEnabled = Array.isArray(cf._enabled_fields_all) ? cf._enabled_fields_all : (Array.isArray(cf._enabled_fields) ? cf._enabled_fields : []);
                     const enabledSet = new Set(storedEnabled);
                     const hasAny = storedEnabled.length > 0;
-                    const show = (key: string) => !hasAny || enabledSet.has(key);
+                    // When no explicit enabled list is stored, fall back to "value differs from DB default"
+                    const isDefault = (key: string, val: any) => {
+                      if (val === null || val === undefined || String(val).trim() === "") return true;
+                      const def = BUILTIN_DB_DEFAULTS[key];
+                      return def !== undefined && String(val) === def;
+                    };
+                    const show = (key: string, val?: any) =>
+                      hasAny ? enabledSet.has(key) : !isDefault(key, val);
                     const items: React.ReactNode[] = [];
-                    if (show("monthly_value")) items.push(<div key="mv"><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>);
-                    if (show("duration_months")) items.push(<div key="dm"><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>);
-                    if (show("media_type")) items.push(<div key="mt"><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>);
-                    if (show("screen_position")) items.push(<div key="sp"><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>);
-                    if (show("content_format")) items.push(<div key="cf"><span className="text-muted-foreground">Formato:</span> {tpl.content_format || "—"}</div>);
-                    if (show("display_schedule")) items.push(<div key="ds"><span className="text-muted-foreground">Horário:</span> <span className="capitalize">{(tpl.display_schedule || "—").replace("_", " ")}</span></div>);
+                    if (show("monthly_value", tpl.monthly_value) && tpl.monthly_value > 0) items.push(<div key="mv"><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>);
+                    if (show("duration_months", tpl.duration_months) && tpl.duration_months > 0) items.push(<div key="dm"><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>);
+                    if (show("media_type", tpl.media_type)) items.push(<div key="mt"><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>);
+                    if (show("screen_position", tpl.screen_position)) items.push(<div key="sp"><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>);
+                    if (show("content_format", tpl.content_format)) items.push(<div key="cf"><span className="text-muted-foreground">Formato:</span> {tpl.content_format || "—"}</div>);
+                    if (show("display_schedule", tpl.display_schedule)) items.push(<div key="ds"><span className="text-muted-foreground">Horário:</span> <span className="capitalize">{(tpl.display_schedule || "—").replace("_", " ")}</span></div>);
                     return items.length > 0 ? <div className="grid grid-cols-2 gap-2 text-xs">{items}</div> : null;
                   })()}
                   {/* Custom fields indicator */}
