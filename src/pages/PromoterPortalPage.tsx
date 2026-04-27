@@ -124,7 +124,12 @@ const PromoterPortalPage = () => {
   });
 
   const cancelAssignmentMutation = useMutation({
-    mutationFn: (id: string) => updateJobAssignment(id, { status: "cancelado" } as any),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      updateJobAssignment(id, {
+        status: "cancelado",
+        cancellation_reason: reason,
+        cancelled_at: new Date().toISOString(),
+      } as any),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my_assignments"] });
       qc.invalidateQueries({ queryKey: ["open_jobs"] });
