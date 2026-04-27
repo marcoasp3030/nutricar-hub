@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Star, MapPin, Check, X, Briefcase, Calendar, Search, Trophy, DollarSign, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Star, MapPin, Check, X, Briefcase, Calendar, Search, Trophy, DollarSign, Download, FileSpreadsheet, FileText, Crown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { format as dateFmt } from "date-fns";
 import { exportToXLSX, exportToPDF, ExportColumn } from "@/lib/exportUtils";
@@ -102,6 +103,19 @@ const AdminPromotersPage = () => {
       qc.invalidateQueries({ queryKey: ["promoter_profiles"] });
       toast({ title: "Status atualizado!" });
       setSelected(null);
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const leaderMutation = useMutation({
+    mutationFn: async ({ id, is_leader }: { id: string; is_leader: boolean }) => {
+      const { error } = await supabase.from("promoter_profiles").update({ is_leader } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["promoter_profiles"] });
+      setSelected(prev => prev ? { ...prev, is_leader: vars.is_leader } : prev);
+      toast({ title: vars.is_leader ? "Promotora marcada como líder" : "Líder removida" });
     },
     onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
