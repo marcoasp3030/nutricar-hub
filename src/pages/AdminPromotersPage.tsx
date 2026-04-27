@@ -313,7 +313,10 @@ const AdminPromotersPage = () => {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-foreground truncate">{p.stage_name || "Sem nome"}</h3>
+                            <h3 className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                              {p.stage_name || "Sem nome"}
+                              {p.is_leader && <Crown className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                            </h3>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <MapPin className="h-3 w-3" />
                               {p.city || "—"}{p.state ? `, ${p.state}` : ""}
