@@ -316,6 +316,18 @@ const AdminAdvertisingPage = () => {
   };
 
   // === Package CRUD (dynamic fields) ===
+  // Default values that the DB applies automatically. When a package was created
+  // without explicitly enabling these media fields, the column still gets a default
+  // (e.g. 'video', 'tela_cheia'). We treat those default values as "not enabled" so
+  // non-media packages don't show media specs by accident.
+  const BUILTIN_DB_DEFAULTS: Record<string, string> = {
+    media_type: "video",
+    screen_position: "tela_cheia",
+    display_schedule: "integral",
+    content_format: "16:9",
+    display_frequency: "30s a cada 5 min",
+  };
+
   const detectPkgEnabledFields = (pkg: any) => {
     const enabled: string[] = [];
     const values: Record<string, any> = {};
@@ -327,6 +339,10 @@ const AdminAdvertisingPage = () => {
       } else if (bf.key === "playlist_id") {
         if (val) { enabled.push(bf.key); values[bf.key] = val; }
       } else if (val !== null && val !== undefined && String(val).trim() !== "" && val !== 0) {
+        // Skip values that match the DB default — they were never explicitly chosen
+        if (BUILTIN_DB_DEFAULTS[bf.key] !== undefined && String(val) === BUILTIN_DB_DEFAULTS[bf.key]) {
+          continue;
+        }
         enabled.push(bf.key);
         values[bf.key] = String(val);
       }
