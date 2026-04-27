@@ -124,7 +124,12 @@ const PromoterPortalPage = () => {
   });
 
   const cancelAssignmentMutation = useMutation({
-    mutationFn: (id: string) => updateJobAssignment(id, { status: "cancelado" } as any),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      updateJobAssignment(id, {
+        status: "cancelado",
+        cancellation_reason: reason,
+        cancelled_at: new Date().toISOString(),
+      } as any),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my_assignments"] });
       qc.invalidateQueries({ queryKey: ["open_jobs"] });
@@ -416,6 +421,8 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
   const [showEvidence, setShowEvidence] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [notes, setNotes] = useState(a.execution_notes || "");
@@ -493,15 +500,24 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
             size="sm"
             variant="outline"
             className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => {
-              if (confirm("Tem certeza que deseja cancelar sua participação neste evento?")) {
-                cancelAssignmentMutation.mutate(a.id);
-              }
-            }}
+            onClick={() => { setCancelReason(""); setShowCancel(true); }}
             disabled={cancelAssignmentMutation.isPending}
           >
             <X className="h-3 w-3 mr-1" /> Cancelar Participação
           </Button>
+        )}
+
+        {/* Aviso de cancelamento já efetuado */}
+        {a.status === "cancelado" && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-xs space-y-0.5">
+            <p className="font-medium text-destructive flex items-center gap-1">
+              <X className="h-3 w-3" /> Participação cancelada
+              {a.cancelled_at && <span className="text-muted-foreground font-normal">· {format(new Date(a.cancelled_at), "dd/MM/yyyy HH:mm")}</span>}
+            </p>
+            {a.cancellation_reason && (
+              <p className="text-muted-foreground italic">Motivo: {a.cancellation_reason}</p>
+            )}
+          </div>
         )}
 
         {/* Evidence photos */}
@@ -600,6 +616,43 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
         )}
       </CardContent>
     </Card>
+
+    {/* Cancel participation dialog */}
+    <Dialog open={showCancel} onOpenChange={setShowCancel}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Cancelar participação</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Informe o motivo do cancelamento. Esta informação será visível para o administrador.
+          </p>
+          <Label className="text-xs">Motivo *</Label>
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Ex.: imprevisto pessoal, conflito de agenda..."
+            className="min-h-[80px]"
+          />
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setShowCancel(false)}>
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              disabled={!cancelReason.trim() || cancelAssignmentMutation.isPending}
+              onClick={() => {
+                cancelAssignmentMutation.mutate(
+                  { id: a.id, reason: cancelReason.trim() },
+                  { onSuccess: () => setShowCancel(false) }
+                );
+              }}
+            >
+              {cancelAssignmentMutation.isPending ? "Cancelando..." : "Confirmar"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
 
     {/* Event Details Dialog */}
     <Dialog open={showDetails} onOpenChange={setShowDetails}>

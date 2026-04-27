@@ -95,6 +95,8 @@ export interface JobAssignment {
   admin_comment: string | null;
   promoter_rating: number | null;
   promoter_comment: string | null;
+  cancellation_reason?: string | null;
+  cancelled_at?: string | null;
   created_at: string;
   updated_at: string;
   // joined
