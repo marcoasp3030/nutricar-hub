@@ -263,7 +263,7 @@ const PromoterPortalPage = () => {
           ) : openJobs.map((job) => {
             const alreadyApplied = appliedJobIds.has(job.id);
             return (
-              <JobCard key={job.id} job={job} onClick={() => !alreadyApplied && setSelectedJob(job)} actionLabel={alreadyApplied ? "Já candidatada" : "Ver detalhes"} disabled={alreadyApplied} />
+              <JobCard key={job.id} job={job} onClick={() => !alreadyApplied && setSelectedJob(job)} actionLabel={alreadyApplied ? "Já candidatada" : "Ver detalhes"} disabled={alreadyApplied} isLeader={!!profile?.is_leader} />
             );
           })}
         </TabsContent>
@@ -283,7 +283,7 @@ const PromoterPortalPage = () => {
                   <div className="text-xs text-muted-foreground space-y-1">
                     <div className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date((inv.job as any).start_date), "dd/MM/yyyy")}</div>
                     <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {(inv.job as any).address || "—"}</div>
-                    <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {Number((inv.job as any).cache_value).toFixed(2)}</div>
+                    <div className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> R$ {(Number((inv.job as any).cache_value) + (profile?.is_leader ? Number((inv.job as any).leader_bonus || 0) : 0)).toFixed(2)}</div>
                   </div>
                 )}
                 <div className="flex gap-2">
@@ -311,6 +311,7 @@ const PromoterPortalPage = () => {
               checkoutMutation={checkoutMutation}
               cancelAssignmentMutation={cancelAssignmentMutation}
               qc={qc}
+              isLeader={!!profile?.is_leader}
             />
           ))}
         </TabsContent>
@@ -370,7 +371,7 @@ const PromoterPortalPage = () => {
                 <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-muted-foreground" /> {format(new Date(selectedJob.start_date), "dd/MM/yyyy")} - {format(new Date(selectedJob.end_date), "dd/MM/yyyy")}</div>
                 {selectedJob.start_time && <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /> {selectedJob.start_time} - {selectedJob.end_time}</div>}
                 <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> {selectedJob.address || "Local não definido"}</div>
-                <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> R$ {Number(selectedJob.cache_value).toFixed(2)} ({selectedJob.cache_type})</div>
+                <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" /> R$ {(Number(selectedJob.cache_value) + (profile?.is_leader ? Number(selectedJob.leader_bonus || 0) : 0)).toFixed(2)} ({selectedJob.cache_type})</div>
                 <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> {selectedJob.promoter_slots} vaga(s)</div>
               </div>
               {selectedJob.description && <><Separator /><p className="text-sm">{selectedJob.description}</p></>}
