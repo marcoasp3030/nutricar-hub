@@ -818,6 +818,8 @@ export type Database = {
         Row: {
           admin_comment: string | null
           admin_rating: number | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           checkin_at: string | null
           checkin_photo_url: string | null
           checkout_at: string | null
@@ -836,6 +838,8 @@ export type Database = {
         Insert: {
           admin_comment?: string | null
           admin_rating?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           checkin_at?: string | null
           checkin_photo_url?: string | null
           checkout_at?: string | null
@@ -854,6 +858,8 @@ export type Database = {
         Update: {
           admin_comment?: string | null
           admin_rating?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           checkin_at?: string | null
           checkin_photo_url?: string | null
           checkout_at?: string | null
