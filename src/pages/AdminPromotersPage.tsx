@@ -131,7 +131,7 @@ const AdminPromotersPage = () => {
     jobs: p.total_jobs,
   }));
 
-  // Financial data
+  // Financial data: combine job_payments with active assignments (cache_value as predicted pending)
   const paymentsByPromoter = allPayments.reduce((acc: Record<string, { name: string; pago: number; pendente: number }>, p: any) => {
     const promoterId = p.assignment?.promoter_id;
     const name = p.assignment?.promoter?.stage_name || "Desconhecida";
@@ -141,6 +141,21 @@ const AdminPromotersPage = () => {
     else acc[promoterId].pendente += Number(p.amount);
     return acc;
   }, {});
+
+  // Add predicted pending from assignments without payment record
+  const assignmentsWithPayment = new Set(
+    allPayments.map((p: any) => p.assignment_id).filter(Boolean)
+  );
+  allAssignments.forEach((a: any) => {
+    if (a.status === "cancelado") return;
+    if (assignmentsWithPayment.has(a.id)) return;
+    const promoterId = a.promoter_id;
+    const name = a.promoter?.stage_name || "Desconhecida";
+    const cache = Number(a.job?.cache_value || 0);
+    if (!promoterId || cache <= 0) return;
+    if (!paymentsByPromoter[promoterId]) paymentsByPromoter[promoterId] = { name, pago: 0, pendente: 0 };
+    paymentsByPromoter[promoterId].pendente += cache;
+  });
 
   const financialData = Object.values(paymentsByPromoter);
   const totalPago = financialData.reduce((s, f) => s + f.pago, 0);
