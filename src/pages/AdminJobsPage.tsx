@@ -503,6 +503,16 @@ const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assi
     },
   });
 
+  const removeAssignmentMutation = useMutation({
+    mutationFn: (id: string) => deleteJobAssignment(id),
+    onSuccess: () => {
+      refetchAssignments();
+      qc.invalidateQueries({ queryKey: ["my_assignments"] });
+      toast({ title: "Promotora removida do evento" });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 text-sm">
