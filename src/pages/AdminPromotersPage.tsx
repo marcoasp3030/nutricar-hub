@@ -61,7 +61,7 @@ const AdminPromotersPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("job_assignments")
-        .select("*, job:event_jobs(title, start_date, cache_value), promoter:promoter_profiles(stage_name, city, state)")
+        .select("*, job:event_jobs(title, start_date, cache_value, leader_bonus), promoter:promoter_profiles(stage_name, city, state, is_leader)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -165,7 +165,9 @@ const AdminPromotersPage = () => {
     if (assignmentsWithPayment.has(a.id)) return;
     const promoterId = a.promoter_id;
     const name = a.promoter?.stage_name || "Desconhecida";
-    const cache = Number(a.job?.cache_value || 0);
+    const isLeader = !!a.promoter?.is_leader;
+    const bonus = isLeader ? Number(a.job?.leader_bonus || 0) : 0;
+    const cache = Number(a.job?.cache_value || 0) + bonus;
     if (!promoterId || cache <= 0) return;
     if (!paymentsByPromoter[promoterId]) paymentsByPromoter[promoterId] = { name, pago: 0, pendente: 0 };
     paymentsByPromoter[promoterId].pendente += cache;
