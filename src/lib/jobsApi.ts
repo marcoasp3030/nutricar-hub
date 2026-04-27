@@ -25,6 +25,7 @@ export interface PromoterProfile {
   portfolio_urls: string[];
   doc_urls: string[];
   status: 'pendente' | 'aprovado' | 'bloqueado';
+  is_leader?: boolean;
   avg_rating: number;
   total_jobs: number;
   created_at: string;
@@ -48,6 +49,7 @@ export interface EventJob {
   promoter_slots: number;
   cache_value: number;
   cache_type: 'por_hora' | 'por_dia' | 'fechado';
+  leader_bonus?: number;
   travel_allowance: number;
   has_transport: boolean;
   has_meals: boolean;
