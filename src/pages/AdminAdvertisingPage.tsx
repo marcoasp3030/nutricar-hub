@@ -1376,16 +1376,35 @@ const AdminAdvertisingPage = () => {
               <TableBody>
                 {contracts.map(c => {
                   const st = STATUS_MAP[c.status] || STATUS_MAP.pending;
+                  const cancelPending = !!c.cancellation_requested && c.status !== "cancelled";
                   return (
-                    <TableRow key={c.id}>
+                    <TableRow key={c.id} className={cancelPending ? "bg-amber-500/10" : ""}>
                       <TableCell className="font-medium">{c.fornecedor}</TableCell>
-                      <TableCell>{c.ad_packages?.name || "—"}</TableCell>
+                      <TableCell>
+                        {c.ad_packages?.name || "—"}
+                        {cancelPending && (
+                          <div className="mt-1 flex items-start gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                            <span><span className="font-semibold">Cancelamento solicitado:</span> {c.cancellation_reason || "—"}</span>
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>{fmt(c.ad_packages?.monthly_value || 0)}/mês</TableCell>
                       <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                       <TableCell className="text-xs">{c.start_date || "—"}</TableCell>
                       <TableCell className="text-xs">{c.end_date || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          {cancelPending && (
+                            <>
+                              <Button size="icon" variant="ghost" onClick={() => approveCancellation(c)} title="Aprovar cancelamento">
+                                <Check className="h-4 w-4 text-destructive" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => rejectCancellation(c)} title="Rejeitar solicitação">
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                           <Button size="icon" variant="ghost" onClick={() => openHistory(c.id)} title="Histórico"><History className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => openContractEdit(c)}><Edit className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => deleteContract(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
