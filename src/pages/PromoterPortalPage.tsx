@@ -500,15 +500,24 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
             size="sm"
             variant="outline"
             className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => {
-              if (confirm("Tem certeza que deseja cancelar sua participação neste evento?")) {
-                cancelAssignmentMutation.mutate(a.id);
-              }
-            }}
+            onClick={() => { setCancelReason(""); setShowCancel(true); }}
             disabled={cancelAssignmentMutation.isPending}
           >
             <X className="h-3 w-3 mr-1" /> Cancelar Participação
           </Button>
+        )}
+
+        {/* Aviso de cancelamento já efetuado */}
+        {a.status === "cancelado" && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2 text-xs space-y-0.5">
+            <p className="font-medium text-destructive flex items-center gap-1">
+              <X className="h-3 w-3" /> Participação cancelada
+              {a.cancelled_at && <span className="text-muted-foreground font-normal">· {format(new Date(a.cancelled_at), "dd/MM/yyyy HH:mm")}</span>}
+            </p>
+            {a.cancellation_reason && (
+              <p className="text-muted-foreground italic">Motivo: {a.cancellation_reason}</p>
+            )}
+          </div>
         )}
 
         {/* Evidence photos */}
