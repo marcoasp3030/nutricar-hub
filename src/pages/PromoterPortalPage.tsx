@@ -617,6 +617,43 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
       </CardContent>
     </Card>
 
+    {/* Cancel participation dialog */}
+    <Dialog open={showCancel} onOpenChange={setShowCancel}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Cancelar participação</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Informe o motivo do cancelamento. Esta informação será visível para o administrador.
+          </p>
+          <Label className="text-xs">Motivo *</Label>
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Ex.: imprevisto pessoal, conflito de agenda..."
+            className="min-h-[80px]"
+          />
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setShowCancel(false)}>
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              disabled={!cancelReason.trim() || cancelAssignmentMutation.isPending}
+              onClick={() => {
+                cancelAssignmentMutation.mutate(
+                  { id: a.id, reason: cancelReason.trim() },
+                  { onSuccess: () => setShowCancel(false) }
+                );
+              }}
+            >
+              {cancelAssignmentMutation.isPending ? "Cancelando..." : "Confirmar"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
     {/* Event Details Dialog */}
     <Dialog open={showDetails} onOpenChange={setShowDetails}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
