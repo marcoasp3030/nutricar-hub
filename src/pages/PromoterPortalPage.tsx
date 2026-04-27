@@ -412,7 +412,7 @@ const PromoterPortalPage = () => {
 };
 
 // Assignment card with evidence upload and promoter rating
-const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }: any) => {
+const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, cancelAssignmentMutation, qc }: any) => {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
