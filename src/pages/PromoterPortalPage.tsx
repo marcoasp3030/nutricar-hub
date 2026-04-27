@@ -123,6 +123,16 @@ const PromoterPortalPage = () => {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_assignments"] }); toast({ title: "Check-out realizado!" }); },
   });
 
+  const cancelAssignmentMutation = useMutation({
+    mutationFn: (id: string) => updateJobAssignment(id, { status: "cancelado" } as any),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["open_jobs"] });
+      toast({ title: "Participação cancelada", description: "Você não está mais atribuída a este evento." });
+    },
+    onError: (e: any) => toast({ title: "Erro ao cancelar", description: e.message, variant: "destructive" }),
+  });
+
   const pendingInvites = invites.filter(i => i.response === "pendente");
   const confirmedAssignments = assignments.filter(a => a.status === "confirmado" || a.status === "reservado");
   const completedAssignments = assignments.filter(a => (a as any).job?.status === "concluido");
