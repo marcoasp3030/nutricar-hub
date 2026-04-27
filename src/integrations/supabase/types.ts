@@ -668,6 +668,7 @@ export type Database = {
           has_meals: boolean | null
           has_transport: boolean | null
           id: string
+          leader_bonus: number
           map_link: string | null
           photo_urls: string[] | null
           promoter_slots: number
@@ -698,6 +699,7 @@ export type Database = {
           has_meals?: boolean | null
           has_transport?: boolean | null
           id?: string
+          leader_bonus?: number
           map_link?: string | null
           photo_urls?: string[] | null
           promoter_slots?: number
@@ -728,6 +730,7 @@ export type Database = {
           has_meals?: boolean | null
           has_transport?: boolean | null
           id?: string
+          leader_bonus?: number
           map_link?: string | null
           photo_urls?: string[] | null
           promoter_slots?: number
@@ -1306,6 +1309,7 @@ export type Database = {
           created_at: string
           doc_urls: string[] | null
           id: string
+          is_leader: boolean
           portfolio_urls: string[] | null
           service_radius_km: number | null
           stage_name: string | null
@@ -1322,6 +1326,7 @@ export type Database = {
           created_at?: string
           doc_urls?: string[] | null
           id?: string
+          is_leader?: boolean
           portfolio_urls?: string[] | null
           service_radius_km?: number | null
           stage_name?: string | null
@@ -1338,6 +1343,7 @@ export type Database = {
           created_at?: string
           doc_urls?: string[] | null
           id?: string
+          is_leader?: boolean
           portfolio_urls?: string[] | null
           service_radius_km?: number | null
           stage_name?: string | null
