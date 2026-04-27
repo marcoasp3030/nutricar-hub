@@ -345,6 +345,13 @@ export const updateJobAssignment = async (id: string, update: Partial<JobAssignm
   if (error) throw error;
 };
 
+export const deleteJobAssignment = async (id: string) => {
+  // Delete related payments first to avoid FK issues
+  await supabase.from('job_payments').delete().eq('assignment_id', id as any);
+  const { error } = await supabase.from('job_assignments').delete().eq('id', id as any);
+  if (error) throw error;
+};
+
 // ============ JOB PAYMENTS ============
 
 export const fetchJobPayments = async (jobId?: string) => {

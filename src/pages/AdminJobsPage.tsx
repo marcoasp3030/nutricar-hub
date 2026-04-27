@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, deleteEventJob, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
+import { fetchEventJobs, fetchEventTypes, upsertEventJob, updateJobStatus, deleteEventJob, fetchPromoterProfiles, createJobInvite, fetchJobInvites, fetchJobAssignments, createJobAssignment, createJobPayment, updateJobAssignment, deleteJobAssignment, logJobAudit, uploadJobFile, EventJob, EventType, PromoterProfile, JobAssignment } from "@/lib/jobsApi";
 import { fetchTemplates, ChecklistTemplate } from "@/lib/checklistApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -503,6 +503,16 @@ const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assi
     },
   });
 
+  const removeAssignmentMutation = useMutation({
+    mutationFn: (id: string) => deleteJobAssignment(id),
+    onSuccess: () => {
+      refetchAssignments();
+      qc.invalidateQueries({ queryKey: ["my_assignments"] });
+      toast({ title: "Promotora removida do evento" });
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -558,7 +568,23 @@ const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assi
                 <CardContent className="pt-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{(a.promoter as any)?.stage_name || "Promotora"}</span>
-                    <Badge variant="outline">{a.status}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{a.status}</Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm(`Remover ${(a.promoter as any)?.stage_name || "esta promotora"} do evento?`)) {
+                            removeAssignmentMutation.mutate(a.id);
+                          }
+                        }}
+                        disabled={removeAssignmentMutation.isPending}
+                        title="Remover promotora do evento"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Check-in/out info */}

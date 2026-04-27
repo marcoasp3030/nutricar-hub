@@ -123,6 +123,16 @@ const PromoterPortalPage = () => {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_assignments"] }); toast({ title: "Check-out realizado!" }); },
   });
 
+  const cancelAssignmentMutation = useMutation({
+    mutationFn: (id: string) => updateJobAssignment(id, { status: "cancelado" } as any),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["open_jobs"] });
+      toast({ title: "Participação cancelada", description: "Você não está mais atribuída a este evento." });
+    },
+    onError: (e: any) => toast({ title: "Erro ao cancelar", description: e.message, variant: "destructive" }),
+  });
+
   const pendingInvites = invites.filter(i => i.response === "pendente");
   const confirmedAssignments = assignments.filter(a => a.status === "confirmado" || a.status === "reservado");
   const completedAssignments = assignments.filter(a => (a as any).job?.status === "concluido");
@@ -294,6 +304,7 @@ const PromoterPortalPage = () => {
               assignment={a}
               checkinMutation={checkinMutation}
               checkoutMutation={checkoutMutation}
+              cancelAssignmentMutation={cancelAssignmentMutation}
               qc={qc}
             />
           ))}
@@ -401,7 +412,7 @@ const PromoterPortalPage = () => {
 };
 
 // Assignment card with evidence upload and promoter rating
-const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }: any) => {
+const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, cancelAssignmentMutation, qc }: any) => {
   const [showEvidence, setShowEvidence] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -475,6 +486,23 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, qc }
         </div>
         {a.checkin_at && <p className="text-xs text-muted-foreground">Check-in: {format(new Date(a.checkin_at), "dd/MM HH:mm")}</p>}
         {a.checkout_at && <p className="text-xs text-muted-foreground">Check-out: {format(new Date(a.checkout_at), "dd/MM HH:mm")}</p>}
+
+        {/* Cancelar participação - disponível antes do check-in */}
+        {!a.checkin_at && a.status !== "cancelado" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => {
+              if (confirm("Tem certeza que deseja cancelar sua participação neste evento?")) {
+                cancelAssignmentMutation.mutate(a.id);
+              }
+            }}
+            disabled={cancelAssignmentMutation.isPending}
+          >
+            <X className="h-3 w-3 mr-1" /> Cancelar Participação
+          </Button>
+        )}
 
         {/* Evidence photos */}
         {a.evidence_urls && a.evidence_urls.length > 0 && (
