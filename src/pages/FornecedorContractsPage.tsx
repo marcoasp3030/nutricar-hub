@@ -312,6 +312,28 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
                           <span className="font-medium">Obs:</span> {c.notes}
                         </p>
                       )}
+
+                      {/* Cancellation status / action */}
+                      {c.cancellation_requested && c.status !== "cancelled" && (
+                        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs space-y-1">
+                          <div className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-3.5 w-3.5" /> Cancelamento solicitado — aguardando aprovação
+                          </div>
+                          {c.cancellation_reason && (
+                            <p className="text-muted-foreground"><span className="font-medium">Motivo:</span> {c.cancellation_reason}</p>
+                          )}
+                        </div>
+                      )}
+                      {!c.cancellation_requested && (c.status === "active" || c.status === "pending") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-destructive hover:text-destructive"
+                          onClick={() => { setCancelDialog({ open: true, contract: c }); setCancelReason(""); }}
+                        >
+                          <Ban className="h-4 w-4 mr-1" /> Solicitar cancelamento
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 );
