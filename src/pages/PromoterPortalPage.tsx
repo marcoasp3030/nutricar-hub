@@ -751,12 +751,12 @@ const AssignmentCard = ({ assignment: a, checkinMutation, checkoutMutation, canc
             )}
 
             {/* Uniform */}
-            {jobData.uniform_notes && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Shirt className="h-4 w-4 text-primary" /> Uniforme / Vestimenta</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{jobData.uniform_notes}</p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1.5"><Shirt className="h-4 w-4 text-primary" /> Uniforme / Vestimenta</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {jobData.uniform_notes?.trim() ? jobData.uniform_notes : "Não informado"}
+              </p>
+            </div>
 
             {/* Photos */}
             {jobData.photo_urls && jobData.photo_urls.length > 0 && (
