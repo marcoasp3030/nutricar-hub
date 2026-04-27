@@ -54,6 +54,9 @@ export type Database = {
       }
       ad_contracts: {
         Row: {
+          cancellation_reason: string | null
+          cancellation_requested: boolean
+          cancellation_requested_at: string | null
           created_at: string
           end_date: string | null
           fornecedor: string
@@ -65,6 +68,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancellation_requested?: boolean
+          cancellation_requested_at?: string | null
           created_at?: string
           end_date?: string | null
           fornecedor: string
@@ -76,6 +82,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_reason?: string | null
+          cancellation_requested?: boolean
+          cancellation_requested_at?: string | null
           created_at?: string
           end_date?: string | null
           fornecedor?: string
