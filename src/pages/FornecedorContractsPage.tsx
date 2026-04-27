@@ -98,6 +98,32 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const totalPending = payments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalMonthly = activeContracts.reduce((sum, c) => sum + (c.ad_packages?.monthly_value || 0), 0);
 
+  const submitCancellation = async () => {
+    if (!cancelDialog.contract) return;
+    if (!cancelReason.trim()) {
+      toast.error("Informe o motivo do cancelamento");
+      return;
+    }
+    setSubmittingCancel(true);
+    const { error } = await supabase
+      .from("ad_contracts")
+      .update({
+        cancellation_requested: true,
+        cancellation_reason: cancelReason.trim(),
+        cancellation_requested_at: new Date().toISOString(),
+      })
+      .eq("id", cancelDialog.contract.id);
+    setSubmittingCancel(false);
+    if (error) {
+      toast.error("Erro ao solicitar cancelamento: " + error.message);
+      return;
+    }
+    toast.success("Solicitação de cancelamento enviada. Aguarde aprovação do administrador.");
+    setCancelDialog({ open: false, contract: null });
+    setCancelReason("");
+    fetchData();
+  };
+
   if (loading) return <div className="flex justify-center p-8"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 
   return (
