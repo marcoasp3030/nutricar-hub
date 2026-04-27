@@ -568,7 +568,23 @@ const JobDetailContent = ({ job, promoters, statusMutation, inviteMutation, assi
                 <CardContent className="pt-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{(a.promoter as any)?.stage_name || "Promotora"}</span>
-                    <Badge variant="outline">{a.status}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{a.status}</Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm(`Remover ${(a.promoter as any)?.stage_name || "esta promotora"} do evento?`)) {
+                            removeAssignmentMutation.mutate(a.id);
+                          }
+                        }}
+                        disabled={removeAssignmentMutation.isPending}
+                        title="Remover promotora do evento"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Check-in/out info */}
