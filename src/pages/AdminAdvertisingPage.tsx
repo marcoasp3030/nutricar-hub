@@ -427,6 +427,8 @@ const AdminAdvertisingPage = () => {
       display_schedule: v.display_schedule || null,
       content_format: v.content_format || null,
       tags: tagsArr,
+      billing_type: v.billing_type || "mensal",
+      billing_label: v.billing_label || null,
       custom_fields: {
         ...pkgCustomFields,
         _custom_field_defs: pkgCustomFieldDefs,
