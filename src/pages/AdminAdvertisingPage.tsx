@@ -1765,8 +1765,12 @@ const AdminAdvertisingPage = () => {
               <Label>Contrato</Label>
               <Select value={payForm.contract_id} onValueChange={v => {
                 const c = contracts.find(c => c.id === v);
-                setPayForm(f => ({ ...f, contract_id: v, amount: String(c?.ad_packages?.monthly_value || "") }));
-              }} disabled={!!editingPay}>{/* installments-aware default */}
+                const total = Number(c?.ad_packages?.monthly_value) || 0;
+                const bt = (c?.ad_packages as any)?.billing_type || "mensal";
+                const inst = Math.max(1, Number((c as any)?.installments) || 1);
+                const suggested = bt === "unico" && inst > 1 ? total / inst : total;
+                setPayForm(f => ({ ...f, contract_id: v, amount: String(suggested || "") }));
+              }} disabled={!!editingPay}>
                 <SelectTrigger><SelectValue placeholder="Selecionar contrato" /></SelectTrigger>
                 <SelectContent>
                   {contracts.filter(c => c.status === "active" || c.id === payForm.contract_id).map(c => (
