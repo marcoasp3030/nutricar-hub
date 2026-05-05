@@ -52,3 +52,30 @@ export function contractMonthlyEquivalent(contract: any): number {
   if (type === "mensal") return value;
   return 0; // únicos/anuais não somam como mensalidade
 }
+
+export interface BillingBreakdown {
+  mensal: { count: number; total: number };
+  unico: { count: number; total: number };
+  anual: { count: number; total: number };
+  personalizado: { count: number; total: number };
+}
+
+/** Aggregates a list of contracts by billing type. */
+export function aggregateBillingBreakdown(contracts: any[]): BillingBreakdown {
+  const result: BillingBreakdown = {
+    mensal: { count: 0, total: 0 },
+    unico: { count: 0, total: 0 },
+    anual: { count: 0, total: 0 },
+    personalizado: { count: 0, total: 0 },
+  };
+  for (const c of contracts || []) {
+    const pkg = c?.ad_packages;
+    if (!pkg) continue;
+    const type = (pkg.billing_type as BillingType) || "mensal";
+    const value = Number(pkg.monthly_value) || 0;
+    if (!result[type]) continue;
+    result[type].count += 1;
+    result[type].total += value;
+  }
+  return result;
+}
