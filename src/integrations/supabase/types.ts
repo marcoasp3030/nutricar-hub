@@ -61,6 +61,7 @@ export type Database = {
           end_date: string | null
           fornecedor: string
           id: string
+          installments: number
           notes: string | null
           package_id: string
           start_date: string | null
@@ -75,6 +76,7 @@ export type Database = {
           end_date?: string | null
           fornecedor: string
           id?: string
+          installments?: number
           notes?: string | null
           package_id: string
           start_date?: string | null
@@ -89,6 +91,7 @@ export type Database = {
           end_date?: string | null
           fornecedor?: string
           id?: string
+          installments?: number
           notes?: string | null
           package_id?: string
           start_date?: string | null
@@ -172,6 +175,8 @@ export type Database = {
       }
       ad_package_templates: {
         Row: {
+          billing_label: string | null
+          billing_type: string
           content_format: string | null
           created_at: string
           custom_fields: Json | null
@@ -189,6 +194,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_label?: string | null
+          billing_type?: string
           content_format?: string | null
           created_at?: string
           custom_fields?: Json | null
@@ -206,6 +213,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_label?: string | null
+          billing_type?: string
           content_format?: string | null
           created_at?: string
           custom_fields?: Json | null
@@ -226,6 +235,8 @@ export type Database = {
       }
       ad_packages: {
         Row: {
+          billing_label: string | null
+          billing_type: string
           content_format: string | null
           created_at: string
           custom_fields: Json | null
@@ -244,6 +255,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_label?: string | null
+          billing_type?: string
           content_format?: string | null
           created_at?: string
           custom_fields?: Json | null
@@ -262,6 +275,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_label?: string | null
+          billing_type?: string
           content_format?: string | null
           created_at?: string
           custom_fields?: Json | null

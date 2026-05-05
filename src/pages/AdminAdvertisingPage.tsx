@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatPackagePrice, BILLING_TYPE_LABEL } from "@/lib/adBilling";
 
 const FornecedorSelector = ({ fornecedores, selected, onChange }: { fornecedores: string[]; selected: string[]; onChange: (v: string[]) => void }) => {
   const [search, setSearch] = useState("");
@@ -84,6 +85,8 @@ interface AdPackage {
   is_active: boolean;
   created_at: string;
   custom_fields?: any;
+  billing_type?: string;
+  billing_label?: string | null;
 }
 
 interface AdPackageTemplate {
@@ -101,14 +104,23 @@ interface AdPackageTemplate {
   is_active: boolean;
   created_at: string;
   custom_fields?: any;
+  billing_type?: string;
+  billing_label?: string | null;
 }
 
 // Built-in fields available for templates and packages
 type BuiltinField = { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] };
 const BUILTIN_FIELDS: BuiltinField[] = [
   { key: "description", label: "Descrição", type: "textarea" },
-  { key: "monthly_value", label: "Valor Mensal (R$)", type: "number" },
-  { key: "duration_months", label: "Duração (meses)", type: "number" },
+  { key: "billing_type", label: "Tipo de Cobrança", type: "select", options: [
+    { value: "mensal", label: "Mensal (recorrente)" },
+    { value: "unico", label: "Valor único" },
+    { value: "anual", label: "Anual (recorrente)" },
+    { value: "personalizado", label: "Personalizado" },
+  ] },
+  { key: "billing_label", label: "Rótulo de cobrança (personalizado)", type: "text" },
+  { key: "monthly_value", label: "Valor (R$)", type: "number" },
+  { key: "duration_months", label: "Duração (meses, só p/ mensal)", type: "number" },
   { key: "display_frequency", label: "Frequência de Exibição", type: "text" },
   { key: "media_type", label: "Tipo de Mídia", type: "select", options: [{ value: "video", label: "Vídeo" }, { value: "banner", label: "Banner" }, { value: "slide", label: "Slide" }, { value: "institucional", label: "Institucional" }] },
   { key: "screen_position", label: "Posição na Tela", type: "select", options: [{ value: "tela_cheia", label: "Tela Cheia" }, { value: "rodape", label: "Rodapé" }, { value: "lateral", label: "Lateral" }, { value: "topo", label: "Topo" }] },
@@ -203,7 +215,7 @@ const AdminAdvertisingPage = () => {
   // Contract form
   const [contractDialog, setContractDialog] = useState(false);
   const [editingContract, setEditingContract] = useState<AdContract | null>(null);
-  const [contractForm, setContractForm] = useState({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "" });
+  const [contractForm, setContractForm] = useState({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "", installments: "1" });
 
   // Payment form
   const [payDialog, setPayDialog] = useState(false);
@@ -341,6 +353,12 @@ const AdminAdvertisingPage = () => {
         if (tags.length > 0) { enabled.push(bf.key); values[bf.key] = tags.join(", "); }
       } else if (bf.key === "playlist_id") {
         if (val) { enabled.push(bf.key); values[bf.key] = val; }
+      } else if (bf.key === "billing_type") {
+        // Always editable; default to current value or "mensal"
+        enabled.push(bf.key);
+        values[bf.key] = val || "mensal";
+      } else if (bf.key === "billing_label") {
+        if (val) { enabled.push(bf.key); values[bf.key] = val; }
       } else if (val !== null && val !== undefined && String(val).trim() !== "" && val !== 0) {
         // Skip values that match the DB default — they were never explicitly chosen
         if (BUILTIN_DB_DEFAULTS[bf.key] !== undefined && String(val) === BUILTIN_DB_DEFAULTS[bf.key]) {
@@ -365,8 +383,8 @@ const AdminAdvertisingPage = () => {
     setEditingPkg(null);
     setPkgName("");
     setPkgIsActive(true);
-    setPkgEnabledFields([]);
-    setPkgFieldValues({});
+    setPkgEnabledFields(["billing_type", "monthly_value"]);
+    setPkgFieldValues({ billing_type: "mensal" });
     setPkgSelectedFornecedores([]);
     setPkgCustomFields({});
     setPkgCustomFieldDefs([]);
@@ -416,6 +434,8 @@ const AdminAdvertisingPage = () => {
       display_schedule: v.display_schedule || null,
       content_format: v.content_format || null,
       tags: tagsArr,
+      billing_type: v.billing_type || "mensal",
+      billing_label: v.billing_label || null,
       custom_fields: {
         ...pkgCustomFields,
         _custom_field_defs: pkgCustomFieldDefs,
@@ -483,6 +503,8 @@ const AdminAdvertisingPage = () => {
       else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
       else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
       else if (key === "tags" && tpl.tags?.length) vals.tags = tpl.tags.join(", ");
+      else if (key === "billing_type") vals.billing_type = (tpl as any).billing_type || "mensal";
+      else if (key === "billing_label") vals.billing_label = (tpl as any).billing_label || "";
       else if ((tpl as any)[key]) vals[key] = (tpl as any)[key];
     }
     setTplEnabledFields(enabled);
@@ -563,6 +585,8 @@ const AdminAdvertisingPage = () => {
       content_format: v.content_format || null,
       tags: tagsArr,
       is_active: tplIsActive,
+      billing_type: v.billing_type || "mensal",
+      billing_label: v.billing_label || null,
       custom_fields: {
         ...tplCustomFields,
         _custom_field_defs: tplCustomFieldDefs,
@@ -637,16 +661,16 @@ const AdminAdvertisingPage = () => {
   // === Contract CRUD ===
   const openContractCreate = () => {
     setEditingContract(null);
-    setContractForm({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "" });
+    setContractForm({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "", installments: "1" });
     setContractDialog(true);
   };
   const openContractEdit = (c: AdContract) => {
     setEditingContract(c);
-    setContractForm({ fornecedor: c.fornecedor, package_id: c.package_id, status: c.status, start_date: c.start_date || "", end_date: c.end_date || "", notes: c.notes || "" });
+    setContractForm({ fornecedor: c.fornecedor, package_id: c.package_id, status: c.status, start_date: c.start_date || "", end_date: c.end_date || "", notes: c.notes || "", installments: String((c as any).installments || 1) });
     setContractDialog(true);
   };
   const saveContract = async () => {
-    const payload = { fornecedor: contractForm.fornecedor, package_id: contractForm.package_id, status: contractForm.status, start_date: contractForm.start_date || null, end_date: contractForm.end_date || null, notes: contractForm.notes || null };
+    const payload: any = { fornecedor: contractForm.fornecedor, package_id: contractForm.package_id, status: contractForm.status, start_date: contractForm.start_date || null, end_date: contractForm.end_date || null, notes: contractForm.notes || null, installments: Math.max(1, parseInt(contractForm.installments) || 1) };
     if (editingContract) {
       const { error } = await supabase.from("ad_contracts").update(payload).eq("id", editingContract.id);
       if (error) { toast.error("Erro ao atualizar contrato"); return; }
@@ -766,7 +790,12 @@ const AdminAdvertisingPage = () => {
   });
 
   const activeContracts = contracts.filter(c => c.status === "active");
-  const totalMonthlyRevenue = activeContracts.reduce((sum, c) => sum + (c.ad_packages?.monthly_value || 0), 0);
+  const totalMonthlyRevenue = activeContracts.reduce((sum, c) => {
+    const pkg = c.ad_packages;
+    if (!pkg) return sum;
+    const bt = (pkg as any).billing_type || "mensal";
+    return bt === "mensal" ? sum + (pkg.monthly_value || 0) : sum;
+  }, 0);
   const totalPaid = filteredPayments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = filteredPayments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
 
@@ -1051,19 +1080,24 @@ const AdminAdvertisingPage = () => {
 
                         <CardContent className="space-y-4 pt-0">
                           {/* Pricing */}
-                          {(enabledBuiltinFields.has("monthly_value") || enabledBuiltinFields.has("duration_months")) && (
-                            <div className="flex items-baseline gap-1 flex-wrap">
-                              {enabledBuiltinFields.has("monthly_value") && (
-                                <>
-                                  <span className="text-2xl font-bold text-primary">{fmt(pkg.monthly_value)}</span>
-                                  <span className="text-sm text-muted-foreground">/mês</span>
-                                </>
-                              )}
-                              {enabledBuiltinFields.has("duration_months") && (
-                                <span className="text-xs text-muted-foreground ml-1">{enabledBuiltinFields.has("monthly_value") ? "• " : ""}{pkg.duration_months} mês(es)</span>
-                              )}
-                            </div>
-                          )}
+                          {enabledBuiltinFields.has("monthly_value") && (() => {
+                            const billingType = (pkg as any).billing_type || "mensal";
+                            const priceInfo = formatPackagePrice(pkg);
+                            return (
+                              <div className="space-y-1">
+                                <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                                  {BILLING_TYPE_LABEL[billingType] || billingType}
+                                </Badge>
+                                <div className="flex items-baseline gap-1 flex-wrap">
+                                  <span className="text-2xl font-bold text-primary">{priceInfo.main}</span>
+                                  <span className="text-sm text-muted-foreground">{priceInfo.suffix}</span>
+                                </div>
+                                {billingType === "mensal" && enabledBuiltinFields.has("duration_months") && pkg.duration_months > 0 && (
+                                  <p className="text-[11px] text-muted-foreground">Duração: {pkg.duration_months} mês(es)</p>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Specs grid */}
                           {(enabledBuiltinFields.has("media_type") || enabledBuiltinFields.has("screen_position") || enabledBuiltinFields.has("display_schedule") || enabledBuiltinFields.has("content_format") || enabledBuiltinFields.has("display_frequency") || (enabledBuiltinFields.has("playlist_id") && pkg.playlist_id)) && (
@@ -1248,7 +1282,7 @@ const AdminAdvertisingPage = () => {
                     const show = (key: string, val?: any) =>
                       hasAny ? enabledSet.has(key) : !isDefault(key, val);
                     const items: React.ReactNode[] = [];
-                    if (show("monthly_value", tpl.monthly_value) && tpl.monthly_value > 0) items.push(<div key="mv"><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>);
+                    if (show("monthly_value", tpl.monthly_value) && tpl.monthly_value > 0) { const pi = formatPackagePrice(tpl); items.push(<div key="mv"><span className="text-muted-foreground">Valor:</span> {pi.main}{pi.suffix}</div>); }
                     if (show("duration_months", tpl.duration_months) && tpl.duration_months > 0) items.push(<div key="dm"><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>);
                     if (show("media_type", tpl.media_type)) items.push(<div key="mt"><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>);
                     if (show("screen_position", tpl.screen_position)) items.push(<div key="sp"><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>);
@@ -1389,7 +1423,7 @@ const AdminAdvertisingPage = () => {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>{fmt(c.ad_packages?.monthly_value || 0)}/mês</TableCell>
+                      <TableCell className="text-xs">{(() => { const p = formatPackagePrice(c.ad_packages); return `${p.main}${p.suffix}`; })()}</TableCell>
                       <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                       <TableCell className="text-xs">{c.start_date || "—"}</TableCell>
                       <TableCell className="text-xs">{c.end_date || "—"}</TableCell>
@@ -1683,7 +1717,7 @@ const AdminAdvertisingPage = () => {
               <Select value={contractForm.package_id} onValueChange={v => setContractForm(f => ({ ...f, package_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecionar pacote" /></SelectTrigger>
                 <SelectContent>
-                  {packages.filter(p => p.is_active).map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {fmt(p.monthly_value)}/mês</SelectItem>)}
+                  {packages.filter(p => p.is_active).map(p => { const pi = formatPackagePrice(p); return <SelectItem key={p.id} value={p.id}>{p.name} — {pi.main}{pi.suffix}</SelectItem>; })}
                 </SelectContent>
               </Select>
             </div>
@@ -1700,6 +1734,22 @@ const AdminAdvertisingPage = () => {
               <div><Label>Início</Label><Input type="date" value={contractForm.start_date} onChange={e => setContractForm(f => ({ ...f, start_date: e.target.value }))} /></div>
               <div><Label>Fim</Label><Input type="date" value={contractForm.end_date} onChange={e => setContractForm(f => ({ ...f, end_date: e.target.value }))} /></div>
             </div>
+            {(() => {
+              const selectedPkg = packages.find(p => p.id === contractForm.package_id);
+              const bt = (selectedPkg as any)?.billing_type || "mensal";
+              if (bt !== "unico") return null;
+              const total = Number(selectedPkg?.monthly_value) || 0;
+              const inst = Math.max(1, parseInt(contractForm.installments) || 1);
+              return (
+                <div>
+                  <Label>Parcelas (pagamento único)</Label>
+                  <Input type="number" min={1} value={contractForm.installments} onChange={e => setContractForm(f => ({ ...f, installments: e.target.value }))} />
+                  {total > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">{inst}x de {fmt(total / inst)} — total {fmt(total)}</p>
+                  )}
+                </div>
+              );
+            })()}
             <div><Label>Observações</Label><Textarea value={contractForm.notes} onChange={e => setContractForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
             <Button className="w-full" onClick={saveContract}>{editingContract ? "Salvar" : "Criar"}</Button>
           </div>
@@ -1715,7 +1765,11 @@ const AdminAdvertisingPage = () => {
               <Label>Contrato</Label>
               <Select value={payForm.contract_id} onValueChange={v => {
                 const c = contracts.find(c => c.id === v);
-                setPayForm(f => ({ ...f, contract_id: v, amount: String(c?.ad_packages?.monthly_value || "") }));
+                const total = Number(c?.ad_packages?.monthly_value) || 0;
+                const bt = (c?.ad_packages as any)?.billing_type || "mensal";
+                const inst = Math.max(1, Number((c as any)?.installments) || 1);
+                const suggested = bt === "unico" && inst > 1 ? total / inst : total;
+                setPayForm(f => ({ ...f, contract_id: v, amount: String(suggested || "") }));
               }} disabled={!!editingPay}>
                 <SelectTrigger><SelectValue placeholder="Selecionar contrato" /></SelectTrigger>
                 <SelectContent>

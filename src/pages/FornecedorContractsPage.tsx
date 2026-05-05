@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { DollarSign, CheckCircle, Clock, Package, Tv, Monitor, Play, Grid3X3, CalendarDays, FileText, TrendingUp, XCircle, Ban, AlertTriangle } from "lucide-react";
+import { DollarSign, CheckCircle, Clock, Package, Tv, Monitor, Play, Grid3X3, CalendarDays, FileText, TrendingUp, XCircle, Ban, AlertTriangle, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { formatPackagePrice, contractMonthlyEquivalent, BILLING_TYPE_LABEL } from "@/lib/adBilling";
 
 interface Props {
   fornecedor: string;
@@ -35,7 +36,7 @@ const SCHEDULE_LABELS: Record<string, string> = { integral: "Integral", manha: "
 
 // Mirror of admin logic — determines which built-in fields were explicitly enabled
 // for this package (so non-media packages don't show media specs by accident).
-const BUILTIN_KEYS = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "playlist_id", "tags"];
+const BUILTIN_KEYS = ["billing_type", "billing_label", "monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "playlist_id", "tags"];
 const BUILTIN_DB_DEFAULTS: Record<string, string> = {
   media_type: "video",
   screen_position: "tela_cheia",
@@ -96,7 +97,7 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const activeContracts = contracts.filter(c => c.status === "active");
   const totalPaid = payments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = payments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
-  const totalMonthly = activeContracts.reduce((sum, c) => sum + (c.ad_packages?.monthly_value || 0), 0);
+  const totalMonthly = activeContracts.reduce((sum, c) => sum + contractMonthlyEquivalent(c), 0);
 
   const submitCancellation = async () => {
     if (!cancelDialog.contract) return;
@@ -141,7 +142,7 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Mensalidade Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Mensalidade Recorrente</CardTitle>
             <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent><p className="text-2xl font-bold">{fmt(totalMonthly)}</p></CardContent>
@@ -211,15 +212,39 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
                         return (
                           <>
                             {/* Price */}
-                            {enabled.has("monthly_value") && (
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-bold text-primary">{fmt(pkg?.monthly_value || 0)}</span>
-                                <span className="text-sm text-muted-foreground">/mês</span>
-                                {enabled.has("duration_months") && (
-                                  <span className="text-xs text-muted-foreground ml-1">• {pkg.duration_months} mês(es)</span>
-                                )}
-                              </div>
-                            )}
+                            {enabled.has("monthly_value") && (() => {
+                              const billingType = (pkg as any)?.billing_type || "mensal";
+                              const priceInfo = formatPackagePrice(pkg);
+                              const installments = Number((c as any).installments) || 1;
+                              return (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="secondary" className="gap-1 text-[10px] uppercase tracking-wide">
+                                      <Repeat className="h-3 w-3" />
+                                      {BILLING_TYPE_LABEL[billingType] || billingType}
+                                    </Badge>
+                                    {billingType === "mensal" && enabled.has("duration_months") && pkg.duration_months > 0 && (
+                                      <span className="text-[11px] text-muted-foreground">por {pkg.duration_months} mês(es)</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-baseline gap-1 flex-wrap">
+                                    <span className="text-2xl font-bold text-primary">{priceInfo.main}</span>
+                                    <span className="text-sm text-muted-foreground">{priceInfo.suffix}</span>
+                                  </div>
+                                  {billingType === "unico" && installments > 1 && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Parcelado em {installments}x de {(pkg.monthly_value / installments).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                    </p>
+                                  )}
+                                  {billingType === "unico" && installments <= 1 && (
+                                    <p className="text-[11px] text-muted-foreground">Cobrança única, sem recorrência</p>
+                                  )}
+                                  {billingType === "anual" && (
+                                    <p className="text-[11px] text-muted-foreground">Cobrança anual recorrente</p>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {/* Package specs */}
                             {hasSpecsRow && (
