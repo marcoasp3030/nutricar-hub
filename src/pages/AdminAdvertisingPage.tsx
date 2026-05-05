@@ -789,7 +789,12 @@ const AdminAdvertisingPage = () => {
   });
 
   const activeContracts = contracts.filter(c => c.status === "active");
-  const totalMonthlyRevenue = activeContracts.reduce((sum, c) => sum + (c.ad_packages?.monthly_value || 0), 0);
+  const totalMonthlyRevenue = activeContracts.reduce((sum, c) => {
+    const pkg = c.ad_packages;
+    if (!pkg) return sum;
+    const bt = (pkg as any).billing_type || "mensal";
+    return bt === "mensal" ? sum + (pkg.monthly_value || 0) : sum;
+  }, 0);
   const totalPaid = filteredPayments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = filteredPayments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
 
