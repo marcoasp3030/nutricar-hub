@@ -1734,6 +1734,22 @@ const AdminAdvertisingPage = () => {
               <div><Label>Início</Label><Input type="date" value={contractForm.start_date} onChange={e => setContractForm(f => ({ ...f, start_date: e.target.value }))} /></div>
               <div><Label>Fim</Label><Input type="date" value={contractForm.end_date} onChange={e => setContractForm(f => ({ ...f, end_date: e.target.value }))} /></div>
             </div>
+            {(() => {
+              const selectedPkg = packages.find(p => p.id === contractForm.package_id);
+              const bt = (selectedPkg as any)?.billing_type || "mensal";
+              if (bt !== "unico") return null;
+              const total = Number(selectedPkg?.monthly_value) || 0;
+              const inst = Math.max(1, parseInt(contractForm.installments) || 1);
+              return (
+                <div>
+                  <Label>Parcelas (pagamento único)</Label>
+                  <Input type="number" min={1} value={contractForm.installments} onChange={e => setContractForm(f => ({ ...f, installments: e.target.value }))} />
+                  {total > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">{inst}x de {fmt(total / inst)} — total {fmt(total)}</p>
+                  )}
+                </div>
+              );
+            })()}
             <div><Label>Observações</Label><Textarea value={contractForm.notes} onChange={e => setContractForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
             <Button className="w-full" onClick={saveContract}>{editingContract ? "Salvar" : "Criar"}</Button>
           </div>
