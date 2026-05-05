@@ -1079,19 +1079,24 @@ const AdminAdvertisingPage = () => {
 
                         <CardContent className="space-y-4 pt-0">
                           {/* Pricing */}
-                          {(enabledBuiltinFields.has("monthly_value") || enabledBuiltinFields.has("duration_months")) && (
-                            <div className="flex items-baseline gap-1 flex-wrap">
-                              {enabledBuiltinFields.has("monthly_value") && (
-                                <>
-                                  <span className="text-2xl font-bold text-primary">{fmt(pkg.monthly_value)}</span>
-                                  <span className="text-sm text-muted-foreground">/mês</span>
-                                </>
-                              )}
-                              {enabledBuiltinFields.has("duration_months") && (
-                                <span className="text-xs text-muted-foreground ml-1">{enabledBuiltinFields.has("monthly_value") ? "• " : ""}{pkg.duration_months} mês(es)</span>
-                              )}
-                            </div>
-                          )}
+                          {enabledBuiltinFields.has("monthly_value") && (() => {
+                            const billingType = (pkg as any).billing_type || "mensal";
+                            const priceInfo = formatPackagePrice(pkg);
+                            return (
+                              <div className="space-y-1">
+                                <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                                  {BILLING_TYPE_LABEL[billingType] || billingType}
+                                </Badge>
+                                <div className="flex items-baseline gap-1 flex-wrap">
+                                  <span className="text-2xl font-bold text-primary">{priceInfo.main}</span>
+                                  <span className="text-sm text-muted-foreground">{priceInfo.suffix}</span>
+                                </div>
+                                {billingType === "mensal" && enabledBuiltinFields.has("duration_months") && pkg.duration_months > 0 && (
+                                  <p className="text-[11px] text-muted-foreground">Duração: {pkg.duration_months} mês(es)</p>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Specs grid */}
                           {(enabledBuiltinFields.has("media_type") || enabledBuiltinFields.has("screen_position") || enabledBuiltinFields.has("display_schedule") || enabledBuiltinFields.has("content_format") || enabledBuiltinFields.has("display_frequency") || (enabledBuiltinFields.has("playlist_id") && pkg.playlist_id)) && (
