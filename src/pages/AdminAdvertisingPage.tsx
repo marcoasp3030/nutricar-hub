@@ -215,7 +215,7 @@ const AdminAdvertisingPage = () => {
   // Contract form
   const [contractDialog, setContractDialog] = useState(false);
   const [editingContract, setEditingContract] = useState<AdContract | null>(null);
-  const [contractForm, setContractForm] = useState({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "" });
+  const [contractForm, setContractForm] = useState({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "", installments: "1" });
 
   // Payment form
   const [payDialog, setPayDialog] = useState(false);
