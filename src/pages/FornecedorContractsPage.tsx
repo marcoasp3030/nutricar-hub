@@ -112,6 +112,7 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const totalPaid = payments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = payments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalMonthly = activeContracts.reduce((sum, c) => sum + contractMonthlyEquivalent(c), 0);
+  const breakdown = aggregateBillingBreakdown(activeContracts);
 
   const submitCancellation = async () => {
     if (!cancelDialog.contract) return;
