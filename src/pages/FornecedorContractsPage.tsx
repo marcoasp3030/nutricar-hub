@@ -70,6 +70,7 @@ const getEnabledBuiltinFields = (pkg: any): Set<string> => {
 const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const [contracts, setContracts] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelDialog, setCancelDialog] = useState<{ open: boolean; contract: any | null }>({ open: false, contract: null });
   const [cancelReason, setCancelReason] = useState("");
@@ -77,14 +78,27 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [cRes, pRes] = await Promise.all([
+    const [cRes, pRes, assignRes] = await Promise.all([
       supabase.from("ad_contracts").select("*, ad_packages(*)").eq("fornecedor", fornecedor),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))"),
+      supabase.from("ad_package_fornecedores").select("package_id, ad_packages(*)").eq("fornecedor", fornecedor),
     ]);
     const contractsList = cRes.data || [];
     setContracts(contractsList);
     const contractIds = contractsList.map((c: any) => c.id);
     setPayments((pRes.data || []).filter((p: any) => contractIds.includes(p.contract_id)));
+
+    const contractedPkgIds = new Set(contractsList.map((c: any) => c.package_id));
+    const assigned = (assignRes.data || [])
+      .map((a: any) => a.ad_packages)
+      .filter((p: any) => p && p.is_active && !contractedPkgIds.has(p.id));
+    // dedupe
+    const seen = new Set<string>();
+    setAvailablePackages(assigned.filter((p: any) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    }));
     setLoading(false);
   };
 
