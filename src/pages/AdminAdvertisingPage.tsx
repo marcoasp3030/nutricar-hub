@@ -17,7 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { formatPackagePrice, BILLING_TYPE_LABEL } from "@/lib/adBilling";
+import { formatPackagePrice, BILLING_TYPE_LABEL, aggregateBillingBreakdown } from "@/lib/adBilling";
+import { Repeat } from "lucide-react";
 
 const FornecedorSelector = ({ fornecedores, selected, onChange }: { fornecedores: string[]; selected: string[]; onChange: (v: string[]) => void }) => {
   const [search, setSearch] = useState("");
@@ -798,6 +799,7 @@ const AdminAdvertisingPage = () => {
   }, 0);
   const totalPaid = filteredPayments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = filteredPayments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
+  const billingBreakdown = aggregateBillingBreakdown(activeContracts);
 
   // === Chart data ===
   const revenueByMonth: Record<string, { paid: number; pending: number }> = {};
@@ -911,6 +913,39 @@ const AdminAdvertisingPage = () => {
           <CardContent><p className="text-2xl font-bold">{fmt(totalPending)}</p></CardContent>
         </Card>
       </div>
+
+      {/* Breakdown por tipo de cobrança */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Repeat className="h-4 w-4 text-primary" /> Receita por tipo de cobrança
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Soma dos valores contratados ativos, separados por modalidade. Apenas "Mensal" e "Anual" são recorrentes.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {([
+              { key: "mensal", label: "Mensal (recorrente)", suffix: "/mês", color: "text-primary" },
+              { key: "unico", label: "Valor único (total)", suffix: "", color: "text-blue-600 dark:text-blue-400" },
+              { key: "anual", label: "Anual (recorrente)", suffix: "/ano", color: "text-purple-600 dark:text-purple-400" },
+              { key: "personalizado", label: "Personalizado", suffix: "", color: "text-amber-600 dark:text-amber-400" },
+            ] as const).map(item => {
+              const b = billingBreakdown[item.key];
+              return (
+                <div key={item.key} className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                    <Badge variant="outline" className="text-[10px]">{b.count} contrato(s)</Badge>
+                  </div>
+                  <p className={`text-lg font-bold ${item.color}`}>
+                    {fmt(b.total)}<span className="text-xs font-normal text-muted-foreground">{item.suffix}</span>
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Revenue Chart */}
       {chartData.length > 0 && (
