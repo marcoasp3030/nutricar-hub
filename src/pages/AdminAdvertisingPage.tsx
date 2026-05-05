@@ -84,6 +84,8 @@ interface AdPackage {
   is_active: boolean;
   created_at: string;
   custom_fields?: any;
+  billing_type?: string;
+  billing_label?: string | null;
 }
 
 interface AdPackageTemplate {
@@ -101,14 +103,23 @@ interface AdPackageTemplate {
   is_active: boolean;
   created_at: string;
   custom_fields?: any;
+  billing_type?: string;
+  billing_label?: string | null;
 }
 
 // Built-in fields available for templates and packages
 type BuiltinField = { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: { value: string; label: string }[] };
 const BUILTIN_FIELDS: BuiltinField[] = [
   { key: "description", label: "Descrição", type: "textarea" },
-  { key: "monthly_value", label: "Valor Mensal (R$)", type: "number" },
-  { key: "duration_months", label: "Duração (meses)", type: "number" },
+  { key: "billing_type", label: "Tipo de Cobrança", type: "select", options: [
+    { value: "mensal", label: "Mensal (recorrente)" },
+    { value: "unico", label: "Valor único" },
+    { value: "anual", label: "Anual (recorrente)" },
+    { value: "personalizado", label: "Personalizado" },
+  ] },
+  { key: "billing_label", label: "Rótulo de cobrança (personalizado)", type: "text" },
+  { key: "monthly_value", label: "Valor (R$)", type: "number" },
+  { key: "duration_months", label: "Duração (meses, só p/ mensal)", type: "number" },
   { key: "display_frequency", label: "Frequência de Exibição", type: "text" },
   { key: "media_type", label: "Tipo de Mídia", type: "select", options: [{ value: "video", label: "Vídeo" }, { value: "banner", label: "Banner" }, { value: "slide", label: "Slide" }, { value: "institucional", label: "Institucional" }] },
   { key: "screen_position", label: "Posição na Tela", type: "select", options: [{ value: "tela_cheia", label: "Tela Cheia" }, { value: "rodape", label: "Rodapé" }, { value: "lateral", label: "Lateral" }, { value: "topo", label: "Topo" }] },
