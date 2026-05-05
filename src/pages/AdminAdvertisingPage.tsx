@@ -1717,7 +1717,7 @@ const AdminAdvertisingPage = () => {
               <Select value={contractForm.package_id} onValueChange={v => setContractForm(f => ({ ...f, package_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecionar pacote" /></SelectTrigger>
                 <SelectContent>
-                  {packages.filter(p => p.is_active).map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {fmt(p.monthly_value)}/mês</SelectItem>)}
+                  {packages.filter(p => p.is_active).map(p => { const pi = formatPackagePrice(p); return <SelectItem key={p.id} value={p.id}>{p.name} — {pi.main}{pi.suffix}</SelectItem>; })}
                 </SelectContent>
               </Select>
             </div>
