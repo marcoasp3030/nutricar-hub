@@ -352,6 +352,12 @@ const AdminAdvertisingPage = () => {
         if (tags.length > 0) { enabled.push(bf.key); values[bf.key] = tags.join(", "); }
       } else if (bf.key === "playlist_id") {
         if (val) { enabled.push(bf.key); values[bf.key] = val; }
+      } else if (bf.key === "billing_type") {
+        // Always editable; default to current value or "mensal"
+        enabled.push(bf.key);
+        values[bf.key] = val || "mensal";
+      } else if (bf.key === "billing_label") {
+        if (val) { enabled.push(bf.key); values[bf.key] = val; }
       } else if (val !== null && val !== undefined && String(val).trim() !== "" && val !== 0) {
         // Skip values that match the DB default — they were never explicitly chosen
         if (BUILTIN_DB_DEFAULTS[bf.key] !== undefined && String(val) === BUILTIN_DB_DEFAULTS[bf.key]) {
