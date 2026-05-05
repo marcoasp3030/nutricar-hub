@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { DollarSign, CheckCircle, Clock, Package, Tv, Monitor, Play, Grid3X3, CalendarDays, FileText, TrendingUp, XCircle, Ban, AlertTriangle } from "lucide-react";
+import { DollarSign, CheckCircle, Clock, Package, Tv, Monitor, Play, Grid3X3, CalendarDays, FileText, TrendingUp, XCircle, Ban, AlertTriangle, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { formatPackagePrice, contractMonthlyEquivalent, BILLING_TYPE_LABEL } from "@/lib/adBilling";
 
 interface Props {
   fornecedor: string;
