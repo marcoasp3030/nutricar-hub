@@ -36,7 +36,7 @@ const SCHEDULE_LABELS: Record<string, string> = { integral: "Integral", manha: "
 
 // Mirror of admin logic — determines which built-in fields were explicitly enabled
 // for this package (so non-media packages don't show media specs by accident).
-const BUILTIN_KEYS = ["monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "playlist_id", "tags"];
+const BUILTIN_KEYS = ["billing_type", "billing_label", "monthly_value", "duration_months", "display_frequency", "media_type", "screen_position", "display_schedule", "content_format", "playlist_id", "tags"];
 const BUILTIN_DB_DEFAULTS: Record<string, string> = {
   media_type: "video",
   screen_position: "tela_cheia",
