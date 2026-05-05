@@ -1282,7 +1282,7 @@ const AdminAdvertisingPage = () => {
                     const show = (key: string, val?: any) =>
                       hasAny ? enabledSet.has(key) : !isDefault(key, val);
                     const items: React.ReactNode[] = [];
-                    if (show("monthly_value", tpl.monthly_value) && tpl.monthly_value > 0) items.push(<div key="mv"><span className="text-muted-foreground">Valor:</span> {fmt(tpl.monthly_value)}/mês</div>);
+                    if (show("monthly_value", tpl.monthly_value) && tpl.monthly_value > 0) { const pi = formatPackagePrice(tpl); items.push(<div key="mv"><span className="text-muted-foreground">Valor:</span> {pi.main}{pi.suffix}</div>); }
                     if (show("duration_months", tpl.duration_months) && tpl.duration_months > 0) items.push(<div key="dm"><span className="text-muted-foreground">Duração:</span> {tpl.duration_months} mês(es)</div>);
                     if (show("media_type", tpl.media_type)) items.push(<div key="mt"><span className="text-muted-foreground">Mídia:</span> <span className="capitalize">{tpl.media_type || "—"}</span></div>);
                     if (show("screen_position", tpl.screen_position)) items.push(<div key="sp"><span className="text-muted-foreground">Posição:</span> <span className="capitalize">{(tpl.screen_position || "—").replace("_", " ")}</span></div>);
