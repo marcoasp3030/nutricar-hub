@@ -1423,7 +1423,7 @@ const AdminAdvertisingPage = () => {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>{fmt(c.ad_packages?.monthly_value || 0)}/mês</TableCell>
+                      <TableCell className="text-xs">{(() => { const p = formatPackagePrice(c.ad_packages); return `${p.main}${p.suffix}`; })()}</TableCell>
                       <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                       <TableCell className="text-xs">{c.start_date || "—"}</TableCell>
                       <TableCell className="text-xs">{c.end_date || "—"}</TableCell>
