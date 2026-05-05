@@ -799,6 +799,7 @@ const AdminAdvertisingPage = () => {
   }, 0);
   const totalPaid = filteredPayments.filter(p => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = filteredPayments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
+  const billingBreakdown = aggregateBillingBreakdown(activeContracts);
 
   // === Chart data ===
   const revenueByMonth: Record<string, { paid: number; pending: number }> = {};
