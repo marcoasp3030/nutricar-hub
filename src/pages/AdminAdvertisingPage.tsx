@@ -661,16 +661,16 @@ const AdminAdvertisingPage = () => {
   // === Contract CRUD ===
   const openContractCreate = () => {
     setEditingContract(null);
-    setContractForm({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "" });
+    setContractForm({ fornecedor: "", package_id: "", status: "pending", start_date: "", end_date: "", notes: "", installments: "1" });
     setContractDialog(true);
   };
   const openContractEdit = (c: AdContract) => {
     setEditingContract(c);
-    setContractForm({ fornecedor: c.fornecedor, package_id: c.package_id, status: c.status, start_date: c.start_date || "", end_date: c.end_date || "", notes: c.notes || "" });
+    setContractForm({ fornecedor: c.fornecedor, package_id: c.package_id, status: c.status, start_date: c.start_date || "", end_date: c.end_date || "", notes: c.notes || "", installments: String((c as any).installments || 1) });
     setContractDialog(true);
   };
   const saveContract = async () => {
-    const payload = { fornecedor: contractForm.fornecedor, package_id: contractForm.package_id, status: contractForm.status, start_date: contractForm.start_date || null, end_date: contractForm.end_date || null, notes: contractForm.notes || null };
+    const payload: any = { fornecedor: contractForm.fornecedor, package_id: contractForm.package_id, status: contractForm.status, start_date: contractForm.start_date || null, end_date: contractForm.end_date || null, notes: contractForm.notes || null, installments: Math.max(1, parseInt(contractForm.installments) || 1) };
     if (editingContract) {
       const { error } = await supabase.from("ad_contracts").update(payload).eq("id", editingContract.id);
       if (error) { toast.error("Erro ao atualizar contrato"); return; }
