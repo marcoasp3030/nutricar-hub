@@ -212,15 +212,39 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
                         return (
                           <>
                             {/* Price */}
-                            {enabled.has("monthly_value") && (
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-bold text-primary">{fmt(pkg?.monthly_value || 0)}</span>
-                                <span className="text-sm text-muted-foreground">/mês</span>
-                                {enabled.has("duration_months") && (
-                                  <span className="text-xs text-muted-foreground ml-1">• {pkg.duration_months} mês(es)</span>
-                                )}
-                              </div>
-                            )}
+                            {enabled.has("monthly_value") && (() => {
+                              const billingType = (pkg as any)?.billing_type || "mensal";
+                              const priceInfo = formatPackagePrice(pkg);
+                              const installments = Number((c as any).installments) || 1;
+                              return (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="secondary" className="gap-1 text-[10px] uppercase tracking-wide">
+                                      <Repeat className="h-3 w-3" />
+                                      {BILLING_TYPE_LABEL[billingType] || billingType}
+                                    </Badge>
+                                    {billingType === "mensal" && enabled.has("duration_months") && pkg.duration_months > 0 && (
+                                      <span className="text-[11px] text-muted-foreground">por {pkg.duration_months} mês(es)</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-baseline gap-1 flex-wrap">
+                                    <span className="text-2xl font-bold text-primary">{priceInfo.main}</span>
+                                    <span className="text-sm text-muted-foreground">{priceInfo.suffix}</span>
+                                  </div>
+                                  {billingType === "unico" && installments > 1 && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Parcelado em {installments}x de {(pkg.monthly_value / installments).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                    </p>
+                                  )}
+                                  {billingType === "unico" && installments <= 1 && (
+                                    <p className="text-[11px] text-muted-foreground">Cobrança única, sem recorrência</p>
+                                  )}
+                                  {billingType === "anual" && (
+                                    <p className="text-[11px] text-muted-foreground">Cobrança anual recorrente</p>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {/* Package specs */}
                             {hasSpecsRow && (
