@@ -70,6 +70,7 @@ const getEnabledBuiltinFields = (pkg: any): Set<string> => {
 const FornecedorContractsPage = ({ fornecedor }: Props) => {
   const [contracts, setContracts] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelDialog, setCancelDialog] = useState<{ open: boolean; contract: any | null }>({ open: false, contract: null });
   const [cancelReason, setCancelReason] = useState("");
@@ -77,14 +78,27 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [cRes, pRes] = await Promise.all([
+    const [cRes, pRes, assignRes] = await Promise.all([
       supabase.from("ad_contracts").select("*, ad_packages(*)").eq("fornecedor", fornecedor),
       supabase.from("ad_payments").select("*, ad_contracts(*, ad_packages(*))"),
+      supabase.from("ad_package_fornecedores").select("package_id, ad_packages(*)").eq("fornecedor", fornecedor),
     ]);
     const contractsList = cRes.data || [];
     setContracts(contractsList);
     const contractIds = contractsList.map((c: any) => c.id);
     setPayments((pRes.data || []).filter((p: any) => contractIds.includes(p.contract_id)));
+
+    const contractedPkgIds = new Set(contractsList.map((c: any) => c.package_id));
+    const assigned = (assignRes.data || [])
+      .map((a: any) => a.ad_packages)
+      .filter((p: any) => p && p.is_active && !contractedPkgIds.has(p.id));
+    // dedupe
+    const seen = new Set<string>();
+    setAvailablePackages(assigned.filter((p: any) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    }));
     setLoading(false);
   };
 
@@ -171,13 +185,47 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
 
         {/* ===== MEUS PACOTES (CONTRATOS) ===== */}
         <TabsContent value="contracts" className="space-y-4">
-          {contracts.length === 0 ? (
+          {availablePackages.length > 0 && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" /> Pacotes disponíveis para você
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Estes pacotes foram atribuídos a você pelo administrador, mas ainda não há contrato ativo. Aguarde a ativação ou entre em contato com o administrador.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {availablePackages.map((pkg: any) => {
+                    const billingType = pkg.billing_type || "mensal";
+                    const priceInfo = formatPackagePrice(pkg);
+                    return (
+                      <div key={pkg.id} className="rounded-lg border bg-card p-3 space-y-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-medium text-sm">{pkg.name}</p>
+                          <Badge variant="outline" className="text-[10px]">{BILLING_TYPE_LABEL[billingType] || billingType}</Badge>
+                        </div>
+                        {pkg.description && <p className="text-xs text-muted-foreground line-clamp-2">{pkg.description}</p>}
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-bold text-primary">{priceInfo.main}</span>
+                          <span className="text-xs text-muted-foreground">{priceInfo.suffix}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {contracts.length === 0 && availablePackages.length === 0 ? (
             <div className="text-center py-16">
               <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground font-medium">Nenhum pacote contratado</p>
               <p className="text-xs text-muted-foreground mt-1">Quando um pacote for atribuído a você, ele aparecerá aqui.</p>
             </div>
-          ) : (
+          ) : contracts.length > 0 && (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {contracts.map(c => {
                 const pkg = c.ad_packages;
