@@ -1766,7 +1766,7 @@ const AdminAdvertisingPage = () => {
               <Select value={payForm.contract_id} onValueChange={v => {
                 const c = contracts.find(c => c.id === v);
                 setPayForm(f => ({ ...f, contract_id: v, amount: String(c?.ad_packages?.monthly_value || "") }));
-              }} disabled={!!editingPay}>
+              }} disabled={!!editingPay}>{/* installments-aware default */}
                 <SelectTrigger><SelectValue placeholder="Selecionar contrato" /></SelectTrigger>
                 <SelectContent>
                   {contracts.filter(c => c.status === "active" || c.id === payForm.contract_id).map(c => (
