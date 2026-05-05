@@ -147,20 +147,13 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
       <h1 className="text-2xl font-bold text-foreground">Publicidade - Financeiro</h1>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Contratos Ativos</CardTitle>
             <CheckCircle className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent><p className="text-2xl font-bold">{activeContracts.length}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Mensalidade Recorrente</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent><p className="text-2xl font-bold">{fmt(totalMonthly)}</p></CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -176,7 +169,45 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
           </CardHeader>
           <CardContent><p className="text-2xl font-bold">{fmt(totalPending)}</p></CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Mensalidade Recorrente</CardTitle>
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent><p className="text-2xl font-bold">{fmt(totalMonthly)}</p></CardContent>
+        </Card>
       </div>
+
+      {/* Breakdown por tipo de cobrança */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Repeat className="h-4 w-4 text-primary" /> Resumo por tipo de cobrança
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Valores dos seus pacotes ativos, separados por modalidade.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {([
+              { key: "mensal", label: "Mensal", suffix: "/mês", color: "text-primary" },
+              { key: "unico", label: "Valor único", suffix: " total", color: "text-blue-600 dark:text-blue-400" },
+              { key: "anual", label: "Anual", suffix: "/ano", color: "text-purple-600 dark:text-purple-400" },
+              { key: "personalizado", label: "Personalizado", suffix: "", color: "text-amber-600 dark:text-amber-400" },
+            ] as const).map(item => {
+              const b = breakdown[item.key];
+              return (
+                <div key={item.key} className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                    <Badge variant="outline" className="text-[10px]">{b.count}</Badge>
+                  </div>
+                  <p className={`text-lg font-bold ${item.color}`}>{fmt(b.total)}<span className="text-xs font-normal text-muted-foreground">{item.suffix}</span></p>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="contracts" className="w-full">
         <TabsList>
