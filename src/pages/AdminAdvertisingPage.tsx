@@ -496,6 +496,8 @@ const AdminAdvertisingPage = () => {
       else if (key === "monthly_value") vals.monthly_value = String(tpl.monthly_value);
       else if (key === "duration_months") vals.duration_months = String(tpl.duration_months);
       else if (key === "tags" && tpl.tags?.length) vals.tags = tpl.tags.join(", ");
+      else if (key === "billing_type") vals.billing_type = (tpl as any).billing_type || "mensal";
+      else if (key === "billing_label") vals.billing_label = (tpl as any).billing_label || "";
       else if ((tpl as any)[key]) vals[key] = (tpl as any)[key];
     }
     setTplEnabledFields(enabled);
