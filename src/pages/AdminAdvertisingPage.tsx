@@ -376,8 +376,8 @@ const AdminAdvertisingPage = () => {
     setEditingPkg(null);
     setPkgName("");
     setPkgIsActive(true);
-    setPkgEnabledFields([]);
-    setPkgFieldValues({});
+    setPkgEnabledFields(["billing_type", "monthly_value"]);
+    setPkgFieldValues({ billing_type: "mensal" });
     setPkgSelectedFornecedores([]);
     setPkgCustomFields({});
     setPkgCustomFieldDefs([]);
