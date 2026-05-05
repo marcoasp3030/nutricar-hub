@@ -17,7 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { formatPackagePrice, BILLING_TYPE_LABEL } from "@/lib/adBilling";
+import { formatPackagePrice, BILLING_TYPE_LABEL, aggregateBillingBreakdown } from "@/lib/adBilling";
+import { Repeat } from "lucide-react";
 
 const FornecedorSelector = ({ fornecedores, selected, onChange }: { fornecedores: string[]; selected: string[]; onChange: (v: string[]) => void }) => {
   const [search, setSearch] = useState("");
