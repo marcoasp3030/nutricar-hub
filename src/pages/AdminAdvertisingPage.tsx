@@ -576,6 +576,8 @@ const AdminAdvertisingPage = () => {
       content_format: v.content_format || null,
       tags: tagsArr,
       is_active: tplIsActive,
+      billing_type: v.billing_type || "mensal",
+      billing_label: v.billing_label || null,
       custom_fields: {
         ...tplCustomFields,
         _custom_field_defs: tplCustomFieldDefs,
