@@ -142,7 +142,7 @@ const FornecedorContractsPage = ({ fornecedor }: Props) => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Mensalidade Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Mensalidade Recorrente</CardTitle>
             <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent><p className="text-2xl font-bold">{fmt(totalMonthly)}</p></CardContent>
