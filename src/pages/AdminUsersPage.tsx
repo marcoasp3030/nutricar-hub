@@ -562,6 +562,7 @@ const AdminUsersPage = () => {
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
           <TabsTrigger value="acessos">Últimos Acessos</TabsTrigger>
           <TabsTrigger value="bases">Acesso às Bases</TabsTrigger>
+          <TabsTrigger value="menu-fornecedor" className="gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Menu Fornecedor</TabsTrigger>
         </TabsList>
 
         {/* Pendentes Tab */}
