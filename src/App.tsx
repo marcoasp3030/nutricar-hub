@@ -46,6 +46,7 @@ const AppContent = () => {
   const [loading, setLoading] = useState(true);
   const [tableName, setTableName] = useState(() => sessionStorage.getItem("nutricar_table") || "vendas_2026");
   const [selectedFornecedor, setSelectedFornecedor] = useState<string>(() => sessionStorage.getItem("nutricar_fornecedor") || "");
+  const [fornecedorMenu, setFornecedorMenu] = useState<string[]>(['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados', 'portal_promotora']);
 
   // Persist selections in sessionStorage
   useEffect(() => {
