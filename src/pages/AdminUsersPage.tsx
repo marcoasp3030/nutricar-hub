@@ -127,6 +127,35 @@ const AdminUsersPage = () => {
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
 
+  // Fornecedor menu config (global)
+  const [fornecedorMenu, setFornecedorMenu] = useState<string[]>([]);
+  const [fornecedorMenuLoading, setFornecedorMenuLoading] = useState(false);
+  const [fornecedorMenuSaving, setFornecedorMenuSaving] = useState(false);
+
+  const loadFornecedorMenu = useCallback(async () => {
+    setFornecedorMenuLoading(true);
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'fornecedor_menu').maybeSingle();
+    const perms = (data?.value as any)?.permissions;
+    setFornecedorMenu(Array.isArray(perms) ? perms : ['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados', 'portal_promotora']);
+    setFornecedorMenuLoading(false);
+  }, []);
+
+  const saveFornecedorMenu = async () => {
+    setFornecedorMenuSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('app_settings').upsert({
+      key: 'fornecedor_menu',
+      value: { permissions: fornecedorMenu } as any,
+      updated_at: new Date().toISOString(),
+      updated_by: user?.id,
+    });
+    setFornecedorMenuSaving(false);
+    if (error) toast.error("Erro ao salvar: " + error.message);
+    else toast.success("Menu do fornecedor atualizado");
+  };
+
+  useEffect(() => { loadFornecedorMenu(); }, [loadFornecedorMenu]);
+
   const callAdmin = async (body: any) => {
     const { data, error } = await supabase.functions.invoke('admin-users', { body });
     if (error) throw new Error(error.message);
