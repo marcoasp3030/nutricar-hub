@@ -127,6 +127,35 @@ const AdminUsersPage = () => {
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
 
+  // Fornecedor menu config (global)
+  const [fornecedorMenu, setFornecedorMenu] = useState<string[]>([]);
+  const [fornecedorMenuLoading, setFornecedorMenuLoading] = useState(false);
+  const [fornecedorMenuSaving, setFornecedorMenuSaving] = useState(false);
+
+  const loadFornecedorMenu = useCallback(async () => {
+    setFornecedorMenuLoading(true);
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'fornecedor_menu').maybeSingle();
+    const perms = (data?.value as any)?.permissions;
+    setFornecedorMenu(Array.isArray(perms) ? perms : ['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados', 'portal_promotora']);
+    setFornecedorMenuLoading(false);
+  }, []);
+
+  const saveFornecedorMenu = async () => {
+    setFornecedorMenuSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('app_settings').upsert({
+      key: 'fornecedor_menu',
+      value: { permissions: fornecedorMenu } as any,
+      updated_at: new Date().toISOString(),
+      updated_by: user?.id,
+    });
+    setFornecedorMenuSaving(false);
+    if (error) toast.error("Erro ao salvar: " + error.message);
+    else toast.success("Menu do fornecedor atualizado");
+  };
+
+  useEffect(() => { loadFornecedorMenu(); }, [loadFornecedorMenu]);
+
   const callAdmin = async (body: any) => {
     const { data, error } = await supabase.functions.invoke('admin-users', { body });
     if (error) throw new Error(error.message);
@@ -533,6 +562,7 @@ const AdminUsersPage = () => {
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
           <TabsTrigger value="acessos">Últimos Acessos</TabsTrigger>
           <TabsTrigger value="bases">Acesso às Bases</TabsTrigger>
+          <TabsTrigger value="menu-fornecedor" className="gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Menu Fornecedor</TabsTrigger>
         </TabsList>
 
         {/* Pendentes Tab */}
@@ -925,6 +955,50 @@ const AdminUsersPage = () => {
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Menu Fornecedor Tab */}
+        <TabsContent value="menu-fornecedor" className="space-y-4">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Menu visível para Fornecedores</h2>
+                  <p className="text-xs text-muted-foreground">Defina quais páginas todos os fornecedores poderão ver no menu lateral.</p>
+                </div>
+              </div>
+
+              {fornecedorMenuLoading ? (
+                <div className="flex h-24 items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1 max-w-md">
+                    {AVAILABLE_PERMISSIONS.filter(p => p.group === 'Fornecedor').map(perm => (
+                      <label key={perm.key} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent cursor-pointer border">
+                        <Checkbox
+                          checked={fornecedorMenu.includes(perm.key)}
+                          onCheckedChange={(checked) => {
+                            setFornecedorMenu(prev => checked ? [...prev, perm.key] : prev.filter(p => p !== perm.key));
+                          }}
+                        />
+                        <span className="text-sm">{perm.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={loadFornecedorMenu} disabled={fornecedorMenuSaving}>Restaurar</Button>
+                    <Button onClick={saveFornecedorMenu} disabled={fornecedorMenuSaving}>
+                      {fornecedorMenuSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Salvar
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

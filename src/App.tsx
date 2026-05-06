@@ -46,6 +46,7 @@ const AppContent = () => {
   const [loading, setLoading] = useState(true);
   const [tableName, setTableName] = useState(() => sessionStorage.getItem("nutricar_table") || "vendas_2026");
   const [selectedFornecedor, setSelectedFornecedor] = useState<string>(() => sessionStorage.getItem("nutricar_fornecedor") || "");
+  const [fornecedorMenu, setFornecedorMenu] = useState<string[]>(['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados', 'portal_promotora']);
 
   // Persist selections in sessionStorage
   useEffect(() => {
@@ -102,6 +103,13 @@ const AppContent = () => {
 
     initializeAuth();
 
+    // Load fornecedor menu config (global)
+    supabase.from('app_settings').select('value').eq('key', 'fornecedor_menu').maybeSingle()
+      .then(({ data }) => {
+        const perms = (data?.value as any)?.permissions;
+        if (Array.isArray(perms) && isMounted) setFornecedorMenu(perms);
+      });
+
     return () => {
       isMounted = false;
       subscription.unsubscribe();
@@ -157,7 +165,8 @@ const AppContent = () => {
       return ['portal_promotora', 'checklists'].includes(perm) && userPermissions.includes(perm);
     }
     if (!isGerente && !isFuncionario) {
-      return ['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados'].includes(perm);
+      // Pure fornecedor: limited to admin-configured menu
+      return fornecedorMenu.includes(perm);
     }
     return userPermissions.includes(perm);
   };
@@ -174,7 +183,7 @@ const AppContent = () => {
       onLogout={() => supabase.auth.signOut()}
       tableName={tableName}
       onTableChange={setTableName}
-      permissions={userPermissions}
+      permissions={role === "fornecedor" ? fornecedorMenu : userPermissions}
     >
       <Routes>
         <Route path="/" element={<Navigate to={isAdmin ? '/admin/dashboard' : isPromoter ? '/promotora' : hasPermission('dashboard') ? '/dashboard' : hasPermission('admin_dashboard') ? '/admin/dashboard' : '/dashboard'} replace />} />

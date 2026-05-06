@@ -71,7 +71,8 @@ const AppLayout = ({ children, role, fornecedor, fornecedores, onFornecedorChang
       return allNavItems.filter(item => promoterPerms.includes(item.permission));
     }
     if (role === 'fornecedor') {
-      return allNavItems.filter(item => defaultNavItems.fornecedor.includes(item.permission));
+      const allowed = (permissions && permissions.length > 0) ? permissions : defaultNavItems.fornecedor;
+      return allNavItems.filter(item => allowed.includes(item.permission));
     }
     // gerente/funcionario - use permissions
     if (permissions && permissions.length > 0) {
