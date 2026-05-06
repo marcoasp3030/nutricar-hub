@@ -165,7 +165,8 @@ const AppContent = () => {
       return ['portal_promotora', 'checklists'].includes(perm) && userPermissions.includes(perm);
     }
     if (!isGerente && !isFuncionario) {
-      return ['dashboard', 'produtos', 'relatorios', 'contratos', 'checklists', 'meus_dados'].includes(perm);
+      // Pure fornecedor: limited to admin-configured menu
+      return fornecedorMenu.includes(perm);
     }
     return userPermissions.includes(perm);
   };
