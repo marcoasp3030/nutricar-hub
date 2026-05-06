@@ -103,6 +103,13 @@ const AppContent = () => {
 
     initializeAuth();
 
+    // Load fornecedor menu config (global)
+    supabase.from('app_settings').select('value').eq('key', 'fornecedor_menu').maybeSingle()
+      .then(({ data }) => {
+        const perms = (data?.value as any)?.permissions;
+        if (Array.isArray(perms) && isMounted) setFornecedorMenu(perms);
+      });
+
     return () => {
       isMounted = false;
       subscription.unsubscribe();
