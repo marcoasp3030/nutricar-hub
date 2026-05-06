@@ -958,6 +958,50 @@ const AdminUsersPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Menu Fornecedor Tab */}
+        <TabsContent value="menu-fornecedor" className="space-y-4">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Menu visível para Fornecedores</h2>
+                  <p className="text-xs text-muted-foreground">Defina quais páginas todos os fornecedores poderão ver no menu lateral.</p>
+                </div>
+              </div>
+
+              {fornecedorMenuLoading ? (
+                <div className="flex h-24 items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1 max-w-md">
+                    {AVAILABLE_PERMISSIONS.filter(p => p.group === 'Fornecedor').map(perm => (
+                      <label key={perm.key} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent cursor-pointer border">
+                        <Checkbox
+                          checked={fornecedorMenu.includes(perm.key)}
+                          onCheckedChange={(checked) => {
+                            setFornecedorMenu(prev => checked ? [...prev, perm.key] : prev.filter(p => p !== perm.key));
+                          }}
+                        />
+                        <span className="text-sm">{perm.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={loadFornecedorMenu} disabled={fornecedorMenuSaving}>Restaurar</Button>
+                    <Button onClick={saveFornecedorMenu} disabled={fornecedorMenuSaving}>
+                      {fornecedorMenuSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Salvar
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Create User Dialog */}
