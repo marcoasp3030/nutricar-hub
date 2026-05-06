@@ -183,7 +183,7 @@ const AppContent = () => {
       onLogout={() => supabase.auth.signOut()}
       tableName={tableName}
       onTableChange={setTableName}
-      permissions={userPermissions}
+      permissions={role === "fornecedor" ? fornecedorMenu : userPermissions}
     >
       <Routes>
         <Route path="/" element={<Navigate to={isAdmin ? '/admin/dashboard' : isPromoter ? '/promotora' : hasPermission('dashboard') ? '/dashboard' : hasPermission('admin_dashboard') ? '/admin/dashboard' : '/dashboard'} replace />} />
