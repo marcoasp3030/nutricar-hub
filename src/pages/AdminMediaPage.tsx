@@ -14,7 +14,7 @@ import {
   Plus, Upload, Trash2, Play, Pause, Monitor, Clock, Image as ImageIcon,
   Video, Music, GripVertical, Settings2, Eye, ChevronLeft, ChevronRight,
   Presentation, Pencil, Copy, Tag, X, RotateCw, Link2,
-  BarChart3, CheckCircle2, XCircle, Layers,
+  BarChart3, CheckCircle2, XCircle, Layers, ArrowUpDown, ChevronDown,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -25,6 +25,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import SlideEditor, { SlidePreview, type SlideData } from "@/components/SlideEditor";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 /* ─── Types ─── */
 type Playlist = {
@@ -440,6 +443,7 @@ const TvMockup = ({
 /* ─── Main Page ─── */
 const AdminMediaPage = () => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("playlists");
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [items, setItems] = useState<PlaylistItem[]>([]);
@@ -448,6 +452,7 @@ const AdminMediaPage = () => {
   const [playing, setPlaying] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newName, setNewName] = useState("");
+
   const [newTags, setNewTags] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState("");
   const [showSlideEditor, setShowSlideEditor] = useState(false);
@@ -455,6 +460,11 @@ const AdminMediaPage = () => {
   const [filterTag, setFilterTag] = useState<string>("");
   const [allItems, setAllItems] = useState<{ media_type: string; playlist_id: string }[]>([]);
   const [playbackStats, setPlaybackStats] = useState<any[]>([]);
+  const [sortField, setSortField] = useState<string>("play_count");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
 
 
   const sensors = useSensors(
@@ -879,8 +889,20 @@ const AdminMediaPage = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left: Playlist list */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="bg-muted/50 p-1">
+          <TabsTrigger value="playlists" className="gap-2">
+            <Layers className="h-4 w-4" /> Playlists
+          </TabsTrigger>
+          <TabsTrigger value="stats" className="gap-2">
+            <BarChart3 className="h-4 w-4" /> Relatório de Reproduções
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="playlists">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Left: Playlist list */}
+
         <Card className="xl:col-span-1">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -1336,9 +1358,183 @@ const AdminMediaPage = () => {
             </>
           )}
         </div>
-      </div>
+      </TabsContent>
+
+      <TabsContent value="stats">
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <CardHeader className="bg-muted/30 pb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  Estatísticas de Mídia por Unidade
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Relatório detalhado de reproduções para auditoria comercial.
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 shrink-0" 
+                onClick={fetchPlaybackStats}
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Atualizar Dados
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="py-4">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="p-0 hover:bg-transparent font-semibold"
+                        onClick={() => {
+                          const newOrder = sortField === 'file_name' && sortOrder === 'asc' ? 'desc' : 'asc';
+                          setSortField('file_name');
+                          setSortOrder(newOrder);
+                        }}
+                      >
+                        Arquivo {sortField === 'file_name' && (sortOrder === 'asc' ? <ChevronDown className="h-4 w-4 rotate-180" /> : <ChevronDown className="h-4 w-4" />)}
+                      </Button>
+                    </TableHead>
+                    <TableHead>Playlist</TableHead>
+                    <TableHead className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="p-0 hover:bg-transparent font-semibold ml-auto flex"
+                        onClick={() => {
+                          const newOrder = sortField === 'play_count' && sortOrder === 'asc' ? 'desc' : 'asc';
+                          setSortField('play_count');
+                          setSortOrder(newOrder);
+                        }}
+                      >
+                        Vezes {sortField === 'play_count' && (sortOrder === 'asc' ? <ChevronDown className="h-4 w-4 rotate-180" /> : <ChevronDown className="h-4 w-4" />)}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="p-0 hover:bg-transparent font-semibold ml-auto flex"
+                        onClick={() => {
+                          const newOrder = sortField === 'total_duration_seconds' && sortOrder === 'asc' ? 'desc' : 'asc';
+                          setSortField('total_duration_seconds');
+                          setSortOrder(newOrder);
+                        }}
+                      >
+                        Tempo Total {sortField === 'total_duration_seconds' && (sortOrder === 'asc' ? <ChevronDown className="h-4 w-4 rotate-180" /> : <ChevronDown className="h-4 w-4" />)}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right pr-6">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="p-0 hover:bg-transparent font-semibold ml-auto flex"
+                        onClick={() => {
+                          const newOrder = sortField === 'last_played_at' && sortOrder === 'asc' ? 'desc' : 'asc';
+                          setSortField('last_played_at');
+                          setSortOrder(newOrder);
+                        }}
+                      >
+                        Última Reprodução {sortField === 'last_played_at' && (sortOrder === 'asc' ? <ChevronDown className="h-4 w-4 rotate-180" /> : <ChevronDown className="h-4 w-4" />)}
+                      </Button>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {playbackStats.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-20 text-muted-foreground">
+                        <Activity className="h-10 w-10 mx-auto opacity-10 mb-2" />
+                        Nenhum dado de reprodução disponível
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    [...playbackStats]
+                      .sort((a, b) => {
+                        const factor = sortOrder === 'asc' ? 1 : -1;
+                        if (typeof a[sortField] === 'string') {
+                          return factor * a[sortField].localeCompare(b[sortField]);
+                        }
+                        return factor * (a[sortField] - b[sortField]);
+                      })
+                      .slice((page - 1) * pageSize, page * pageSize)
+                      .map((stat, i) => (
+                        <TableRow key={i} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="py-4">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm text-foreground">{stat.file_name || 'Item sem nome'}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[280px]">{stat.media_url}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] font-mono bg-muted/50 border-muted">
+                              {stat.playlist_id?.slice(0, 8) || 'N/A'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-primary tabular-nums">
+                            {stat.play_count.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-sm">
+                            {stat.total_duration_seconds > 3600 
+                              ? `${(stat.total_duration_seconds / 3600).toFixed(1)}h` 
+                              : stat.total_duration_seconds >= 60
+                              ? `${Math.floor(stat.total_duration_seconds / 60)}m ${stat.total_duration_seconds % 60}s`
+                              : `${stat.total_duration_seconds}s`}
+                          </TableCell>
+                          <TableCell className="text-right pr-6 text-xs text-muted-foreground">
+                            {stat.last_played_at ? new Date(stat.last_played_at).toLocaleString('pt-BR', {
+                              day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
+                            }) : '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+          {playbackStats.length > pageSize && (
+            <div className="flex items-center justify-between p-4 bg-muted/20 border-t">
+              <span className="text-xs text-muted-foreground">
+                Mostrando {((page - 1) * pageSize) + 1} a {Math.min(page * pageSize, playbackStats.length)} de {playbackStats.length} registros
+              </span>
+              <div className="flex gap-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 w-8 p-0" 
+                  disabled={page === 1}
+                  onClick={() => setPage(p => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center px-3 text-xs font-medium border rounded-md bg-background h-8">
+                  {page}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 w-8 p-0" 
+                  disabled={page * pageSize >= playbackStats.length}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      </TabsContent>
     </div>
   );
 };
+
 
 export default AdminMediaPage;
