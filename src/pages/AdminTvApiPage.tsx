@@ -112,6 +112,7 @@ const AdminTvApiPage = () => {
   const [createKeyOpen, setCreateKeyOpen] = useState(false);
   const [keyLabel, setKeyLabel] = useState("");
   const [keyExpiry, setKeyExpiry] = useState("");
+  const [neverExpires, setNeverExpires] = useState(true);
   const [deleteKeyOpen, setDeleteKeyOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
@@ -213,13 +214,14 @@ const AdminTvApiPage = () => {
       const { error } = await supabase.from('tv_api_keys').insert({
         label: keyLabel || 'Chave padrão',
         created_by: user!.id,
-        expires_at: keyExpiry || null,
+        expires_at: neverExpires ? null : (keyExpiry || null),
       } as any);
       if (error) throw error;
       toast.success("Chave API criada!");
       setCreateKeyOpen(false);
       setKeyLabel("");
       setKeyExpiry("");
+      setNeverExpires(true);
       fetchApiKeys();
     } catch (e: any) {
       toast.error(e.message);
@@ -913,7 +915,7 @@ const AdminTvApiPage = () => {
                 </p>
                 <pre className="text-xs bg-muted p-3 rounded font-mono overflow-x-auto">
 {`x-api-key: <sua_chave_api>
-x-unit-id: <id_da_unidade_tv>`}
+x-api-key: <sua_chave_api>`}
                 </pre>
               </div>
 
@@ -1085,11 +1087,16 @@ x-unit-id: <id_da_unidade_tv>`}
               <Label>Nome da chave</Label>
               <Input value={keyLabel} onChange={e => setKeyLabel(e.target.value)} placeholder="Ex: TV Loja Centro" />
             </div>
-            <div>
-              <Label>Data de expiração (opcional)</Label>
-              <Input type="date" value={keyExpiry} onChange={e => setKeyExpiry(e.target.value)} />
-              <p className="text-xs text-muted-foreground mt-1">Deixe em branco para chave sem expiração.</p>
+            <div className="flex items-center gap-2 py-2">
+              <Switch id="never-expires" checked={neverExpires} onCheckedChange={setNeverExpires} />
+              <Label htmlFor="never-expires" className="cursor-pointer">Nunca expira</Label>
             </div>
+            {!neverExpires && (
+              <div>
+                <Label>Data de expiração</Label>
+                <Input type="date" value={keyExpiry} onChange={e => setKeyExpiry(e.target.value)} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateKeyOpen(false)}>Cancelar</Button>
