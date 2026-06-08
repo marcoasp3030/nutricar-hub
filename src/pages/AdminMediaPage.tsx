@@ -551,10 +551,20 @@ const AdminMediaPage = () => {
       
       setPlaybackStats(Array.from(statsMap.values()));
       
-      // Sort trend by date
-      const sortedTrend = Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+      // Sort trend by date and fill gaps
+      const sortedTrend = [];
+      const start = new Date(startDate + 'T12:00:00');
+      const end = new Date(endDate + 'T12:00:00');
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        const dayData = trendMap.get(dateStr) || { date: dateStr, count: 0, duration: 0 };
+        sortedTrend.push(dayData);
+      }
+      
       setPlaybackTrend(sortedTrend);
     }
+
   }, [startDate, endDate, toast]);
 
 
