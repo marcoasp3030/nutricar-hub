@@ -1536,9 +1536,10 @@ const AdminMediaPage = () => {
           )}
         </Card>
       </TabsContent>
-    </div>
+    </Tabs>
   );
 };
+
 
 
 export default AdminMediaPage;
