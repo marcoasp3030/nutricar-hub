@@ -26,7 +26,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import SlideEditor, { SlidePreview, type SlideData } from "@/components/SlideEditor";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, AreaChart, Area } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -462,7 +462,9 @@ const AdminMediaPage = () => {
   const [filterTag, setFilterTag] = useState<string>("");
   const [allItems, setAllItems] = useState<{ media_type: string; playlist_id: string }[]>([]);
   const [playbackStats, setPlaybackStats] = useState<any[]>([]);
+  const [playbackTrend, setPlaybackTrend] = useState<any[]>([]);
   const [sortField, setSortField] = useState<string>("play_count");
+
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState<string>(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -494,19 +496,67 @@ const AdminMediaPage = () => {
   }, []);
 
   const fetchPlaybackStats = useCallback(async () => {
-    let query = supabase.from("tv_playback_stats").select("*");
+    let query = supabase
+      .from("tv_playback_logs")
+      .select("playlist_item_id, file_name, media_url, playlist_id, duration_played_seconds, played_at");
     
     if (startDate) {
-      // Note: We need to filter by tv_playback_logs if we want strict date filtering 
-      // since the view aggregates everything. However, for a quick implementation 
-      // without changing the view, we'll assume the user wants to see items 
-      // that were played within this range. 
-      // To do this correctly, we should query tv_playback_logs directly and aggregate in JS or SQL.
+      query = query.gte("played_at", `${startDate}T00:00:00Z`);
+    }
+    if (endDate) {
+      query = query.lte("played_at", `${endDate}T23:59:59Z`);
     }
     
-    const { data } = await query.order("play_count", { ascending: false });
-    if (data) setPlaybackStats(data);
-  }, [startDate, endDate]);
+    const { data, error } = await query;
+    
+    if (error) {
+      toast({ title: "Erro ao buscar estatísticas", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    if (data) {
+      const statsMap = new Map();
+      const trendMap = new Map();
+      
+      data.forEach(log => {
+        // Item stats
+        const key = `${log.playlist_item_id}-${log.media_url}`;
+        if (!statsMap.has(key)) {
+          statsMap.set(key, {
+            playlist_item_id: log.playlist_item_id,
+            file_name: log.file_name,
+            media_url: log.media_url,
+            playlist_id: log.playlist_id,
+            play_count: 0,
+            total_duration_seconds: 0,
+            first_played_at: log.played_at,
+            last_played_at: log.played_at
+          });
+        }
+        const stat = statsMap.get(key);
+        stat.play_count += 1;
+        stat.total_duration_seconds += (log.duration_played_seconds || 0);
+        if (new Date(log.played_at) < new Date(stat.first_played_at)) stat.first_played_at = log.played_at;
+        if (new Date(log.played_at) > new Date(stat.last_played_at)) stat.last_played_at = log.played_at;
+
+        // Trend data (by day)
+        const day = log.played_at.split('T')[0];
+        if (!trendMap.has(day)) {
+          trendMap.set(day, { date: day, count: 0, duration: 0 });
+        }
+        const trend = trendMap.get(day);
+        trend.count += 1;
+        trend.duration += (log.duration_played_seconds || 0);
+      });
+      
+      setPlaybackStats(Array.from(statsMap.values()));
+      
+      // Sort trend by date
+      const sortedTrend = Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+      setPlaybackTrend(sortedTrend);
+    }
+  }, [startDate, endDate, toast]);
+
 
 
   useEffect(() => { fetchPlaylists(); fetchAllItems(); fetchPlaybackStats(); }, [fetchPlaylists, fetchAllItems, fetchPlaybackStats]);
