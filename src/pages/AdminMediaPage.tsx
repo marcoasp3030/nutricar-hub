@@ -904,6 +904,7 @@ const AdminMediaPage = () => {
             {/* Left: Playlist list */}
 
 
+
         <Card className="xl:col-span-1">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -1358,8 +1359,10 @@ const AdminMediaPage = () => {
               </Card>
             </>
           )}
-        </div>
-      </TabsContent>
+            </div>
+          </div>
+        </TabsContent>
+
 
       <TabsContent value="stats">
         <Card className="border-0 shadow-sm overflow-hidden">
