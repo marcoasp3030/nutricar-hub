@@ -92,8 +92,12 @@ interface TvPlaybackStat {
 }
 
 const AdminTvApiPage = () => {
-
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'keys';
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+
   const [units, setUnits] = useState<TvUnit[]>([]);
   const [commands, setCommands] = useState<TvCommand[]>([]);
   const [logs, setLogs] = useState<TvLog[]>([]);
