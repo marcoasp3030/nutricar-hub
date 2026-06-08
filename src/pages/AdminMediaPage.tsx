@@ -15,7 +15,9 @@ import {
   Video, Music, GripVertical, Settings2, Eye, ChevronLeft, ChevronRight,
   Presentation, Pencil, Copy, Tag, X, RotateCw, Link2,
   BarChart3, CheckCircle2, XCircle, Layers, ArrowUpDown, ChevronDown,
+  Activity, RefreshCw,
 } from "lucide-react";
+
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
 } from "@dnd-kit/core";
