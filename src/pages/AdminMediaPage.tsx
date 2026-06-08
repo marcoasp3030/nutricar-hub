@@ -809,7 +809,46 @@ const AdminMediaPage = () => {
             )}
           </CardContent>
         </Card>
+        
+        {/* Top Played Media (Commercialization) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Mídias Mais Reproduzidas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.topPlayed.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Nenhuma reprodução registrada</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.topPlayed.map((stat, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
+                    <div className="min-w-0 pr-2">
+                      <p className="text-xs font-medium truncate">{stat.file_name || 'Sem nome'}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{stat.media_url.split('/').pop()}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs font-bold text-primary">{stat.play_count.toLocaleString()}</p>
+                      <p className="text-[9px] text-muted-foreground">reproduções</p>
+                    </div>
+                  </div>
+                ))}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-[10px] h-7 mt-1 text-muted-foreground hover:text-primary"
+                  onClick={() => window.location.href = '/admin/tv-api?tab=playback'}
+                >
+                  Ver relatório completo
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
 
       {/* Weekly creation line chart */}
       <Card>
