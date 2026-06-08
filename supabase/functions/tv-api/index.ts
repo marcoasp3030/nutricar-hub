@@ -258,6 +258,35 @@ async function handlePostLogs(unitId: string, body: any) {
   return json({ ok: true, count: batch.length });
 }
 
+// POST /playback - Record media playback
+async function handlePostPlayback(unitId: string, body: any) {
+  const db = supabase();
+  const { playbacks } = body;
+
+  if (!Array.isArray(playbacks) || playbacks.length === 0) {
+    return json({ error: 'playbacks array is required' }, 400);
+  }
+
+  const batch = playbacks.slice(0, 100).map((pb: any) => ({
+    unit_id: unitId,
+    playlist_item_id: pb.playlist_item_id,
+    playlist_id: pb.playlist_id,
+    media_url: pb.media_url,
+    file_name: pb.file_name,
+    duration_played_seconds: pb.duration_seconds || 0,
+    played_at: pb.played_at || new Date().toISOString(),
+  }));
+
+  const { error } = await db.from('tv_playback_logs').insert(batch);
+
+  if (error) {
+    return json({ error: error.message }, 500);
+  }
+
+  return json({ ok: true, count: batch.length });
+}
+
+
 // GET /config - Get TV unit configuration
 async function handleGetConfig(unitId: string) {
   const db = supabase();
@@ -390,6 +419,12 @@ Deno.serve(async (req) => {
         return await handlePostLogs(unitId, body);
       }
 
+      case 'POST:playback': {
+        const body = await req.json();
+        return await handlePostPlayback(unitId, body);
+      }
+
+
       case 'GET:config':
         return await handleGetConfig(unitId);
 
@@ -405,7 +440,9 @@ Deno.serve(async (req) => {
             'GET /tv-api/commands',
             'POST /tv-api/commands/ack',
             'POST /tv-api/logs',
+            'POST /tv-api/playback',
             'GET /tv-api/config',
+
             'GET /tv-api/ota/check?current_version_code=1&channel=stable',
           ],
         }, 404);
