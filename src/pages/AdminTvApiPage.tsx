@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
+
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Key, Copy, Trash2, Plus, Loader2, Send, Monitor, FileText, RefreshCw, Eye, EyeOff, AlertTriangle, Shield, Activity, Upload, Package, ToggleLeft, Download } from "lucide-react";
@@ -433,7 +435,7 @@ const AdminTvApiPage = () => {
         <p className="text-sm text-muted-foreground">Gerenciar chaves de acesso, comandos e logs do app de TV</p>
       </div>
 
-      <Tabs defaultValue="keys" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="keys" className="gap-1.5"><Key className="h-3.5 w-3.5" />Chaves API</TabsTrigger>
           <TabsTrigger value="commands" className="gap-1.5"><Send className="h-3.5 w-3.5" />Comandos</TabsTrigger>
