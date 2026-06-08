@@ -454,6 +454,8 @@ const AdminMediaPage = () => {
   const [editingSlide, setEditingSlide] = useState<PlaylistItem | null>(null);
   const [filterTag, setFilterTag] = useState<string>("");
   const [allItems, setAllItems] = useState<{ media_type: string; playlist_id: string }[]>([]);
+  const [playbackStats, setPlaybackStats] = useState<any[]>([]);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -476,7 +478,13 @@ const AdminMediaPage = () => {
     if (data) setAllItems(data);
   }, []);
 
-  useEffect(() => { fetchPlaylists(); fetchAllItems(); }, [fetchPlaylists, fetchAllItems]);
+  const fetchPlaybackStats = useCallback(async () => {
+    const { data } = await supabase.from("tv_playback_stats").select("*").order("play_count", { ascending: false });
+    if (data) setPlaybackStats(data);
+  }, []);
+
+  useEffect(() => { fetchPlaylists(); fetchAllItems(); fetchPlaybackStats(); }, [fetchPlaylists, fetchAllItems, fetchPlaybackStats]);
+
   useEffect(() => {
     if (selectedPlaylist) fetchItems(selectedPlaylist.id);
     else setItems([]);
@@ -521,8 +529,9 @@ const AdminMediaPage = () => {
     });
     const weeklyData = Array.from(weeklyMap, ([semana, criadas]) => ({ semana, criadas }));
 
-    return { total, active, inactive, totalItems, images, videos, slides, audios, recent, pieData, weeklyData };
-  }, [playlists, allItems]);
+    return { total, active, inactive, totalItems, images, videos, slides, audios, recent, pieData, weeklyData, topPlayed: playbackStats.slice(0, 5) };
+  }, [playlists, allItems, playbackStats]);
+
 
   const createPlaylist = async () => {
     if (!newName.trim()) return;
