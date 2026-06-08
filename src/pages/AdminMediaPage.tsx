@@ -26,7 +26,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import SlideEditor, { SlidePreview, type SlideData } from "@/components/SlideEditor";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, AreaChart, Area } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -462,7 +462,9 @@ const AdminMediaPage = () => {
   const [filterTag, setFilterTag] = useState<string>("");
   const [allItems, setAllItems] = useState<{ media_type: string; playlist_id: string }[]>([]);
   const [playbackStats, setPlaybackStats] = useState<any[]>([]);
+  const [playbackTrend, setPlaybackTrend] = useState<any[]>([]);
   const [sortField, setSortField] = useState<string>("play_count");
+
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState<string>(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -494,19 +496,77 @@ const AdminMediaPage = () => {
   }, []);
 
   const fetchPlaybackStats = useCallback(async () => {
-    let query = supabase.from("tv_playback_stats").select("*");
+    let query = supabase
+      .from("tv_playback_logs")
+      .select("playlist_item_id, file_name, media_url, playlist_id, duration_played_seconds, played_at");
     
     if (startDate) {
-      // Note: We need to filter by tv_playback_logs if we want strict date filtering 
-      // since the view aggregates everything. However, for a quick implementation 
-      // without changing the view, we'll assume the user wants to see items 
-      // that were played within this range. 
-      // To do this correctly, we should query tv_playback_logs directly and aggregate in JS or SQL.
+      query = query.gte("played_at", `${startDate}T00:00:00Z`);
+    }
+    if (endDate) {
+      query = query.lte("played_at", `${endDate}T23:59:59Z`);
     }
     
-    const { data } = await query.order("play_count", { ascending: false });
-    if (data) setPlaybackStats(data);
-  }, [startDate, endDate]);
+    const { data, error } = await query;
+    
+    if (error) {
+      toast({ title: "Erro ao buscar estatísticas", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    if (data) {
+      const statsMap = new Map();
+      const trendMap = new Map();
+      
+      data.forEach(log => {
+        // Item stats
+        const key = `${log.playlist_item_id}-${log.media_url}`;
+        if (!statsMap.has(key)) {
+          statsMap.set(key, {
+            playlist_item_id: log.playlist_item_id,
+            file_name: log.file_name,
+            media_url: log.media_url,
+            playlist_id: log.playlist_id,
+            play_count: 0,
+            total_duration_seconds: 0,
+            first_played_at: log.played_at,
+            last_played_at: log.played_at
+          });
+        }
+        const stat = statsMap.get(key);
+        stat.play_count += 1;
+        stat.total_duration_seconds += (log.duration_played_seconds || 0);
+        if (new Date(log.played_at) < new Date(stat.first_played_at)) stat.first_played_at = log.played_at;
+        if (new Date(log.played_at) > new Date(stat.last_played_at)) stat.last_played_at = log.played_at;
+
+        // Trend data (by day)
+        const day = log.played_at.split('T')[0];
+        if (!trendMap.has(day)) {
+          trendMap.set(day, { date: day, count: 0, duration: 0 });
+        }
+        const trend = trendMap.get(day);
+        trend.count += 1;
+        trend.duration += (log.duration_played_seconds || 0);
+      });
+      
+      setPlaybackStats(Array.from(statsMap.values()));
+      
+      // Sort trend by date and fill gaps
+      const sortedTrend = [];
+      const start = new Date(startDate + 'T12:00:00');
+      const end = new Date(endDate + 'T12:00:00');
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        const dayData = trendMap.get(dateStr) || { date: dateStr, count: 0, duration: 0 };
+        sortedTrend.push(dayData);
+      }
+      
+      setPlaybackTrend(sortedTrend);
+    }
+
+  }, [startDate, endDate, toast]);
+
 
 
   useEffect(() => { fetchPlaylists(); fetchAllItems(); fetchPlaybackStats(); }, [fetchPlaylists, fetchAllItems, fetchPlaybackStats]);
@@ -1422,11 +1482,69 @@ const AdminMediaPage = () => {
                 </Button>
               </div>
             </div>
-
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+          <CardContent className="p-6">
+            {playbackTrend.length > 0 && (
+              <div className="mb-8 h-[300px] w-full bg-card rounded-xl border border-border p-4 shadow-sm">
+                <p className="text-sm font-semibold mb-6 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Tendência de Reproduções e Tempo Exibido
+                </p>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={playbackTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }} 
+                      tickFormatter={(str) => {
+                        const date = new Date(str + 'T12:00:00');
+                        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                      }}
+                    />
+                    <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={(val: any) => String(Math.floor(Number(val)))} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickFormatter={(val: any) => `${Math.floor(Number(val)/60)}m`} />
+
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
+                      labelFormatter={(label) => new Date(label + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    />
+                    <Area 
+                      yAxisId="left"
+                      type="monotone" 
+                      dataKey="count" 
+                      name="Reproduções" 
+                      stroke="hsl(var(--primary))" 
+                      fillOpacity={1} 
+                      fill="url(#colorCount)" 
+                      strokeWidth={2}
+                    />
+                    <Area 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="duration" 
+                      name="Tempo (seg)" 
+                      stroke="#10b981" 
+                      fillOpacity={1} 
+                      fill="url(#colorDuration)" 
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            
+            <div className="overflow-x-auto border rounded-xl overflow-hidden">
               <Table>
+
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="py-4">
@@ -1498,13 +1616,16 @@ const AdminMediaPage = () => {
                     </TableRow>
                   ) : (
                     [...playbackStats]
-                      .sort((a, b) => {
+                      .sort((a: any, b: any) => {
                         const factor = sortOrder === 'asc' ? 1 : -1;
-                        if (typeof a[sortField] === 'string') {
-                          return factor * a[sortField].localeCompare(b[sortField]);
+                        const valA = a[sortField];
+                        const valB = b[sortField];
+                        if (typeof valA === 'string' && typeof valB === 'string') {
+                          return factor * valA.localeCompare(valB);
                         }
-                        return factor * (a[sortField] - b[sortField]);
+                        return factor * (Number(valA || 0) - Number(valB || 0));
                       })
+
                       .slice((page - 1) * pageSize, page * pageSize)
                       .map((stat, i) => (
                         <TableRow key={i} className="hover:bg-muted/30 transition-colors">
