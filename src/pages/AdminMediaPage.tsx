@@ -1606,13 +1606,16 @@ const AdminMediaPage = () => {
                     </TableRow>
                   ) : (
                     [...playbackStats]
-                      .sort((a, b) => {
+                      .sort((a: any, b: any) => {
                         const factor = sortOrder === 'asc' ? 1 : -1;
-                        if (typeof a[sortField] === 'string') {
-                          return factor * a[sortField].localeCompare(b[sortField]);
+                        const valA = a[sortField];
+                        const valB = b[sortField];
+                        if (typeof valA === 'string' && typeof valB === 'string') {
+                          return factor * valA.localeCompare(valB);
                         }
-                        return factor * (a[sortField] - b[sortField]);
+                        return factor * (Number(valA || 0) - Number(valB || 0));
                       })
+
                       .slice((page - 1) * pageSize, page * pageSize)
                       .map((stat, i) => (
                         <TableRow key={i} className="hover:bg-muted/30 transition-colors">
