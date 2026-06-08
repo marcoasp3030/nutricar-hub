@@ -1745,6 +1745,68 @@ export type Database = {
         }
         Relationships: []
       }
+      tv_playback_logs: {
+        Row: {
+          duration_played_seconds: number | null
+          file_name: string | null
+          id: string
+          media_url: string | null
+          played_at: string
+          playlist_id: string | null
+          playlist_item_id: string | null
+          unit_id: string
+        }
+        Insert: {
+          duration_played_seconds?: number | null
+          file_name?: string | null
+          id?: string
+          media_url?: string | null
+          played_at?: string
+          playlist_id?: string | null
+          playlist_item_id?: string | null
+          unit_id: string
+        }
+        Update: {
+          duration_played_seconds?: number | null
+          file_name?: string | null
+          id?: string
+          media_url?: string | null
+          played_at?: string
+          playlist_id?: string | null
+          playlist_item_id?: string | null
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_playback_logs_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tv_playback_logs_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "public_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tv_playback_logs_playlist_item_id_fkey"
+            columns: ["playlist_item_id"]
+            isOneToOne: false
+            referencedRelation: "playlist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tv_playback_logs_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "store_tv_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_fornecedores: {
         Row: {
           created_at: string
@@ -1860,6 +1922,41 @@ export type Database = {
           volume?: number | null
         }
         Relationships: []
+      }
+      tv_playback_stats: {
+        Row: {
+          file_name: string | null
+          first_played_at: string | null
+          last_played_at: string | null
+          media_url: string | null
+          play_count: number | null
+          playlist_id: string | null
+          playlist_item_id: string | null
+          total_duration_seconds: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_playback_logs_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tv_playback_logs_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "public_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tv_playback_logs_playlist_item_id_fkey"
+            columns: ["playlist_item_id"]
+            isOneToOne: false
+            referencedRelation: "playlist_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
