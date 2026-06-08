@@ -944,6 +944,13 @@ x-unit-id: <id_da_unidade_tv>`}
                     response: '{ ok: true, count: 1 }',
                   },
                   {
+                    method: 'POST', path: '/playback',
+                    desc: 'Registrar eventos de reprodução de mídia para auditoria e comercialização.',
+                    body: '{ "playbacks": [{ "playlist_item_id": "uuid", "file_name": "ads.mp4", "duration_seconds": 15 }] }',
+                    response: '{ ok: true, count: 1 }',
+                  },
+                  {
+
                     method: 'GET', path: '/config',
                     desc: 'Buscar configurações da unidade de TV e dados da loja.',
                     response: '{ unit: { id, label, tv_format, store: { store_name, city } } }',
