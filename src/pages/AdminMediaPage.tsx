@@ -1472,11 +1472,68 @@ const AdminMediaPage = () => {
                 </Button>
               </div>
             </div>
-
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+          <CardContent className="p-6">
+            {playbackTrend.length > 0 && (
+              <div className="mb-8 h-[300px] w-full bg-card rounded-xl border border-border p-4 shadow-sm">
+                <p className="text-sm font-semibold mb-6 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Tendência de Reproduções e Tempo Exibido
+                </p>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={playbackTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }} 
+                      tickFormatter={(str) => {
+                        const date = new Date(str + 'T12:00:00');
+                        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                      }}
+                    />
+                    <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={(val) => Math.floor(val)} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickFormatter={(val) => `${Math.floor(val/60)}m`} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
+                      labelFormatter={(label) => new Date(label + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    />
+                    <Area 
+                      yAxisId="left"
+                      type="monotone" 
+                      dataKey="count" 
+                      name="Reproduções" 
+                      stroke="hsl(var(--primary))" 
+                      fillOpacity={1} 
+                      fill="url(#colorCount)" 
+                      strokeWidth={2}
+                    />
+                    <Area 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="duration" 
+                      name="Tempo (seg)" 
+                      stroke="#10b981" 
+                      fillOpacity={1} 
+                      fill="url(#colorDuration)" 
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            
+            <div className="overflow-x-auto border rounded-xl overflow-hidden">
               <Table>
+
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead className="py-4">
