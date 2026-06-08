@@ -78,7 +78,19 @@ interface OtaRelease {
   updated_at: string;
 }
 
+interface TvPlaybackStat {
+  playlist_item_id: string;
+  file_name: string;
+  media_url: string;
+  playlist_id: string;
+  play_count: number;
+  total_duration_seconds: number;
+  first_played_at: string;
+  last_played_at: string;
+}
+
 const AdminTvApiPage = () => {
+
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [units, setUnits] = useState<TvUnit[]>([]);
   const [commands, setCommands] = useState<TvCommand[]>([]);
@@ -86,7 +98,9 @@ const AdminTvApiPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [rateLimits, setRateLimits] = useState<RateLimitInfo[]>([]);
+  const [playbackStats, setPlaybackStats] = useState<TvPlaybackStat[]>([]);
   const RATE_LIMIT_MAX = 120;
+
 
   // API Key form
   const [createKeyOpen, setCreateKeyOpen] = useState(false);
@@ -166,11 +180,17 @@ const AdminTvApiPage = () => {
     setOtaReleases((data as any) || []);
   }, []);
 
+  const fetchPlaybackStats = useCallback(async () => {
+    const { data } = await supabase.from('tv_playback_stats').select('*').order('play_count', { ascending: false });
+    setPlaybackStats((data as any) || []);
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchApiKeys(), fetchUnits(), fetchCommands(), fetchLogs(), fetchOtaReleases()])
+    Promise.all([fetchApiKeys(), fetchUnits(), fetchCommands(), fetchLogs(), fetchOtaReleases(), fetchPlaybackStats()])
       .finally(() => setLoading(false));
   }, []);
+
 
   // Auto-refresh rate limits every 10s
   useEffect(() => {
@@ -421,7 +441,9 @@ const AdminTvApiPage = () => {
           <TabsTrigger value="ota" className="gap-1.5"><Package className="h-3.5 w-3.5" />OTA</TabsTrigger>
           <TabsTrigger value="docs" className="gap-1.5"><Monitor className="h-3.5 w-3.5" />Documentação</TabsTrigger>
           <TabsTrigger value="ratelimit" className="gap-1.5"><Shield className="h-3.5 w-3.5" />Rate Limit</TabsTrigger>
+          <TabsTrigger value="playback" className="gap-1.5"><Activity className="h-3.5 w-3.5" />Reproduções</TabsTrigger>
         </TabsList>
+
 
         {/* API Keys Tab */}
         <TabsContent value="keys" className="space-y-4">
@@ -976,7 +998,67 @@ x-unit-id: <id_da_unidade_tv>`}
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Playback Stats Tab */}
+        <TabsContent value="playback" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              Métricas de Reprodução
+            </h2>
+            <Button variant="outline" size="sm" className="gap-2" onClick={fetchPlaybackStats}>
+              <RefreshCw className="h-4 w-4" /> Atualizar
+            </Button>
+          </div>
+          
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Mídia</TableHead>
+                    <TableHead className="text-xs">Playlist ID</TableHead>
+                    <TableHead className="text-xs text-right">Total Reproduções</TableHead>
+                    <TableHead className="text-xs text-right">Tempo Total</TableHead>
+                    <TableHead className="text-xs text-right">Última Exibição</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {playbackStats.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        Nenhum dado de reprodução registrado ainda.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    playbackStats.map((stat, i) => (
+                      <TableRow key={i} className="text-sm">
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{stat.file_name || 'Item sem nome'}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[300px]">{stat.media_url}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono">{stat.playlist_id?.slice(0, 8)}...</TableCell>
+                        <TableCell className="text-right font-bold text-primary">{stat.play_count.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          {stat.total_duration_seconds > 3600 
+                            ? `${(stat.total_duration_seconds / 3600).toFixed(1)}h` 
+                            : `${Math.floor(stat.total_duration_seconds / 60)}m ${stat.total_duration_seconds % 60}s`}
+                        </TableCell>
+                        <TableCell className="text-right text-xs">
+                          {new Date(stat.last_played_at).toLocaleString('pt-BR')}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
 
       {/* Create Key Dialog */}
       <Dialog open={createKeyOpen} onOpenChange={setCreateKeyOpen}>
