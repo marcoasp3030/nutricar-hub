@@ -1500,8 +1500,9 @@ const AdminMediaPage = () => {
                         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                       }}
                     />
-                    <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={(val) => Math.floor(val)} />
-                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickFormatter={(val) => `${Math.floor(val/60)}m`} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={(val: any) => String(Math.floor(Number(val)))} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickFormatter={(val: any) => `${Math.floor(Number(val)/60)}m`} />
+
                     <Tooltip 
                       contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
                       labelFormatter={(label) => new Date(label + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
