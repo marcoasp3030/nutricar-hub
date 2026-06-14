@@ -212,12 +212,17 @@ const AdminTvApiPage = () => {
   }, [apiKeys, fetchRateLimits]);
 
   const handleCreateKey = async () => {
+    if (!keyUnitId) {
+      toast.error("Selecione a TV vinculada à chave");
+      return;
+    }
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('tv_api_keys').insert({
         label: keyLabel || 'Chave padrão',
         created_by: user!.id,
+        unit_id: keyUnitId,
         expires_at: neverExpires ? null : (keyExpiry || null),
       } as any);
       if (error) throw error;
@@ -225,6 +230,7 @@ const AdminTvApiPage = () => {
       setCreateKeyOpen(false);
       setKeyLabel("");
       setKeyExpiry("");
+      setKeyUnitId("");
       setNeverExpires(true);
       fetchApiKeys();
     } catch (e: any) {
@@ -233,6 +239,7 @@ const AdminTvApiPage = () => {
       setSubmitting(false);
     }
   };
+
 
   const handleToggleKey = async (key: ApiKey) => {
     const { error } = await supabase.from('tv_api_keys').update({ is_active: !key.is_active } as any).eq('id', key.id);
