@@ -922,13 +922,13 @@ const AdminTvApiPage = () => {
               <div>
                 <h3 className="font-semibold text-sm mb-2">Autenticação</h3>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Todas as requisições devem incluir os headers:
+                  Todas as requisições devem incluir apenas o header da chave API. A TV é identificada automaticamente pela chave vinculada no cadastro.
                 </p>
                 <pre className="text-xs bg-muted p-3 rounded font-mono overflow-x-auto">
-{`x-api-key: <sua_chave_api>
-x-api-key: <sua_chave_api>`}
+{`x-api-key: <sua_chave_api>`}
                 </pre>
               </div>
+
 
               <div className="space-y-4">
                 <h3 className="font-semibold text-sm">Endpoints</h3>
