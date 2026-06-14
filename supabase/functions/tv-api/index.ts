@@ -57,10 +57,10 @@ async function checkRateLimit(db: any, keyId: string): Promise<Response | null> 
 // Validate API key and return unit info
 async function authenticate(req: Request): Promise<{ unitId: string; keyId: string } | Response> {
   const apiKey = req.headers.get('x-api-key');
-  const unitId = req.headers.get('x-unit-id');
+  const headerUnitId = req.headers.get('x-unit-id');
 
-  if (!apiKey || !unitId) {
-    return json({ error: 'Missing x-api-key or x-unit-id headers' }, 401);
+  if (!apiKey) {
+    return json({ error: 'Missing x-api-key header' }, 401);
   }
 
   const db = supabase();
@@ -68,7 +68,7 @@ async function authenticate(req: Request): Promise<{ unitId: string; keyId: stri
   // Validate API key
   const { data: keyData, error: keyError } = await db
     .from('tv_api_keys')
-    .select('id, is_active, expires_at')
+    .select('id, is_active, expires_at, unit_id')
     .eq('api_key', apiKey)
     .single();
 
@@ -83,6 +83,12 @@ async function authenticate(req: Request): Promise<{ unitId: string; keyId: stri
   // Check rate limit
   const rateLimitResponse = await checkRateLimit(db, keyData.id);
   if (rateLimitResponse) return rateLimitResponse;
+
+  // Resolve unit: prefer key's bound unit; fall back to header for back-compat
+  const unitId = keyData.unit_id || headerUnitId;
+  if (!unitId) {
+    return json({ error: 'API key is not linked to a TV unit. Re-create the key selecting a TV.' }, 401);
+  }
 
   // Validate unit exists
   const { data: unit, error: unitError } = await db
@@ -100,6 +106,7 @@ async function authenticate(req: Request): Promise<{ unitId: string; keyId: stri
 
   return { unitId, keyId: keyData.id };
 }
+
 
 // GET /playlist - Fetch assigned playlist with all items
 async function handleGetPlaylist(unitId: string) {
