@@ -1537,6 +1537,7 @@ export type Database = {
           is_active: boolean
           label: string
           last_used_at: string | null
+          unit_id: string | null
         }
         Insert: {
           api_key?: string
@@ -1547,6 +1548,7 @@ export type Database = {
           is_active?: boolean
           label?: string
           last_used_at?: string | null
+          unit_id?: string | null
         }
         Update: {
           api_key?: string
@@ -1557,8 +1559,17 @@ export type Database = {
           is_active?: boolean
           label?: string
           last_used_at?: string | null
+          unit_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tv_api_keys_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "store_tv_units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tv_api_rate_limits: {
         Row: {
