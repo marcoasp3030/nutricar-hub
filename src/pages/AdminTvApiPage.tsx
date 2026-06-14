@@ -114,7 +114,9 @@ const AdminTvApiPage = () => {
   const [createKeyOpen, setCreateKeyOpen] = useState(false);
   const [keyLabel, setKeyLabel] = useState("");
   const [keyExpiry, setKeyExpiry] = useState("");
+  const [keyUnitId, setKeyUnitId] = useState("");
   const [neverExpires, setNeverExpires] = useState(true);
+
   const [deleteKeyOpen, setDeleteKeyOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
