@@ -1098,6 +1098,20 @@ const AdminTvApiPage = () => {
               <Label>Nome da chave</Label>
               <Input value={keyLabel} onChange={e => setKeyLabel(e.target.value)} placeholder="Ex: TV Loja Centro" />
             </div>
+            <div>
+              <Label>TV vinculada *</Label>
+              <Select value={keyUnitId} onValueChange={setKeyUnitId}>
+                <SelectTrigger><SelectValue placeholder="Selecione a TV" /></SelectTrigger>
+                <SelectContent>
+                  {units.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.label}{u.store_tvs?.store_name ? ` — ${u.store_tvs.store_name}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">A chave servirá apenas para esta TV. Não é mais necessário informar o ID da unidade no app.</p>
+            </div>
             <div className="flex items-center gap-2 py-2">
               <Switch id="never-expires" checked={neverExpires} onCheckedChange={setNeverExpires} />
               <Label htmlFor="never-expires" className="cursor-pointer">Nunca expira</Label>
@@ -1109,6 +1123,7 @@ const AdminTvApiPage = () => {
               </div>
             )}
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateKeyOpen(false)}>Cancelar</Button>
             <Button onClick={handleCreateKey} disabled={submitting}>
