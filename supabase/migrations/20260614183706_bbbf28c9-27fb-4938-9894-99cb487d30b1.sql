@@ -1,0 +1,2 @@
+ALTER TABLE public.tv_api_keys ADD COLUMN IF NOT EXISTS unit_id uuid REFERENCES public.store_tv_units(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_tv_api_keys_unit_id ON public.tv_api_keys(unit_id);

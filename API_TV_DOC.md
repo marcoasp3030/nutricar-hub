@@ -4,11 +4,13 @@ Esta API permite a comunicação entre o aplicativo APK instalado nas TVs e o se
 
 ## Configuração de Autenticação
 
-Todas as requisições devem incluir os seguintes headers:
+Todas as requisições devem incluir apenas:
 
-- `x-api-key`: Chave secreta gerada no painel administrativo.
-- `x-unit-id`: UUID único da unidade de TV (disponível no cadastro da loja).
+- `x-api-key`: Chave secreta gerada no painel administrativo (já vinculada à TV no momento da criação).
 - `Content-Type`: `application/json`
+
+> O header `x-unit-id` foi descontinuado — a TV é identificada automaticamente pela chave.
+
 
 **Base URL:** `https://[SEU_PROJETO_ID].supabase.co/functions/v1/tv-api`
 

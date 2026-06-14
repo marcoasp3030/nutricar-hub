@@ -26,7 +26,9 @@ interface ApiKey {
   created_at: string;
   last_used_at: string | null;
   expires_at: string | null;
+  unit_id: string | null;
 }
+
 
 interface TvUnit {
   id: string;
@@ -112,7 +114,9 @@ const AdminTvApiPage = () => {
   const [createKeyOpen, setCreateKeyOpen] = useState(false);
   const [keyLabel, setKeyLabel] = useState("");
   const [keyExpiry, setKeyExpiry] = useState("");
+  const [keyUnitId, setKeyUnitId] = useState("");
   const [neverExpires, setNeverExpires] = useState(true);
+
   const [deleteKeyOpen, setDeleteKeyOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
@@ -208,12 +212,17 @@ const AdminTvApiPage = () => {
   }, [apiKeys, fetchRateLimits]);
 
   const handleCreateKey = async () => {
+    if (!keyUnitId) {
+      toast.error("Selecione a TV vinculada à chave");
+      return;
+    }
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('tv_api_keys').insert({
         label: keyLabel || 'Chave padrão',
         created_by: user!.id,
+        unit_id: keyUnitId,
         expires_at: neverExpires ? null : (keyExpiry || null),
       } as any);
       if (error) throw error;
@@ -221,6 +230,7 @@ const AdminTvApiPage = () => {
       setCreateKeyOpen(false);
       setKeyLabel("");
       setKeyExpiry("");
+      setKeyUnitId("");
       setNeverExpires(true);
       fetchApiKeys();
     } catch (e: any) {
@@ -229,6 +239,7 @@ const AdminTvApiPage = () => {
       setSubmitting(false);
     }
   };
+
 
   const handleToggleKey = async (key: ApiKey) => {
     const { error } = await supabase.from('tv_api_keys').update({ is_active: !key.is_active } as any).eq('id', key.id);
@@ -911,13 +922,13 @@ const AdminTvApiPage = () => {
               <div>
                 <h3 className="font-semibold text-sm mb-2">Autenticação</h3>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Todas as requisições devem incluir os headers:
+                  Todas as requisições devem incluir apenas o header da chave API. A TV é identificada automaticamente pela chave vinculada no cadastro.
                 </p>
                 <pre className="text-xs bg-muted p-3 rounded font-mono overflow-x-auto">
-{`x-api-key: <sua_chave_api>
-x-api-key: <sua_chave_api>`}
+{`x-api-key: <sua_chave_api>`}
                 </pre>
               </div>
+
 
               <div className="space-y-4">
                 <h3 className="font-semibold text-sm">Endpoints</h3>
@@ -1087,6 +1098,20 @@ x-api-key: <sua_chave_api>`}
               <Label>Nome da chave</Label>
               <Input value={keyLabel} onChange={e => setKeyLabel(e.target.value)} placeholder="Ex: TV Loja Centro" />
             </div>
+            <div>
+              <Label>TV vinculada *</Label>
+              <Select value={keyUnitId} onValueChange={setKeyUnitId}>
+                <SelectTrigger><SelectValue placeholder="Selecione a TV" /></SelectTrigger>
+                <SelectContent>
+                  {units.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.label}{u.store_tvs?.store_name ? ` — ${u.store_tvs.store_name}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">A chave servirá apenas para esta TV. Não é mais necessário informar o ID da unidade no app.</p>
+            </div>
             <div className="flex items-center gap-2 py-2">
               <Switch id="never-expires" checked={neverExpires} onCheckedChange={setNeverExpires} />
               <Label htmlFor="never-expires" className="cursor-pointer">Nunca expira</Label>
@@ -1098,6 +1123,7 @@ x-api-key: <sua_chave_api>`}
               </div>
             )}
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateKeyOpen(false)}>Cancelar</Button>
             <Button onClick={handleCreateKey} disabled={submitting}>
